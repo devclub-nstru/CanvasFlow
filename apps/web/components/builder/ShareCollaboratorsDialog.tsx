@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Crown, Plus, Shield, Trash2, User, X } from "lucide-react";
+import { Copy, Crown, Plus, QrCode, Shield, Trash2, User, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   useListCollaborators,
@@ -37,6 +37,7 @@ export function ShareCollaboratorsDialog({
   const [inviteRole, setInviteRole] = useState<"viewer" | "editor">("viewer");
   const [confirmTransferUserId, setConfirmTransferUserId] = useState<string | null>(null);
   const [confirmTransferUserEmail, setConfirmTransferUserEmail] = useState("");
+  const [showQr, setShowQr] = useState(true);
   const { transferOwnershipAsync } = useTransferOwnership();
 
   if (!show) return null;
@@ -47,6 +48,26 @@ export function ShareCollaboratorsDialog({
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicUrl);
     toast.success("Public link copied to clipboard");
+  };
+
+  const handleDownloadQr = async () => {
+    try {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(publicUrl)}&color=221917&bgcolor=ffffff`;
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-qr-code.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("QR Code downloaded");
+    } catch {
+      toast.error("Failed to download QR Code");
+    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -149,8 +170,37 @@ export function ShareCollaboratorsDialog({
             >
               <Copy className="size-4" />
             </button>
+            <button
+              onClick={() => setShowQr(!showQr)}
+              className={`inline-flex items-center justify-center p-2 rounded-lg bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] transition-colors cursor-pointer ${showQr ? "bg-[color:var(--cf-orange)]/10 ring-[color:var(--cf-orange)]/30 text-[color:var(--cf-orange)]" : ""}`}
+              title="Toggle QR Code"
+            >
+              <QrCode className="size-4" />
+            </button>
           </div>
         </div>
+
+        {/* QR Code Container */}
+        {showQr && (
+          <div className="flex flex-col items-center justify-center bg-[color:var(--cf-cream)] p-4 rounded-xl border border-[color:var(--cf-line)] space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-white p-2.5 rounded-lg shadow-sm border border-[color:var(--cf-line-strong)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(publicUrl)}&color=221917&bgcolor=ffffff`}
+                alt="Form QR Code"
+                width={150}
+                height={150}
+                className="block"
+              />
+            </div>
+            <button
+              onClick={handleDownloadQr}
+              className="text-[12px] font-medium text-[color:var(--cf-orange)] hover:text-[color:var(--cf-orange-hover)] transition-colors cursor-pointer"
+            >
+              Download QR Code
+            </button>
+          </div>
+        )}
 
         {/* Owner Invite Form or Transfer Confirmation */}
         {isOwner && (
