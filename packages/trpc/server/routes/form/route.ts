@@ -24,7 +24,17 @@ import {
     submitFormOutputModel,
     listFormFieldsInputModel,
     listFormFieldsOutputModel,
-    getDashboardStatsOutputModel
+    getDashboardStatsOutputModel,
+    listCollaboratorsInputModel,
+    listCollaboratorsOutputModel,
+    addCollaboratorInputModel,
+    addCollaboratorOutputModel,
+    updateCollaboratorRoleInputModel,
+    updateCollaboratorRoleOutputModel,
+    removeCollaboratorInputModel,
+    removeCollaboratorOutputModel,
+    transferOwnershipInputModel,
+    transferOwnershipOutputModel
 } from "./model";
 import { formService, formFieldService, formSubmissionService } from "../../services";
 
@@ -80,8 +90,8 @@ export const formRouter = router({
     })
         .input(createFormFieldInputModel)
         .output(createFormFieldOutputModel)
-        .mutation(async ({ input }) => {
-            const result = await formFieldService.createFormField(input)
+        .mutation(async ({ input, ctx }) => {
+            const result = await formFieldService.createFormField({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -95,8 +105,8 @@ export const formRouter = router({
     })
         .input(updateFormFieldInputModel)
         .output(updateFormFieldOutputModel)
-        .mutation(async ({ input }) => {
-            const result = await formFieldService.updateFormField(input)
+        .mutation(async ({ input, ctx }) => {
+            const result = await formFieldService.updateFormField({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -110,8 +120,8 @@ export const formRouter = router({
     })
         .input(deleteFormFieldInputModel)
         .output(deleteFormFieldOutputModel)
-        .mutation(async ({ input }) => {
-            const result = await formFieldService.deleteFormField(input)
+        .mutation(async ({ input, ctx }) => {
+            const result = await formFieldService.deleteFormField({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -125,8 +135,8 @@ export const formRouter = router({
     })
         .input(getFormFieldInputModel)
         .output(getFormFieldOutputModel)
-        .query(async ({ input }) => {
-            const result = await formFieldService.getFormField(input)
+        .query(async ({ input, ctx }) => {
+            const result = await formFieldService.getFormField({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -140,8 +150,8 @@ export const formRouter = router({
     })
         .input(getFormInputModel)
         .output(getFormOutputModel)
-        .query(async ({ input }) => {
-            const result = await formService.getForm(input)
+        .query(async ({ input, ctx }) => {
+            const result = await formService.getForm({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -155,8 +165,8 @@ export const formRouter = router({
     })
         .input(listFormFieldsInputModel)
         .output(listFormFieldsOutputModel)
-        .query(async ({ input }) => {
-            const result = await formFieldService.listFormFields(input)
+        .query(async ({ input, ctx }) => {
+            const result = await formFieldService.listFormFields({ ...input, userId: ctx.user.id })
             return result
         }),
 
@@ -233,5 +243,75 @@ export const formRouter = router({
         .mutation(async ({ input }) => {
             const result = await formSubmissionService.submitForm(input)
             return result
+        }),
+
+    listCollaborators: authenticatedProcedure.meta({
+        openapi: {
+            method: "GET",
+            path: getPath("/listCollaborators"),
+            tags: TAGS,
+            protect: true
+        }
+    })
+        .input(listCollaboratorsInputModel)
+        .output(listCollaboratorsOutputModel)
+        .query(async ({ input, ctx }) => {
+            return formService.listCollaborators({ ...input, userId: ctx.user.id })
+        }),
+
+    addCollaborator: authenticatedProcedure.meta({
+        openapi: {
+            method: "POST",
+            path: getPath("/addCollaborator"),
+            tags: TAGS,
+            protect: true
+        }
+    })
+        .input(addCollaboratorInputModel)
+        .output(addCollaboratorOutputModel)
+        .mutation(async ({ input, ctx }) => {
+            return formService.addCollaborator({ ...input, requesterId: ctx.user.id })
+        }),
+
+    updateCollaboratorRole: authenticatedProcedure.meta({
+        openapi: {
+            method: "POST",
+            path: getPath("/updateCollaboratorRole"),
+            tags: TAGS,
+            protect: true
+        }
+    })
+        .input(updateCollaboratorRoleInputModel)
+        .output(updateCollaboratorRoleOutputModel)
+        .mutation(async ({ input, ctx }) => {
+            return formService.updateCollaboratorRole({ ...input, requesterId: ctx.user.id })
+        }),
+
+    removeCollaborator: authenticatedProcedure.meta({
+        openapi: {
+            method: "POST",
+            path: getPath("/removeCollaborator"),
+            tags: TAGS,
+            protect: true
+        }
+    })
+        .input(removeCollaboratorInputModel)
+        .output(removeCollaboratorOutputModel)
+        .mutation(async ({ input, ctx }) => {
+            return formService.removeCollaborator({ ...input, requesterId: ctx.user.id })
+        }),
+
+    transferOwnership: authenticatedProcedure.meta({
+        openapi: {
+            method: "POST",
+            path: getPath("/transferOwnership"),
+            tags: TAGS,
+            protect: true
+        }
+    })
+        .input(transferOwnershipInputModel)
+        .output(transferOwnershipOutputModel)
+        .mutation(async ({ input, ctx }) => {
+            return formService.transferOwnership({ ...input, requesterId: ctx.user.id })
         })
 });

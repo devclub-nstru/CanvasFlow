@@ -15,7 +15,14 @@ import { toast } from "sonner";
 
 interface BuilderHeaderProps {
   form:
-    | { title: string; description?: string | null; isPublished: boolean }
+    | {
+        title: string;
+        description?: string | null;
+        isPublished: boolean;
+        ownerEmail?: string | null;
+        role?: "owner" | "editor" | "viewer";
+        permissions?: any;
+      }
     | null
     | undefined;
   formId: string;
@@ -32,6 +39,7 @@ interface BuilderHeaderProps {
   onPublishSuccess?: () => void;
   pendingNavRef: React.MutableRefObject<string | null>;
   setShowUnsavedDialog: (val: boolean) => void;
+  onShare: () => void;
 }
 
 export function BuilderHeader({
@@ -47,10 +55,12 @@ export function BuilderHeader({
   pendingNavRef,
   setShowUnsavedDialog,
   onPublishSuccess,
+  onShare,
 }: BuilderHeaderProps) {
   const isPublished = form?.isPublished ?? false;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const canDelete = form?.permissions?.settings?.canDelete ?? (form?.role === "owner");
 
   // Close kebab menu on outside click / ESC
   useEffect(() => {
@@ -69,11 +79,6 @@ export function BuilderHeader({
     };
   }, [menuOpen]);
 
-  const copyShareLink = () => {
-    const url = `${window.location.origin}/forms/${formId}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied");
-  };
 
   return (
     <header className="h-14 px-3 sm:px-4 border-b border-[color:var(--cf-line)] flex items-center justify-between bg-[color:var(--cf-cream-2)] z-20 shrink-0 gap-2">
@@ -166,24 +171,27 @@ export function BuilderHeader({
         </Link>
 
         <button
-          onClick={copyShareLink}
-          title="Copy share link"
+          onClick={onShare}
+          title="Share form access"
           className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[12px] font-medium text-[color:var(--cf-ink)] transition-colors cursor-pointer"
         >
           <Share2 className="size-3.5" />
           <span className="hidden md:inline">Share</span>
         </button>
 
-        <div className="hidden sm:block w-px h-5 bg-[color:var(--cf-line-strong)] mx-0.5" />
-
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          title="Delete form"
-          className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[#c1281d]/25 text-[#c1281d] hover:bg-[#c1281d]/8 hover:ring-[#c1281d]/40 text-[12px] font-medium transition-colors cursor-pointer"
-        >
-          <Trash2 className="size-3.5" />
-          <span className="hidden md:inline">Delete</span>
-        </button>
+        {canDelete && (
+          <>
+            <div className="hidden sm:block w-px h-5 bg-[color:var(--cf-line-strong)] mx-0.5" />
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete form"
+              className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[#c1281d]/25 text-[#c1281d] hover:bg-[#c1281d]/8 hover:ring-[#c1281d]/40 text-[12px] font-medium transition-colors cursor-pointer"
+            >
+              <Trash2 className="size-3.5" />
+              <span className="hidden md:inline">Delete</span>
+            </button>
+          </>
+        )}
 
         {/* Mobile kebab menu — holds Preview / Share / Delete */}
         <div ref={menuRef} className="relative sm:hidden">
@@ -213,25 +221,29 @@ export function BuilderHeader({
               </Link>
               <button
                 onClick={() => {
-                  copyShareLink();
+                  onShare();
                   setMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors text-left cursor-pointer"
               >
                 <Share2 className="size-3.5 text-[color:var(--cf-ink-soft)]" />
-                Share link
+                Share form
               </button>
-              <div className="h-px bg-[color:var(--cf-line)] my-1" />
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setShowDeleteConfirm(true);
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[#c1281d] hover:bg-[#c1281d]/8 transition-colors text-left cursor-pointer"
-              >
-                <Trash2 className="size-3.5" />
-                Delete form
-              </button>
+              {canDelete && (
+                <>
+                  <div className="h-px bg-[color:var(--cf-line)] my-1" />
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[#c1281d] hover:bg-[#c1281d]/8 transition-colors text-left cursor-pointer"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete form
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

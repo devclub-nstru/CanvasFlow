@@ -18,6 +18,7 @@ import { useDashboard } from "~/providers/dashboard-provider";
 import { useDebounce } from "~/hooks/useDebounce";
 import { trpc } from "~/trpc/client";
 import { toast } from "sonner";
+import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 
@@ -67,6 +68,10 @@ export default function SketchesPage() {
   const [filter, setFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [shareFormId, setShareFormId] = useState<string | null>(null);
+  const [shareFormTitle, setShareFormTitle] = useState("");
+  const [shareOwnerEmail, setShareOwnerEmail] = useState<string | null | undefined>(undefined);
+  const [shareRole, setShareRole] = useState<"owner" | "editor" | "viewer">("viewer");
 
   // Debounce the search input — the filter pass runs over every form on
   // every keystroke; debouncing keeps typing snappy and avoids resetting
@@ -235,6 +240,12 @@ export default function SketchesPage() {
               key={form.id}
               form={form}
               onDelete={() => setConfirmDeleteId(form.id)}
+              onShare={() => {
+                setShareFormId(form.id);
+                setShareFormTitle(form.title);
+                setShareOwnerEmail(form.ownerEmail);
+                setShareRole(form.role);
+              }}
             />
           ))}
         </div>
@@ -306,6 +317,16 @@ export default function SketchesPage() {
           </div>
         </div>
       )}
+      {shareFormId && (
+        <ShareCollaboratorsDialog
+          show={!!shareFormId}
+          formId={shareFormId}
+          formTitle={shareFormTitle}
+          ownerEmail={shareOwnerEmail}
+          role={shareRole}
+          onClose={() => setShareFormId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -321,13 +342,18 @@ interface FormCardProps {
     createdAt: string;
     publishedAt?: string | null;
     updatedAt: string;
+    ownerEmail?: string | null;
+    role?: "owner" | "editor" | "viewer";
+    permissions?: any;
   };
   onDelete: () => void;
+  onShare: () => void;
 }
 
-function FormCard({ form, onDelete }: FormCardProps) {
+function FormCard({ form, onDelete, onShare }: FormCardProps) {
   const isPublished = form.isPublished;
   const responses = form.submissionsCount ?? 0;
+  const canDelete = form.permissions?.settings?.canDelete ?? (form.role === "owner");
 
   // Hover/focus prefetch — warm the builder's tRPC caches so clicking the
   // Open / Continue editing link feels instant. Cheap to call multiple
@@ -395,21 +421,30 @@ function FormCard({ form, onDelete }: FormCardProps) {
         </span>
 
         <div className="flex items-start justify-between gap-2">
-          <h3 className="cf-display text-[20px] sm:text-[22px] leading-tight line-clamp-1">
-            {form.title}
-          </h3>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete();
-            }}
-            title="Delete form"
-            aria-label="Delete form"
-            className="p-1.5 rounded-md text-[color:var(--cf-ink-soft)]/60 hover:text-[color:var(--cf-orange)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <div className="min-w-0 space-y-1">
+            <h3 className="cf-display text-[20px] sm:text-[22px] leading-tight line-clamp-1">
+              {form.title}
+            </h3>
+            {form.role && form.role !== "owner" && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] text-[10px] font-mono text-[color:var(--cf-ink-soft)] capitalize">
+                Shared: {form.role}
+              </span>
+            )}
+          </div>
+          {canDelete && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete form"
+              aria-label="Delete form"
+              className="p-1.5 rounded-md text-[color:var(--cf-ink-soft)]/60 hover:text-[color:var(--cf-orange)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
 
         <dl className="text-[12px] font-mono text-[color:var(--cf-ink-soft)] space-y-1">
@@ -431,30 +466,13 @@ function FormCard({ form, onDelete }: FormCardProps) {
       {/* actions */}
       <div className="flex gap-2 pt-1">
         {isPublished ? (
-          <>
-            <Link
-              href={`/dashboard/sketches/${form.id}`}
-              className="group/btn flex-1 inline-flex items-center justify-center gap-1.5 h-[38px] px-4 bg-[color:var(--cf-ink)] hover:bg-black text-white rounded-full text-[12.5px] font-medium tracking-tight transition-colors"
-            >
-              Open
-              <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
-            </Link>
-            <button
-              type="button"
-              title="Share form"
-              aria-label="Share form"
-              onClick={() => {
-                const url = `${window.location.origin}/forms/${form.id}`;
-                navigator.clipboard
-                  .writeText(url)
-                  .then(() => toast.success("Link copied"))
-                  .catch(() => toast.error("Couldn't copy link"));
-              }}
-              className="inline-flex items-center justify-center h-[38px] w-[38px] rounded-full ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
-            >
-              <Share2 className="size-3.5" />
-            </button>
-          </>
+          <Link
+            href={`/dashboard/sketches/${form.id}`}
+            className="group/btn flex-1 inline-flex items-center justify-center gap-1.5 h-[38px] px-4 bg-[color:var(--cf-ink)] hover:bg-black text-white rounded-full text-[12.5px] font-medium tracking-tight transition-colors"
+          >
+            Open
+            <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+          </Link>
         ) : (
           <Link
             href={`/dashboard/sketches/${form.id}`}
@@ -464,6 +482,19 @@ function FormCard({ form, onDelete }: FormCardProps) {
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
           </Link>
         )}
+        <button
+          type="button"
+          title="Share form"
+          aria-label="Share form"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onShare();
+          }}
+          className="inline-flex items-center justify-center h-[38px] w-[38px] rounded-full ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
+        >
+          <Share2 className="size-3.5" />
+        </button>
       </div>
     </div>
   );

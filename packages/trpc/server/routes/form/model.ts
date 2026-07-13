@@ -15,6 +15,25 @@ export type CreateFormOutputModelType = z.infer<typeof createFormOutputModel>
 
 export const listFormsByUserIdInputModel = z.undefined()
 
+export const formPermissionsSchemaModel = z.object({
+  builder: z.object({
+    canView: z.boolean(),
+    canEdit: z.boolean()
+  }),
+  analytics: z.object({
+    canView: z.boolean()
+  }),
+  responses: z.object({
+    canView: z.boolean()
+  }),
+  settings: z.object({
+    canDelete: z.boolean(),
+    canPublish: z.boolean(),
+    canArchive: z.boolean(),
+    canShare: z.boolean()
+  })
+})
+
 export const listFormsByUserIdOutputModel = z.array(
     z.object({
         id: z.string().uuid().describe("ID of the form"),
@@ -28,6 +47,9 @@ export const listFormsByUserIdOutputModel = z.array(
         updatedAt: z.any().describe("Last updated timestamp"),
         publishedAt: z.any().nullable().optional().describe("Published timestamp"),
         submissionsCount: z.number().describe("Total number of submissions"),
+        ownerEmail: z.string().nullable().optional().describe("Owner email"),
+        role: z.enum(["owner", "editor", "viewer"]).describe("Collaborator role"),
+        permissions: formPermissionsSchemaModel.describe("Permissions matrix"),
     })
 )
 
@@ -54,7 +76,17 @@ export {
     publishFormOutput as publishFormOutputModel,
     deleteFormInput as deleteFormInputModel,
     deleteFormOutput as deleteFormOutputModel,
-    getDashboardStatsOutput as getDashboardStatsOutputModel
+    getDashboardStatsOutput as getDashboardStatsOutputModel,
+    listCollaboratorsInput as listCollaboratorsInputModel,
+    listCollaboratorsOutput as listCollaboratorsOutputModel,
+    addCollaboratorInput as addCollaboratorInputModel,
+    addCollaboratorOutput as addCollaboratorOutputModel,
+    updateCollaboratorRoleInput as updateCollaboratorRoleInputModel,
+    updateCollaboratorRoleOutput as updateCollaboratorRoleOutputModel,
+    removeCollaboratorInput as removeCollaboratorInputModel,
+    removeCollaboratorOutput as removeCollaboratorOutputModel,
+    transferOwnershipInput as transferOwnershipInputModel,
+    transferOwnershipOutput as transferOwnershipOutputModel
 } from "@repo/services/form/model"
 
 export {

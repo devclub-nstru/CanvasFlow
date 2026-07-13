@@ -1,6 +1,27 @@
 import { z } from 'zod'
 import { getFormFieldOutput } from '../form-field/model'
 
+export type FormRole = "owner" | "editor" | "viewer";
+
+export interface FormPermissions {
+  builder: {
+    canView: boolean
+    canEdit: boolean
+  }
+  analytics: {
+    canView: boolean
+  }
+  responses: {
+    canView: boolean
+  }
+  settings: {
+    canDelete: boolean
+    canPublish: boolean
+    canArchive: boolean
+    canShare: boolean
+  }
+}
+
 // Sanitisation: every string input gets `.trim()` so leading/trailing
 // whitespace doesn't pollute storage or produce duplicates that differ
 // only by whitespace. Length caps prevent abuse of varchar columns.
@@ -36,6 +57,27 @@ export const getFormInput = z.object({
 })
 export type GetFormInputType = z.infer<typeof getFormInput>
 
+export const formPermissionsSchema = z.object({
+  builder: z.object({
+    canView: z.boolean(),
+    canEdit: z.boolean()
+  }),
+  analytics: z.object({
+    canView: z.boolean()
+  }),
+  responses: z.object({
+    canView: z.boolean()
+  }),
+  settings: z.object({
+    canDelete: z.boolean(),
+    canPublish: z.boolean(),
+    canArchive: z.boolean(),
+    canShare: z.boolean()
+  })
+})
+
+export type FormPermissionsType = z.infer<typeof formPermissionsSchema>
+
 export const getFormOutput = z.object({
   id: z.string().uuid(),
   title: z.string(),
@@ -47,6 +89,9 @@ export const getFormOutput = z.object({
   createdAt: z.any(),
   updatedAt: z.any(),
   publishedAt: z.any().nullable().optional(),
+  ownerEmail: z.string().nullable().optional(),
+  role: z.enum(["owner", "editor", "viewer"]).optional(),
+  permissions: formPermissionsSchema.optional(),
 })
 export type GetFormOutputType = z.infer<typeof getFormOutput>
 
@@ -93,3 +138,64 @@ export const getDashboardStatsOutput = z.object({
   }))
 })
 export type GetDashboardStatsOutputType = z.infer<typeof getDashboardStatsOutput>
+
+// Collaborator Schemas
+export const listCollaboratorsInput = z.object({
+  formId: z.string().uuid().describe("Form ID")
+})
+export type ListCollaboratorsInputType = z.infer<typeof listCollaboratorsInput>
+
+export const listCollaboratorsOutput = z.array(z.object({
+  id: z.string().describe("Collaborator user ID"),
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(["viewer", "editor"]),
+  addedBy: z.string().nullable().optional()
+}))
+export type ListCollaboratorsOutputType = z.infer<typeof listCollaboratorsOutput>
+
+export const addCollaboratorInput = z.object({
+  formId: z.string().uuid().describe("Form ID"),
+  email: z.string().email().describe("Collaborator email"),
+  role: z.enum(["viewer", "editor"]).describe("Collaborator role")
+})
+export type AddCollaboratorInputType = z.infer<typeof addCollaboratorInput>
+
+export const addCollaboratorOutput = z.object({
+  success: z.boolean()
+})
+export type AddCollaboratorOutputType = z.infer<typeof addCollaboratorOutput>
+
+export const updateCollaboratorRoleInput = z.object({
+  formId: z.string().uuid().describe("Form ID"),
+  userId: z.string().describe("Collaborator user ID"),
+  role: z.enum(["viewer", "editor"]).describe("New collaborator role")
+})
+export type UpdateCollaboratorRoleInputType = z.infer<typeof updateCollaboratorRoleInput>
+
+export const updateCollaboratorRoleOutput = z.object({
+  success: z.boolean()
+})
+export type UpdateCollaboratorRoleOutputType = z.infer<typeof updateCollaboratorRoleOutput>
+
+export const removeCollaboratorInput = z.object({
+  formId: z.string().uuid().describe("Form ID"),
+  userId: z.string().describe("Collaborator user ID")
+})
+export type RemoveCollaboratorInputType = z.infer<typeof removeCollaboratorInput>
+
+export const removeCollaboratorOutput = z.object({
+  success: z.boolean()
+})
+export type RemoveCollaboratorOutputType = z.infer<typeof removeCollaboratorOutput>
+
+export const transferOwnershipInput = z.object({
+  formId: z.string().uuid().describe("Form ID"),
+  targetUserId: z.string().describe("Target user ID")
+})
+export type TransferOwnershipInputType = z.infer<typeof transferOwnershipInput>
+
+export const transferOwnershipOutput = z.object({
+  success: z.boolean()
+})
+export type TransferOwnershipOutputType = z.infer<typeof transferOwnershipOutput>

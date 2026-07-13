@@ -33,6 +33,13 @@ export const useCreateForm = () => {
                     updatedAt: new Date(),
                     publishedAt: null,
                     submissionsCount: 0,
+                    role: "owner" as const,
+                    permissions: {
+                        builder: { canView: true, canEdit: true },
+                        analytics: { canView: true },
+                        responses: { canView: true },
+                        settings: { canDelete: true, canPublish: true, canArchive: true, canShare: true }
+                    }
                 }
                 return old ? [optimistic, ...old] : [optimistic]
             })
@@ -454,3 +461,96 @@ export const useDeleteForm = () => {
         status
     }
 }
+
+export const useListCollaborators = (formId: string) => {
+    const {
+        data: collaborators,
+        isLoading,
+        refetch
+    } = trpc.form.listCollaborators.useQuery({ formId }, { enabled: !!formId && formId.length === 36 })
+
+    return {
+        collaborators,
+        isLoading,
+        refetch
+    }
+}
+
+export const useAddCollaborator = () => {
+    const utils = trpc.useUtils()
+    const {
+        mutateAsync: addCollaboratorAsync,
+        isPending,
+        error
+    } = trpc.form.addCollaborator.useMutation({
+        onSuccess: (_data, variables) => {
+            void utils.form.listCollaborators.invalidate({ formId: variables.formId })
+        }
+    })
+
+    return {
+        addCollaboratorAsync,
+        isPending,
+        error
+    }
+}
+
+export const useUpdateCollaboratorRole = () => {
+    const utils = trpc.useUtils()
+    const {
+        mutateAsync: updateCollaboratorRoleAsync,
+        isPending,
+        error
+    } = trpc.form.updateCollaboratorRole.useMutation({
+        onSuccess: (_data, variables) => {
+            void utils.form.listCollaborators.invalidate({ formId: variables.formId })
+        }
+    })
+
+    return {
+        updateCollaboratorRoleAsync,
+        isPending,
+        error
+    }
+}
+
+export const useRemoveCollaborator = () => {
+    const utils = trpc.useUtils()
+    const {
+        mutateAsync: removeCollaboratorAsync,
+        isPending,
+        error
+    } = trpc.form.removeCollaborator.useMutation({
+        onSuccess: (_data, variables) => {
+            void utils.form.listCollaborators.invalidate({ formId: variables.formId })
+        }
+    })
+
+    return {
+        removeCollaboratorAsync,
+        isPending,
+        error
+    }
+}
+
+export const useTransferOwnership = () => {
+    const utils = trpc.useUtils()
+    const {
+        mutateAsync: transferOwnershipAsync,
+        isPending,
+        error
+    } = trpc.form.transferOwnership.useMutation({
+        onSuccess: (_data, variables) => {
+            void utils.form.listCollaborators.invalidate({ formId: variables.formId })
+            void utils.form.getForm.invalidate({ id: variables.formId })
+            void utils.form.listFormsByUserId.invalidate()
+        }
+    })
+
+    return {
+        transferOwnershipAsync,
+        isPending,
+        error
+    }
+}
+

@@ -2,7 +2,110 @@ import { db, eq, and, gte, count, sql, usersTable } from "@repo/database"
 import { formsTable } from "@repo/database/models/form"
 import { formFieldsTable } from "@repo/database/models/form-field"
 import { formSubmissionsTable } from "@repo/database/models/form-submission"
-import { createFormInput, type CreateFormInputType, listFormsByUserIdInput, type ListFormsByUserIdInputType, getFormInput, type GetFormInputType, getDashboardStatsInput, type GetDashboardStatsInputType, deleteFormInput, type DeleteFormInputType } from "./model"
+import { formCollaboratorsTable } from "@repo/database/models/form-collaborator"
+
+import {
+  createFormInput,
+  type CreateFormInputType,
+  listFormsByUserIdInput,
+  type ListFormsByUserIdInputType,
+  getFormInput,
+  type GetFormInputType,
+  getDashboardStatsInput,
+  type GetDashboardStatsInputType,
+  deleteFormInput,
+  type DeleteFormInputType,
+  listCollaboratorsInput,
+  type ListCollaboratorsInputType,
+  addCollaboratorInput,
+  type AddCollaboratorInputType,
+  updateCollaboratorRoleInput,
+  type UpdateCollaboratorRoleInputType,
+  removeCollaboratorInput,
+  type RemoveCollaboratorInputType,
+  transferOwnershipInput,
+  type TransferOwnershipInputType,
+  type FormRole,
+  type FormPermissions
+} from "./model"
+
+export async function checkFormAccess(formId: string, userId: string): Promise<FormRole | null> {
+  const access = await db
+    .select({
+      ownerId: formsTable.ownerId,
+      collaboratorRole: formCollaboratorsTable.role,
+    })
+    .from(formsTable)
+    .leftJoin(
+      formCollaboratorsTable,
+      and(
+        eq(formCollaboratorsTable.formId, formsTable.id),
+        eq(formCollaboratorsTable.userId, userId)
+      )
+    )
+    .where(eq(formsTable.id, formId))
+    .limit(1)
+
+  const form = access[0]
+  if (!form) return null
+
+  if (form.ownerId === userId) return "owner"
+  if (form.collaboratorRole) return form.collaboratorRole as FormRole
+
+  return null
+}
+
+export async function requireOwner(formId: string, userId: string): Promise<void> {
+  const role = await checkFormAccess(formId, userId)
+  if (role !== "owner") {
+    throw new Error("Unauthorized: Owner access required")
+  }
+}
+
+export async function requireEditor(formId: string, userId: string): Promise<void> {
+  const role = await checkFormAccess(formId, userId)
+  if (role !== "owner" && role !== "editor") {
+    throw new Error("Unauthorized: Editor access required")
+  }
+}
+
+export async function requireViewer(formId: string, userId: string): Promise<void> {
+  const role = await checkFormAccess(formId, userId)
+  if (role !== "owner" && role !== "editor" && role !== "viewer") {
+    throw new Error("Unauthorized: Viewer access required")
+  }
+}
+
+export function getFormPermissions(role: FormRole | null): FormPermissions {
+  const isOwner = role === "owner"
+  const isEditor = role === "editor"
+  const isViewer = role === "viewer"
+
+  const hasBuilderView = isOwner || isEditor
+  const hasBuilderEdit = isOwner || isEditor
+  const hasAnalyticsView = isOwner || isEditor || isViewer
+  const hasResponsesView = isOwner || isEditor || isViewer
+
+  return {
+    builder: {
+      canView: hasBuilderView,
+      canEdit: hasBuilderEdit,
+    },
+    analytics: {
+      canView: hasAnalyticsView,
+    },
+    responses: {
+      canView: hasResponsesView,
+    },
+    settings: {
+      canDelete: isOwner,
+      canPublish: isOwner || isEditor,
+      canArchive: isOwner,
+      canShare: isOwner,
+    },
+  }
+}
+
 
 class FormService {
   private async getFormBySlug(slug: string) {
@@ -11,15 +114,35 @@ class FormService {
     return result[0]
   }
 
-  public async getForm(payload: GetFormInputType) {
+  public async getForm(payload: GetFormInputType & { userId: string }) {
     const { id } = await getFormInput.parseAsync(payload)
+    const { userId } = payload
 
-    const result = await db.select().from(formsTable).where(eq(formsTable.id, id))
-    const form = result[0]
-    if (!form) {
+    const role = await checkFormAccess(id, userId)
+    if (!role) {
+      throw new Error("Form not found or unauthorized")
+    }
+
+    const result = await db
+      .select({
+        form: formsTable,
+        ownerEmail: usersTable.email,
+      })
+      .from(formsTable)
+      .innerJoin(usersTable, eq(formsTable.ownerId, usersTable.id))
+      .where(eq(formsTable.id, id))
+
+    const row = result[0]
+    if (!row) {
       throw new Error("Form not found")
     }
-    return form
+
+    return {
+      ...row.form,
+      ownerEmail: row.ownerEmail,
+      role,
+      permissions: getFormPermissions(role)
+    }
   }
 
   public async createForm(payload: CreateFormInputType) {
@@ -92,13 +215,38 @@ class FormService {
         updatedAt: formsTable.updatedAt,
         publishedAt: formsTable.publishedAt,
         submissionsCount: count(formSubmissionsTable.id),
+        collaboratorRole: formCollaboratorsTable.role,
+        ownerId: formsTable.ownerId,
+        ownerEmail: usersTable.email,
       })
       .from(formsTable)
       .leftJoin(formSubmissionsTable, eq(formsTable.id, formSubmissionsTable.formId))
-      .where(eq(formsTable.ownerId, userId))
-      .groupBy(formsTable.id)
+      .leftJoin(formCollaboratorsTable, and(eq(formsTable.id, formCollaboratorsTable.formId), eq(formCollaboratorsTable.userId, userId)))
+      .leftJoin(usersTable, eq(formsTable.ownerId, usersTable.id))
+      .where(
+        sql`${formsTable.ownerId} = ${userId} OR ${formCollaboratorsTable.userId} = ${userId}`
+      )
+      .groupBy(formsTable.id, formCollaboratorsTable.role, usersTable.email)
 
-    return forms
+    return forms.map(f => {
+      const role: FormRole = f.ownerId === userId ? "owner" : (f.collaboratorRole as FormRole)
+      return {
+        id: f.id,
+        title: f.title,
+        description: f.description,
+        slug: f.slug,
+        isPublished: f.isPublished,
+        isArchived: f.isArchived,
+        isOpen: f.isOpen,
+        createdAt: f.createdAt,
+        updatedAt: f.updatedAt,
+        publishedAt: f.publishedAt,
+        submissionsCount: f.submissionsCount,
+        ownerEmail: f.ownerEmail,
+        role,
+        permissions: getFormPermissions(role)
+      }
+    })
   }
 
   public async getFormById(payload: GetFormInputType) {
@@ -127,25 +275,30 @@ class FormService {
     return {
       ...form,
       fields,
+      role: undefined,
+      permissions: undefined
     }
   }
 
   public async publishForm(payload: GetFormInputType & { ownerId: string }) {
     const { id } = await getFormInput.parseAsync(payload)
+    const { ownerId: userId } = payload
+
+    await requireEditor(id, userId)
 
     const result = await db.update(formsTable)
       .set({
         isPublished: true,
         publishedAt: new Date()
       })
-      .where(and(eq(formsTable.id, id), eq(formsTable.ownerId, payload.ownerId)))
+      .where(eq(formsTable.id, id))
       .returning({
         id: formsTable.id
       })
 
     const firstResult = result[0]
     if (!firstResult) {
-      throw new Error("Form not found or unauthorized")
+      throw new Error("Form not found")
     }
 
     return {
@@ -155,12 +308,15 @@ class FormService {
 
   public async deleteForm(payload: DeleteFormInputType & { ownerId: string }) {
     const { id } = await deleteFormInput.parseAsync(payload)
+    const { ownerId: userId } = payload
+
+    await requireOwner(id, userId)
 
     const result = await db.delete(formsTable)
-      .where(and(eq(formsTable.id, id), eq(formsTable.ownerId, payload.ownerId)))
+      .where(eq(formsTable.id, id))
       .returning({ id: formsTable.id })
 
-    if (!result[0]) throw new Error("Form not found or unauthorized")
+    if (!result[0]) throw new Error("Form not found")
 
     return { success: true }
   }
@@ -313,6 +469,200 @@ class FormService {
       recentForms,
       trends
     }
+  }
+
+  // Collaborator management
+  public async listCollaborators(payload: ListCollaboratorsInputType & { userId: string }) {
+    const { formId } = await listCollaboratorsInput.parseAsync(payload)
+    const { userId } = payload
+
+    await requireOwner(formId, userId)
+
+    const result = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        role: formCollaboratorsTable.role,
+        addedBy: formCollaboratorsTable.addedBy,
+      })
+      .from(formCollaboratorsTable)
+      .innerJoin(usersTable, eq(formCollaboratorsTable.userId, usersTable.id))
+      .where(eq(formCollaboratorsTable.formId, formId))
+
+    return result.map(c => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      role: c.role as "viewer" | "editor",
+      addedBy: c.addedBy
+    }))
+  }
+
+  public async addCollaborator(payload: AddCollaboratorInputType & { requesterId: string }) {
+    const { formId, email, role } = await addCollaboratorInput.parseAsync(payload)
+    const { requesterId } = payload
+
+    await requireOwner(formId, requesterId)
+
+    const users = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1)
+
+    const targetUser = users[0]
+    if (!targetUser) {
+      throw new Error("User with this email not found")
+    }
+
+    const form = await db
+      .select({ ownerId: formsTable.ownerId })
+      .from(formsTable)
+      .where(eq(formsTable.id, formId))
+      .limit(1)
+
+    if (!form[0]) {
+      throw new Error("Form not found")
+    }
+    if (form[0].ownerId === targetUser.id) {
+      throw new Error("Cannot add the form owner as a collaborator")
+    }
+
+    const existing = await db
+      .select()
+      .from(formCollaboratorsTable)
+      .where(and(eq(formCollaboratorsTable.formId, formId), eq(formCollaboratorsTable.userId, targetUser.id)))
+      .limit(1)
+
+    if (existing[0]) {
+      throw new Error("User is already a collaborator on this form")
+    }
+
+    await db.insert(formCollaboratorsTable).values({
+      formId,
+      userId: targetUser.id,
+      role,
+      addedBy: requesterId,
+    })
+
+    return { success: true }
+  }
+
+  public async updateCollaboratorRole(payload: UpdateCollaboratorRoleInputType & { requesterId: string }) {
+    const { formId, userId: targetUserId, role } = await updateCollaboratorRoleInput.parseAsync(payload)
+    const { requesterId } = payload
+
+    await requireOwner(formId, requesterId)
+
+    const form = await db
+      .select({ ownerId: formsTable.ownerId })
+      .from(formsTable)
+      .where(eq(formsTable.id, formId))
+      .limit(1)
+
+    if (!form[0]) {
+      throw new Error("Form not found")
+    }
+    if (form[0].ownerId === targetUserId) {
+      throw new Error("Cannot modify owner role")
+    }
+    if (requesterId === targetUserId) {
+      throw new Error("Cannot modify your own collaborator role")
+    }
+
+    const result = await db
+      .update(formCollaboratorsTable)
+      .set({ role, updatedAt: new Date() })
+      .where(and(eq(formCollaboratorsTable.formId, formId), eq(formCollaboratorsTable.userId, targetUserId)))
+      .returning({ id: formCollaboratorsTable.id })
+
+    if (!result[0]) {
+      throw new Error("Collaborator not found")
+    }
+
+    return { success: true }
+  }
+
+  public async removeCollaborator(payload: RemoveCollaboratorInputType & { requesterId: string }) {
+    const { formId, userId: targetUserId } = await removeCollaboratorInput.parseAsync(payload)
+    const { requesterId } = payload
+
+    await requireOwner(formId, requesterId)
+
+    const form = await db
+      .select({ ownerId: formsTable.ownerId })
+      .from(formsTable)
+      .where(eq(formsTable.id, formId))
+      .limit(1)
+
+    if (!form[0]) {
+      throw new Error("Form not found")
+    }
+    if (form[0].ownerId === targetUserId) {
+      throw new Error("Cannot remove owner")
+    }
+    if (requesterId === targetUserId) {
+      throw new Error("Cannot remove yourself")
+    }
+
+    const result = await db
+      .delete(formCollaboratorsTable)
+      .where(and(eq(formCollaboratorsTable.formId, formId), eq(formCollaboratorsTable.userId, targetUserId)))
+      .returning({ id: formCollaboratorsTable.id })
+
+    if (!result[0]) {
+      throw new Error("Collaborator not found")
+    }
+
+    return { success: true }
+  }
+
+  public async transferOwnership(payload: TransferOwnershipInputType & { requesterId: string }) {
+    const { formId, targetUserId } = await transferOwnershipInput.parseAsync(payload)
+    const { requesterId } = payload
+
+    await requireOwner(formId, requesterId)
+
+    if (requesterId === targetUserId) {
+      throw new Error("You are already the owner of this form")
+    }
+
+    const targetUser = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, targetUserId))
+      .limit(1)
+
+    if (!targetUser[0]) {
+      throw new Error("Target user not found")
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(formsTable)
+        .set({ ownerId: targetUserId, updatedAt: new Date() })
+        .where(eq(formsTable.id, formId))
+
+      await tx
+        .delete(formCollaboratorsTable)
+        .where(and(eq(formCollaboratorsTable.formId, formId), eq(formCollaboratorsTable.userId, targetUserId)))
+
+      await tx
+        .insert(formCollaboratorsTable)
+        .values({
+          formId,
+          userId: requesterId,
+          role: "editor",
+          addedBy: targetUserId,
+        })
+        .onConflictDoUpdate({
+          target: [formCollaboratorsTable.formId, formCollaboratorsTable.userId],
+          set: { role: "editor", updatedAt: new Date() }
+        })
+    })
+
+    return { success: true }
   }
 }
 

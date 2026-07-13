@@ -4,6 +4,8 @@ import { formFieldsTable } from "@repo/database/models/form-field"
 import { formSubmissionsTable } from "@repo/database/models/form-submission"
 import { formViewsTable } from "@repo/database/models/form-view"
 import { formFieldViewsTable } from "@repo/database/models/form-field-view"
+import { requireViewer } from "../form"
+
 import {
   getFormAnalyticsInput,
   type GetFormAnalyticsInputType,
@@ -27,14 +29,9 @@ class AnalyticsService {
    */
   public async getFormAnalytics(payload: GetFormAnalyticsInputType & { ownerId: string }) {
     const { formId } = await getFormAnalyticsInput.parseAsync(payload)
-    const { ownerId } = payload
+    const { ownerId: userId } = payload
 
-    const [formRows] = await Promise.all([
-      db.select({ id: formsTable.id })
-        .from(formsTable)
-        .where(and(eq(formsTable.id, formId), eq(formsTable.ownerId, ownerId))),
-    ])
-    if (!formRows[0]) throw new Error("Form not found or unauthorized")
+    await requireViewer(formId, userId)
 
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
@@ -135,16 +132,18 @@ class AnalyticsService {
    */
   public async getProAnalytics(payload: GetProAnalyticsInputType & { ownerId: string }) {
     const { formId } = await getProAnalyticsInput.parseAsync(payload)
-    const { ownerId } = payload
+    const { ownerId: userId } = payload
+
+    await requireViewer(formId, userId)
 
     const formRows = await db.select({
       id: formsTable.id,
       publishedAt: formsTable.publishedAt,
     })
       .from(formsTable)
-      .where(and(eq(formsTable.id, formId), eq(formsTable.ownerId, ownerId)))
+      .where(eq(formsTable.id, formId))
 
-    if (!formRows[0]) throw new Error("Form not found or unauthorized")
+    if (!formRows[0]) throw new Error("Form not found")
     const form = formRows[0]
 
     const now = new Date()
@@ -453,12 +452,9 @@ class AnalyticsService {
    */
   public async getSubmissionsList(payload: GetSubmissionsListInputType & { ownerId: string }) {
     const { formId, cursor, limit } = await getSubmissionsListInput.parseAsync(payload)
-    const { ownerId } = payload
+    const { ownerId: userId } = payload
 
-    const formRows = await db.select({ id: formsTable.id })
-      .from(formsTable)
-      .where(and(eq(formsTable.id, formId), eq(formsTable.ownerId, ownerId)))
-    if (!formRows[0]) throw new Error("Form not found or unauthorized")
+    await requireViewer(formId, userId)
 
     const pageSize = limit ?? 50
     const cursorDate = cursor ? new Date(cursor) : null
