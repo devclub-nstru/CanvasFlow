@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -35,10 +29,7 @@ import {
   useDeleteForm,
 } from "~/hooks/api/form";
 import { useDashboard } from "~/providers/dashboard-provider";
-import {
-  nodeTypes,
-  getFieldOptionsArray,
-} from "~/components/builder/FormFieldNode";
+import { nodeTypes, getFieldOptionsArray } from "~/components/builder/FormFieldNode";
 import { FieldSidebar } from "~/components/builder/FieldSidebar";
 import { FieldInspector } from "~/components/builder/FieldInspector";
 import { BuilderHeader } from "~/components/builder/BuilderHeader";
@@ -48,6 +39,7 @@ import { MobileFieldList } from "~/components/builder/mobile/MobileFieldList";
 import { MobileAddFieldSheet } from "~/components/builder/mobile/MobileAddFieldSheet";
 import { MobileFieldEditorSheet } from "~/components/builder/mobile/MobileFieldEditorSheet";
 import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
+import { FormSettingsDialog } from "~/components/builder/FormSettingsDialog";
 
 function BuilderCanvas() {
   const params = useParams();
@@ -55,9 +47,7 @@ function BuilderCanvas() {
   const formId = params.formId as string;
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const { form, isLoading: formLoading, refetch: refetchForm } = useGetForm(
-    formId
-  );
+  const { form, isLoading: formLoading, refetch: refetchForm } = useGetForm(formId);
   const { fields, isLoading: fieldsLoading, refetch: refetchFields } = useListFormFields(formId);
 
   const { setIsCreatingForm } = useDashboard();
@@ -74,7 +64,7 @@ function BuilderCanvas() {
   const { deleteFormAsync, isPending: deletePending } = useDeleteForm();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   /* ─── Local draft state ────────────────────────────────────────────── */
   type LocalField = NonNullable<typeof fields>[number] & { _isNew?: boolean };
@@ -143,10 +133,7 @@ function BuilderCanvas() {
         });
 
       const updateOps = localFields
-        .filter(
-          (f) =>
-            !f._isNew && dirtyIds.has(f.id) && !pendingDeletes.has(f.id)
-        )
+        .filter((f) => !f._isNew && dirtyIds.has(f.id) && !pendingDeletes.has(f.id))
         .map((f) =>
           updateFormFieldAsync({
             id: f.id,
@@ -160,13 +147,10 @@ function BuilderCanvas() {
             // this; if another writer (e.g. the same form open in a
             // second tab) raced us, the server throws and we surface the
             // conflict below instead of silently overwriting their work.
-            expectedVersion:
-              typeof (f as any).version === "number"
-                ? (f as any).version
-                : 0,
+            expectedVersion: typeof (f as any).version === "number" ? (f as any).version : 0,
           }).then((data) => {
             updatedVersionById.set(f.id, data.version);
-          })
+          }),
         );
 
       const deleteOps = localFields
@@ -187,13 +171,11 @@ function BuilderCanvas() {
             if (realId) next.id = realId;
             if (newVersion !== undefined) next.version = newVersion;
             return next;
-          })
+          }),
       );
       // Remap a selected temp id to its real id if it was just created
       setSelectedNodeId((prev) =>
-        prev && tempIdToRealId.has(prev)
-          ? (tempIdToRealId.get(prev) as string)
-          : prev
+        prev && tempIdToRealId.has(prev) ? (tempIdToRealId.get(prev) as string) : prev,
       );
       setDirtyIds(new Set());
       setPendingDeletes(new Set());
@@ -213,9 +195,7 @@ function BuilderCanvas() {
         message.includes("raced with another change");
 
       if (isLockConflict) {
-        toast.error(
-          "This form was edited from another session — reloading your view"
-        );
+        toast.error("This form was edited from another session — reloading your view");
         // Pull authoritative state from the server. Local dirty edits are
         // lost intentionally so we don't silently overwrite the other
         // session. (Better collaborative resolution would need a real
@@ -245,15 +225,10 @@ function BuilderCanvas() {
     refetchFields,
   ]);
 
-  const updateLocal = useCallback(
-    (id: string, patch: Partial<LocalField>) => {
-      setLocalFields((prev) =>
-        prev.map((f) => (f.id === id ? { ...f, ...patch } : f))
-      );
-      setDirtyIds((prev) => new Set(prev).add(id));
-    },
-    []
-  );
+  const updateLocal = useCallback((id: string, patch: Partial<LocalField>) => {
+    setLocalFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    setDirtyIds((prev) => new Set(prev).add(id));
+  }, []);
 
   /* ─── React Flow state ─────────────────────────────────────────────── */
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -282,10 +257,7 @@ function BuilderCanvas() {
       // Sort by fractional index so the edge order (and any index-based
       // fallback positions for unsaved fields) match the current logical
       // sequence after a drag-reorder.
-      .sort(
-        (a, b) =>
-          parseFloat(String(a.index)) - parseFloat(String(b.index))
-      );
+      .sort((a, b) => parseFloat(String(a.index)) - parseFloat(String(b.index)));
     setNodes((prevNodes) => {
       const prevById = new Map(prevNodes.map((n) => [n.id, n]));
       return visible.map((field, idx) => {
@@ -298,11 +270,8 @@ function BuilderCanvas() {
         }
         // Brand new node — use the field's saved position or fall back to
         // a stacked layout below existing nodes.
-        const p =
-          (typeof field.options === "object" && field.options
-            ? (field.options as any)
-            : {}
-          ).position || { x: 300, y: idx * 200 + 80 };
+        const p = (typeof field.options === "object" && field.options ? (field.options as any) : {})
+          .position || { x: 300, y: idx * 200 + 80 };
         return {
           id: field.id,
           type: "formField",
@@ -335,7 +304,7 @@ function BuilderCanvas() {
 
   const selectedField = useMemo(
     () => localFields.find((f) => f.id === selectedNodeId) ?? null,
-    [localFields, selectedNodeId]
+    [localFields, selectedNodeId],
   );
 
   useEffect(() => {
@@ -370,9 +339,9 @@ function BuilderCanvas() {
         y: event.clientY,
       });
       const tempId = `new-${Date.now()}`;
-      const nextIndex = (
-        localFields.filter((f) => !pendingDeletes.has(f.id)).length + 1
-      ).toFixed(2);
+      const nextIndex = (localFields.filter((f) => !pendingDeletes.has(f.id)).length + 1).toFixed(
+        2,
+      );
       const newField = {
         id: tempId,
         formId,
@@ -396,7 +365,7 @@ function BuilderCanvas() {
       setDirtyIds((prev) => new Set(prev).add(tempId));
       setSelectedNodeId(tempId);
     },
-    [screenToFlowPosition, localFields, pendingDeletes, formId]
+    [screenToFlowPosition, localFields, pendingDeletes, formId],
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
@@ -415,15 +384,11 @@ function BuilderCanvas() {
           : {};
       const sortedNodes = [...nodes];
       const idx = sortedNodes.findIndex((n) => n.id === node.id);
-      if (idx !== -1)
-        sortedNodes[idx] = { ...sortedNodes[idx]!, position: node.position };
+      if (idx !== -1) sortedNodes[idx] = { ...sortedNodes[idx]!, position: node.position };
       sortedNodes.sort((a, b) => a.position.y - b.position.y);
-      const originalOrder = localFields
-        .filter((f) => !pendingDeletes.has(f.id))
-        .map((f) => f.id);
+      const originalOrder = localFields.filter((f) => !pendingDeletes.has(f.id)).map((f) => f.id);
       const newOrder = sortedNodes.map((n) => n.id);
-      const orderChanged =
-        JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
+      const orderChanged = JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
 
       let newIndex: string = String(currentField.index);
       if (orderChanged) {
@@ -438,10 +403,7 @@ function BuilderCanvas() {
           const above = (sortedNodes[newIdx - 1]?.data as any)?.field;
           const below = (sortedNodes[newIdx + 1]?.data as any)?.field;
           if (above && below)
-            newIndex = (
-              (parseFloat(above.index) + parseFloat(below.index)) /
-              2
-            ).toFixed(2);
+            newIndex = ((parseFloat(above.index) + parseFloat(below.index)) / 2).toFixed(2);
         }
       }
       updateLocal(node.id, {
@@ -449,7 +411,7 @@ function BuilderCanvas() {
         options: { ...(currentOpts as any), position: node.position },
       });
     },
-    [localFields, pendingDeletes, nodes, updateLocal]
+    [localFields, pendingDeletes, nodes, updateLocal],
   );
 
   const handleRequiredChange = useCallback(
@@ -458,7 +420,7 @@ function BuilderCanvas() {
       setIsRequired(checked);
       updateLocal(selectedField.id, { isRequired: checked });
     },
-    [selectedField, updateLocal]
+    [selectedField, updateLocal],
   );
 
   const handleDeleteField = useCallback(() => {
@@ -482,11 +444,8 @@ function BuilderCanvas() {
     () =>
       localFields
         .filter((f) => !pendingDeletes.has(f.id))
-        .sort(
-          (a, b) =>
-            parseFloat(String(a.index)) - parseFloat(String(b.index))
-        ),
-    [localFields, pendingDeletes]
+        .sort((a, b) => parseFloat(String(a.index)) - parseFloat(String(b.index))),
+    [localFields, pendingDeletes],
   );
 
   // Tap a field card → select + open editor sheet.
@@ -515,7 +474,7 @@ function BuilderCanvas() {
       updateLocal(a.id, { index: String(b.index) });
       updateLocal(b.id, { index: String(a.index) });
     },
-    [visibleSortedFields, updateLocal]
+    [visibleSortedFields, updateLocal],
   );
 
   // Add a new field via the mobile sheet. Places the new node below the
@@ -527,9 +486,7 @@ function BuilderCanvas() {
       const lastIndexNum = last ? parseFloat(String(last.index)) : 0;
       const nextIndex = (lastIndexNum + 1).toFixed(2);
 
-      const lastPos = (last?.options as any)?.position as
-        | { x: number; y: number }
-        | undefined;
+      const lastPos = (last?.options as any)?.position as { x: number; y: number } | undefined;
       const position = lastPos
         ? { x: lastPos.x, y: lastPos.y + 200 }
         : { x: 300, y: visibleSortedFields.length * 200 + 80 };
@@ -559,7 +516,7 @@ function BuilderCanvas() {
       setMobileAddOpen(false);
       setMobileEditorOpen(true);
     },
-    [visibleSortedFields, formId]
+    [visibleSortedFields, formId],
   );
 
   if (formLoading || fieldsLoading) {
@@ -567,9 +524,7 @@ function BuilderCanvas() {
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Loading canvas...
-          </span>
+          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Loading canvas...</span>
         </div>
       </div>
     );
@@ -579,12 +534,8 @@ function BuilderCanvas() {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
         <div className="text-center space-y-4 max-w-sm">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Not found
-          </p>
-          <h3 className="cf-display text-[24px] leading-tight">
-            We couldn&apos;t find this form
-          </h3>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Not found</p>
+          <h3 className="cf-display text-[24px] leading-tight">We couldn&apos;t find this form</h3>
           <Link
             href="/dashboard/sketches"
             className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[13px] font-medium transition-colors"
@@ -600,14 +551,13 @@ function BuilderCanvas() {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)] p-4 text-center">
         <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)] space-y-4">
-          <p className="cf-eyebrow text-[color:var(--cf-orange)]">
-            No edit access
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-orange)]">No edit access</p>
           <h3 className="cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
             You don&apos;t have access to edit this form
           </h3>
           <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-            You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions and analytics, but you cannot make changes to the fields.
+            You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions
+            and analytics, but you cannot make changes to the fields.
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <Link
@@ -646,6 +596,7 @@ function BuilderCanvas() {
           void refetchForm();
         }}
         onShare={() => setShowShareDialog(true)}
+        onSettings={() => setShowSettingsDialog(true)}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -724,11 +675,7 @@ function BuilderCanvas() {
                       : "text-[color:var(--cf-ink-soft)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-ink)]"
                   }`}
                 >
-                  {isLocked ? (
-                    <Lock className="size-3.5" />
-                  ) : (
-                    <Unlock className="size-3.5" />
-                  )}
+                  {isLocked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
                 </button>
               </Panel>
             </ReactFlow>
@@ -802,9 +749,7 @@ function BuilderCanvas() {
             toast.success("Form deleted");
             router.push("/dashboard/sketches");
           } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Failed to delete"
-            );
+            toast.error(err instanceof Error ? err.message : "Failed to delete");
             setShowDeleteConfirm(false);
           }
         }}
@@ -818,8 +763,7 @@ function BuilderCanvas() {
           setDirtyIds(new Set());
           setPendingDeletes(new Set());
           setShowUnsavedDialog(false);
-          if (pendingNavRef.current)
-            window.location.href = pendingNavRef.current;
+          if (pendingNavRef.current) window.location.href = pendingNavRef.current;
         }}
         onSaveAndLeave={async () => {
           await handleSave();
@@ -827,8 +771,7 @@ function BuilderCanvas() {
           setDirtyIds(new Set());
           setPendingDeletes(new Set());
           setShowUnsavedDialog(false);
-          if (pendingNavRef.current)
-            window.location.href = pendingNavRef.current;
+          if (pendingNavRef.current) window.location.href = pendingNavRef.current;
         }}
       />
 
@@ -840,6 +783,14 @@ function BuilderCanvas() {
           ownerEmail={form.ownerEmail}
           role={form.role}
           onClose={() => setShowShareDialog(false)}
+        />
+      )}
+
+      {showSettingsDialog && form && (
+        <FormSettingsDialog
+          show={showSettingsDialog}
+          form={form}
+          onClose={() => setShowSettingsDialog(false)}
         />
       )}
     </div>

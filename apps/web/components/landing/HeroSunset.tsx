@@ -32,8 +32,8 @@ export function HeroSunset({ isLoggedIn }: { isLoggedIn: boolean }) {
             <span className="block">in golden hour.</span>
           </h1>
           <p className="mt-6 sm:mt-7 max-w-md text-[14px] sm:text-[15px] leading-relaxed text-white/85">
-            Drag and drop builder, durable data keys, real-time analytics. Free
-            to start — no credit card required.
+            Drag and drop builder, durable data keys, real-time analytics. Free to start — no credit
+            card required.
           </p>
 
           <Link

@@ -28,12 +28,8 @@ export function ResponseTimeline({ totalResponses, trends }: ResponseTimelinePro
       <div className="flex justify-between items-start mb-4">
         <div>
           <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Timeline</p>
-          <h4 className="mt-2 cf-display text-[20px] leading-tight">
-            Response timeline
-          </h4>
-          <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">
-            Last 30 days
-          </p>
+          <h4 className="mt-2 cf-display text-[20px] leading-tight">Response timeline</h4>
+          <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">Last 30 days</p>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] font-mono text-[color:var(--cf-ink-soft)]">
           <span className="size-1.5 rounded-full bg-[color:var(--cf-orange)]" />
@@ -48,10 +44,7 @@ export function ResponseTimeline({ totalResponses, trends }: ResponseTimelinePro
       ) : (
         <div className="flex-1 w-full min-h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
-            >
+            <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
               <defs>
                 <linearGradient id="rt-gradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#f66f00" stopOpacity={0.28} />

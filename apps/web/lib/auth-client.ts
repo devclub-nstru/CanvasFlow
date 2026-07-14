@@ -9,6 +9,6 @@ if (baseURL.endsWith("/trpc")) {
 export const authClient = createAuthClient({
   baseURL: baseURL + "/api/auth",
   fetchOptions: {
-    credentials: "include"
-  }
+    credentials: "include",
+  },
 });

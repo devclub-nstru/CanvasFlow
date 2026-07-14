@@ -3,10 +3,7 @@
 import React, { useEffect } from "react";
 import { Trash2, X } from "lucide-react";
 import { getFieldIcon } from "../FormFieldNode";
-import {
-  FieldInspectorBody,
-  type FieldInspectorProps,
-} from "../FieldInspector";
+import { FieldInspectorBody, type FieldInspectorProps } from "../FieldInspector";
 
 interface MobileFieldEditorSheetProps extends FieldInspectorProps {
   open: boolean;
@@ -70,9 +67,7 @@ export function MobileFieldEditorSheet({
         {/* header */}
         <div className="px-5 pt-2 pb-3 border-b border-[color:var(--cf-line)] flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              Edit field
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Edit field</p>
             <div className="mt-1.5 flex items-center gap-2">
               <div className="inline-flex items-center gap-1.5 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] px-2 py-0.5 rounded-full">
                 <FieldIcon className="size-3 text-[color:var(--cf-orange)]" />

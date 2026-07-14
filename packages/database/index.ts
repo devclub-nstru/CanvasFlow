@@ -48,10 +48,8 @@ pool.on("error", (err) => {
 // concurrent queries (e.g. the dashboard fires 4 queries in parallel)
 // doesn't pay 4 sequential TLS handshakes to Neon. We don't try to fill
 // the whole pool — just enough for the typical first request.
-const WARM_CONNECTIONS = 4
-Promise.all(
-  Array.from({ length: WARM_CONNECTIONS }, () => pool.connect()),
-)
+const WARM_CONNECTIONS = 4;
+Promise.all(Array.from({ length: WARM_CONNECTIONS }, () => pool.connect()))
   .then((clients) => clients.forEach((c) => c.release()))
   .catch(() => {
     /* swallow — the next real query will surface the error normally. */

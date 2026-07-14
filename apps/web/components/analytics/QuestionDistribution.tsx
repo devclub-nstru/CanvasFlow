@@ -35,16 +35,7 @@ interface QuestionDistributionProps {
 }
 
 const CHOICE_TYPES = ["SELECT", "RADIO", "CHECKBOX"];
-const TEXT_TYPES = [
-  "TEXT",
-  "TEXTAREA",
-  "EMAIL",
-  "NUMBER",
-  "PHONE",
-  "URL",
-  "DATE",
-  "TIME",
-];
+const TEXT_TYPES = ["TEXT", "TEXTAREA", "EMAIL", "NUMBER", "PHONE", "URL", "DATE", "TIME"];
 
 function FieldTypePill({ type }: { type: string }) {
   return (
@@ -60,8 +51,7 @@ function ChoiceBar({ option }: { option: OptionCount }) {
       <div className="flex justify-between items-center text-[12px] gap-3">
         <span className="text-[color:var(--cf-ink)] truncate">{option.value}</span>
         <span className="font-mono text-[color:var(--cf-ink-soft)] tabular-nums shrink-0">
-          {option.count}{" "}
-          <span className="opacity-60">({option.percent}%)</span>
+          {option.count} <span className="opacity-60">({option.percent}%)</span>
         </span>
       </div>
       <div className="h-1.5 bg-[color:var(--cf-cream)] rounded-full overflow-hidden ring-1 ring-[color:var(--cf-line)]">
@@ -95,9 +85,7 @@ function RatingStars({ avg }: { avg: number }) {
           );
         })}
       </div>
-      <span className="cf-display text-[20px] leading-none tabular-nums">
-        {avg.toFixed(1)}
-      </span>
+      <span className="cf-display text-[20px] leading-none tabular-nums">{avg.toFixed(1)}</span>
       <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">avg</span>
     </div>
   );
@@ -107,10 +95,7 @@ function RatingDistBar({ dist }: { dist: RatingDistItem[] }) {
   return (
     <div className="space-y-1.5 mt-3">
       {dist.map((d) => (
-        <div
-          key={d.rating}
-          className="flex items-center gap-2 text-[11px] font-mono"
-        >
+        <div key={d.rating} className="flex items-center gap-2 text-[11px] font-mono">
           <span className="w-3 text-[color:var(--cf-ink-soft)] text-right tabular-nums">
             {d.rating}
           </span>
@@ -166,13 +151,7 @@ function ToggleBar({ counts }: { counts: ToggleCounts }) {
   );
 }
 
-function TextSamples({
-  samples,
-  totalAnswered,
-}: {
-  samples: string[];
-  totalAnswered: number;
-}) {
+function TextSamples({ samples, totalAnswered }: { samples: string[]; totalAnswered: number }) {
   const shown = samples.slice(0, 3);
   const remaining = totalAnswered - shown.length;
   return (
@@ -219,9 +198,7 @@ function QuestionCard({ q }: { q: QuestionItem }) {
 
       <div className="px-4 py-4 space-y-2">
         {q.totalAnswered === 0 ? (
-          <p className="text-[12px] text-[color:var(--cf-ink-soft)]">
-            0 responses for this field
-          </p>
+          <p className="text-[12px] text-[color:var(--cf-ink-soft)]">0 responses for this field</p>
         ) : (
           <>
             {isChoice && q.optionCounts && (
@@ -234,12 +211,8 @@ function QuestionCard({ q }: { q: QuestionItem }) {
 
             {isRating && (
               <div className="space-y-2">
-                {q.averageRating !== undefined && (
-                  <RatingStars avg={q.averageRating} />
-                )}
-                {q.ratingDistribution && (
-                  <RatingDistBar dist={q.ratingDistribution} />
-                )}
+                {q.averageRating !== undefined && <RatingStars avg={q.averageRating} />}
+                {q.ratingDistribution && <RatingDistBar dist={q.ratingDistribution} />}
               </div>
             )}
 
@@ -247,18 +220,12 @@ function QuestionCard({ q }: { q: QuestionItem }) {
 
             {isText && (
               <div className="space-y-2">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                  Recent answers
-                </p>
+                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Recent answers</p>
                 {q.textSamples && q.textSamples.length > 0 ? (
-                  <TextSamples
-                    samples={q.textSamples}
-                    totalAnswered={q.totalAnswered}
-                  />
+                  <TextSamples samples={q.textSamples} totalAnswered={q.totalAnswered} />
                 ) : (
                   <p className="text-[12px] text-[color:var(--cf-ink-soft)]">
-                    {q.totalAnswered} answer{q.totalAnswered !== 1 ? "s" : ""}{" "}
-                    recorded
+                    {q.totalAnswered} answer{q.totalAnswered !== 1 ? "s" : ""} recorded
                   </p>
                 )}
               </div>
@@ -266,8 +233,7 @@ function QuestionCard({ q }: { q: QuestionItem }) {
 
             {!isChoice && !isRating && !isToggle && !isText && (
               <p className="text-[12px] text-[color:var(--cf-ink-soft)]">
-                {q.totalAnswered} answer{q.totalAnswered !== 1 ? "s" : ""}{" "}
-                recorded
+                {q.totalAnswered} answer{q.totalAnswered !== 1 ? "s" : ""} recorded
               </p>
             )}
           </>
@@ -277,16 +243,12 @@ function QuestionCard({ q }: { q: QuestionItem }) {
   );
 }
 
-export function QuestionDistribution({
-  questionDistribution,
-}: QuestionDistributionProps) {
+export function QuestionDistribution({ questionDistribution }: QuestionDistributionProps) {
   return (
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
       <div>
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Questions</p>
-        <h4 className="mt-2 cf-display text-[20px] leading-tight">
-          Question breakdown
-        </h4>
+        <h4 className="mt-2 cf-display text-[20px] leading-tight">Question breakdown</h4>
         <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">
           How respondents answered each question
         </p>

@@ -18,11 +18,7 @@ interface MobileAddFieldSheetProps {
   onSelect: (type: string) => void;
 }
 
-export function MobileAddFieldSheet({
-  open,
-  onClose,
-  onSelect,
-}: MobileAddFieldSheetProps) {
+export function MobileAddFieldSheet({ open, onClose, onSelect }: MobileAddFieldSheetProps) {
   // Lock body scroll while sheet is open
   useEffect(() => {
     if (!open) return;
@@ -66,12 +62,8 @@ export function MobileAddFieldSheet({
 
         <div className="px-5 pt-2 pb-4 border-b border-[color:var(--cf-line)] flex items-start justify-between gap-3">
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              Add field
-            </p>
-            <h3 className="mt-1 cf-display text-[22px] leading-tight">
-              Pick a type
-            </h3>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Add field</p>
+            <h3 className="mt-1 cf-display text-[22px] leading-tight">Pick a type</h3>
           </div>
           <button
             onClick={onClose}
@@ -84,9 +76,7 @@ export function MobileAddFieldSheet({
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 overscroll-contain">
           {CATEGORIES.map((cat) => {
-            const items = AVAILABLE_FIELDS.filter((f) =>
-              cat.types.includes(f.type)
-            );
+            const items = AVAILABLE_FIELDS.filter((f) => cat.types.includes(f.type));
             if (items.length === 0) return null;
             return (
               <div key={cat.label}>

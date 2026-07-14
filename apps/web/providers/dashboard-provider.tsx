@@ -10,18 +10,14 @@ interface DashboardContextType {
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
 
-export const DashboardProvider = ({ 
-  children, 
-  value 
-}: { 
-  children: React.ReactNode; 
-  value: DashboardContextType; 
+export const DashboardProvider = ({
+  children,
+  value,
+}: {
+  children: React.ReactNode;
+  value: DashboardContextType;
 }) => {
-  return (
-    <DashboardContext.Provider value={value}>
-      {children}
-    </DashboardContext.Provider>
-  );
+  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 };
 
 export const useDashboard = () => {

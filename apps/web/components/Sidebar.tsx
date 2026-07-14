@@ -4,15 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import {
-  Plus,
-  Compass,
-  PencilRuler,
-  BarChart3,
-  X,
-  Wallet,
-  LogOut,
-} from "lucide-react";
+import { Plus, Compass, PencilRuler, BarChart3, X, Wallet, LogOut } from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetLoggedInUserInfo, useSignOut } from "~/hooks/api/auth";
@@ -63,13 +55,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* brand */}
           <div className="flex items-center justify-between">
             <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
-              <Image
-                src="/logo.svg"
-                alt=""
-                width={28}
-                height={28}
-                className="object-contain"
-              />
+              <Image src="/logo.svg" alt="" width={28} height={28} className="object-contain" />
               <span className="cf-display text-[20px] leading-none text-[color:var(--cf-ink)]">
                 CanvasFlow
               </span>
@@ -94,9 +80,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* nav */}
           <nav className="space-y-0.5">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)] px-3 mb-2">
-              Workspace
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)] px-3 mb-2">Workspace</p>
             {LINKS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -143,9 +127,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <p className="text-[13px] font-medium truncate text-[color:var(--cf-ink)]">
                       {fullName}
                     </p>
-                    <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">
-                      {email}
-                    </p>
+                    <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">{email}</p>
                   </div>
                 </>
               )}

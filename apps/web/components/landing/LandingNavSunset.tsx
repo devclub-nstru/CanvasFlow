@@ -18,13 +18,7 @@ export function LandingNavSunset({ isLoggedIn }: { isLoggedIn: boolean }) {
         className="flex items-center gap-3 sm:gap-6 md:gap-10 bg-white rounded-lg pl-4 sm:pl-5 pr-1.5 py-1.5 shadow-[0_10px_30px_-12px_rgba(22,19,17,0.18)] ring-1 ring-[color:var(--cf-line-strong)] max-w-[calc(100vw-2rem)]"
       >
         <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="Home">
-          <Image
-            src="/logo.svg"
-            alt=""
-            width={22}
-            height={22}
-            className="object-contain"
-          />
+          <Image src="/logo.svg" alt="" width={22} height={22} className="object-contain" />
           <span className="cf-display text-[18px] sm:text-[19px] leading-none text-[color:var(--cf-ink)]">
             CanvasFlow
           </span>

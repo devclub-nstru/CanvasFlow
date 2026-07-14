@@ -3,15 +3,7 @@
 import React, { useState } from "react";
 import { EB_Garamond, Caveat } from "next/font/google";
 import Image from "next/image";
-import {
-  ArrowUpRight,
-  Building2,
-  Flame,
-  Menu,
-  Sparkles,
-  X,
-  Zap,
-} from "lucide-react";
+import { ArrowUpRight, Building2, Flame, Menu, Sparkles, X, Zap } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 
@@ -54,16 +46,11 @@ const PLAN_STYLE: Record<
   },
   Business: {
     icon: Building2,
-    chipClass:
-      "bg-[color:var(--cf-ink)] ring-[color:var(--cf-ink)] text-white",
+    chipClass: "bg-[color:var(--cf-ink)] ring-[color:var(--cf-ink)] text-white",
   },
 };
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -92,7 +79,7 @@ export default function DashboardLayout({
       val
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "")
+        .replace(/(^-|-$)/g, ""),
     );
   };
 
@@ -167,13 +154,7 @@ export default function DashboardLayout({
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between p-4 border-b border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] z-40">
           <div className="flex items-center gap-2.5">
-            <Image
-              src="/logo.svg"
-              alt=""
-              width={28}
-              height={28}
-              className="object-contain"
-            />
+            <Image src="/logo.svg" alt="" width={28} height={28} className="object-contain" />
             <span className="cf-display text-[20px] leading-none">CanvasFlow</span>
           </div>
           <button
@@ -185,10 +166,7 @@ export default function DashboardLayout({
           </button>
         </header>
 
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         {/* Main */}
         <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
@@ -215,9 +193,7 @@ export default function DashboardLayout({
                 >
                   <PlanIcon
                     className={`size-3 ${
-                      plan === "Business"
-                        ? "text-white"
-                        : "text-[color:var(--cf-orange)]"
+                      plan === "Business" ? "text-white" : "text-[color:var(--cf-orange)]"
                     }`}
                   />
                   <span>{plan} plan</span>
@@ -246,8 +222,8 @@ export default function DashboardLayout({
                 Start a new form
               </h3>
               <p className="mt-2 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-                Give your form a title and a unique slug. You can rename it
-                later — your data keys stay stable.
+                Give your form a title and a unique slug. You can rename it later — your data keys
+                stay stable.
               </p>
 
               <form onSubmit={handleFormSubmit} className="mt-6 space-y-4">
@@ -343,9 +319,7 @@ function CreatingOverlay() {
     <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[color:var(--cf-cream)]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-          Drafting your form...
-        </p>
+        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Drafting your form...</p>
       </div>
     </div>
   );

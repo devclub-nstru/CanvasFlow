@@ -13,6 +13,6 @@ export default defineConfig({
   minify: false,
   sourcemap: false,
   banner: {
-    js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`
-  }
+    js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
+  },
 });

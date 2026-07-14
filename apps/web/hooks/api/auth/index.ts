@@ -7,7 +7,7 @@ export const useSignUp = () => {
 
   const createUserWithEmailAndPassword = async (
     data: any,
-    options?: { onSuccess?: () => void; onError?: (err: Error) => void }
+    options?: { onSuccess?: () => void; onError?: (err: Error) => void },
   ) => {
     setIsPending(true);
     setError(null);
@@ -43,7 +43,7 @@ export const useSignIn = () => {
 
   const signInUserWithEmailAndPassword = async (
     data: any,
-    options?: { onSuccess?: () => void; onError?: (err: Error) => void }
+    options?: { onSuccess?: () => void; onError?: (err: Error) => void },
   ) => {
     setIsPending(true);
     setError(null);
@@ -57,7 +57,6 @@ export const useSignIn = () => {
       }
       document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
       options?.onSuccess?.();
-
     } catch (err: any) {
       setError(err);
       options?.onError?.(err);
@@ -98,7 +97,8 @@ export const useSignOut = () => {
     setError(null);
     try {
       await authClient.signOut();
-      document.cookie = 'cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax';
+      document.cookie =
+        "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
     } catch (err: any) {
       setError(err);
     } finally {

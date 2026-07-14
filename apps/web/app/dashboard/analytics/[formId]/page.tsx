@@ -28,58 +28,38 @@ import { useGetMe } from "~/hooks/api/user";
 // modal. Loading them on the client also keeps SSR fast.
 const DowBreakdown = dynamic(
   () => import("~/components/analytics/DowBreakdown").then((m) => m.DowBreakdown),
-  { ssr: false, loading: () => <ChartSkeleton title="Day of week" /> }
+  { ssr: false, loading: () => <ChartSkeleton title="Day of week" /> },
 );
 const QuestionDistribution = dynamic(
-  () =>
-    import("~/components/analytics/QuestionDistribution").then(
-      (m) => m.QuestionDistribution
-    ),
-  { ssr: false, loading: () => <ChartSkeleton title="Question breakdown" /> }
+  () => import("~/components/analytics/QuestionDistribution").then((m) => m.QuestionDistribution),
+  { ssr: false, loading: () => <ChartSkeleton title="Question breakdown" /> },
 );
 const ResponseTimeline = dynamic(
-  () =>
-    import("~/components/analytics/ResponseTimeline").then(
-      (m) => m.ResponseTimeline
-    ),
+  () => import("~/components/analytics/ResponseTimeline").then((m) => m.ResponseTimeline),
   {
     ssr: false,
     loading: () => <ChartSkeleton title="Response timeline" className="lg:col-span-2" />,
-  }
+  },
 );
 const DeviceBreakdown = dynamic(
-  () =>
-    import("~/components/analytics/DeviceBreakdown").then(
-      (m) => m.DeviceBreakdown
-    ),
-  { ssr: false, loading: () => <ChartSkeleton title="Device breakdown" /> }
+  () => import("~/components/analytics/DeviceBreakdown").then((m) => m.DeviceBreakdown),
+  { ssr: false, loading: () => <ChartSkeleton title="Device breakdown" /> },
 );
 const FieldCompletionRates = dynamic(
-  () =>
-    import("~/components/analytics/FieldCompletionRates").then(
-      (m) => m.FieldCompletionRates
-    ),
-  { ssr: false, loading: () => <ChartSkeleton title="Field completion" /> }
+  () => import("~/components/analytics/FieldCompletionRates").then((m) => m.FieldCompletionRates),
+  { ssr: false, loading: () => <ChartSkeleton title="Field completion" /> },
 );
 const TrafficSources = dynamic(
-  () =>
-    import("~/components/analytics/TrafficSources").then((m) => m.TrafficSources),
-  { ssr: false, loading: () => <ChartSkeleton title="Traffic sources" /> }
+  () => import("~/components/analytics/TrafficSources").then((m) => m.TrafficSources),
+  { ssr: false, loading: () => <ChartSkeleton title="Traffic sources" /> },
 );
 // UpgradeModal is only shown on Free-tier access — load it on demand.
 const UpgradeModal = dynamic(
-  () =>
-    import("~/components/analytics/UpgradeModal").then((m) => m.UpgradeModal),
-  { ssr: false }
+  () => import("~/components/analytics/UpgradeModal").then((m) => m.UpgradeModal),
+  { ssr: false },
 );
 
-function ChartSkeleton({
-  title,
-  className,
-}: {
-  title: string;
-  className?: string;
-}) {
+function ChartSkeleton({ title, className }: { title: string; className?: string }) {
   return (
     <div
       className={`bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 min-h-[260px] flex flex-col ${className ?? ""}`}
@@ -117,17 +97,11 @@ function StatCard({
     >
       <div className="flex items-start justify-between">
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{label}</p>
-        {Icon && (
-          <Icon className="size-4 text-[color:var(--cf-orange)]" />
-        )}
+        {Icon && <Icon className="size-4 text-[color:var(--cf-orange)]" />}
       </div>
-      <p className="mt-5 cf-display text-[30px] leading-none tabular-nums">
-        {value}
-      </p>
+      <p className="mt-5 cf-display text-[30px] leading-none tabular-nums">{value}</p>
       {sub && (
-        <p className="mt-2 text-[11px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-          {sub}
-        </p>
+        <p className="mt-2 text-[11px] text-[color:var(--cf-ink-soft)] leading-relaxed">{sub}</p>
       )}
     </div>
   );
@@ -146,20 +120,17 @@ function PeriodCard({
 }) {
   // delta vs the prior (older) period — positive means growth
   const delta = prior !== undefined ? count - prior : 0;
-  const TrendIcon =
-    delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+  const TrendIcon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   const trendColor =
     delta > 0
       ? "text-[color:var(--cf-orange)]"
       : delta < 0
-      ? "text-[#c1281d]"
-      : "text-[color:var(--cf-ink-soft)]";
+        ? "text-[#c1281d]"
+        : "text-[color:var(--cf-ink-soft)]";
   return (
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
       <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{label}</p>
-      <p className="mt-4 cf-display text-[28px] leading-none tabular-nums">
-        {count}
-      </p>
+      <p className="mt-4 cf-display text-[28px] leading-none tabular-nums">{count}</p>
       <p className="mt-1 text-[11px] text-[color:var(--cf-ink-soft)]">
         response{count !== 1 ? "s" : ""}
       </p>
@@ -169,9 +140,7 @@ function PeriodCard({
           <span>current window</span>
         </div>
       ) : prior !== undefined ? (
-        <div
-          className={`mt-2 flex items-center gap-1 text-[11px] font-mono ${trendColor}`}
-        >
+        <div className={`mt-2 flex items-center gap-1 text-[11px] font-mono ${trendColor}`}>
           <TrendIcon className="size-3" />
           <span className="tabular-nums">
             {delta > 0 ? "+" : ""}
@@ -202,9 +171,7 @@ function ProAnalyticsPage() {
   const { hasDetailedAnalytics, isLoading: meLoading } = useGetMe();
   const { form, isLoading: formLoading } = useGetFormById(formId);
   const { proAnalytics, isLoading: proLoading } = useGetProAnalytics(formId);
-  const { analytics, isLoading: analyticsLoading } = useGetFormAnalytics(
-    formId
-  );
+  const { analytics, isLoading: analyticsLoading } = useGetFormAnalytics(formId);
 
   const deviceData = useMemo(() => {
     const dv = analytics?.deviceViews ?? [];
@@ -238,9 +205,7 @@ function ProAnalyticsPage() {
   if (!hasDetailedAnalytics) {
     return (
       <div className="min-h-[60vh]">
-        <UpgradeModal
-          onClose={() => router.push(`/dashboard/analytics?form=${formId}`)}
-        />
+        <UpgradeModal onClose={() => router.push(`/dashboard/analytics?form=${formId}`)} />
       </div>
     );
   }
@@ -282,9 +247,7 @@ function ProAnalyticsPage() {
   const totalResponses = analytics?.totalResponses ?? trend30d;
   const totalViews = analytics?.totalViews ?? 0;
   const completionRate =
-    analytics?.completionRate != null
-      ? analytics.completionRate.toFixed(1) + "%"
-      : "—";
+    analytics?.completionRate != null ? analytics.completionRate.toFixed(1) + "%" : "—";
   const avgPerDay = analytics?.avgSubmissionsPerDay ?? 0;
   const dailyTrends = analytics?.dailyTrends ?? [];
 
@@ -305,32 +268,20 @@ function ProAnalyticsPage() {
           <Sparkles className="size-4 fill-current" />
           <p className="cf-eyebrow">Pro+ analytics</p>
         </div>
-        <h1 className="cf-display text-[36px] sm:text-[44px] leading-[0.95]">
-          {form.title}
-        </h1>
+        <h1 className="cf-display text-[36px] sm:text-[44px] leading-[0.95]">{form.title}</h1>
         <p className="mt-3 text-[13px] font-mono text-[color:var(--cf-ink-soft)]">
           {form.isPublished ? "Published" : "Draft"} ·{" "}
-          <span className="text-[color:var(--cf-ink)] tabular-nums">
-            {totalResponses}
-          </span>{" "}
-          total response{totalResponses !== 1 ? "s" : ""}
+          <span className="text-[color:var(--cf-ink)] tabular-nums">{totalResponses}</span> total
+          response{totalResponses !== 1 ? "s" : ""}
         </p>
       </div>
 
       {/* Row 1 — core metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard label="Total responses" value={totalResponses} icon={Layers} />
-        <StatCard
-          label="Completion rate"
-          value={completionRate}
-          icon={TrendingUp}
-        />
+        <StatCard label="Completion rate" value={completionRate} icon={TrendingUp} />
         <StatCard label="Total views" value={totalViews} icon={Clock} />
-        <StatCard
-          label="Avg / day"
-          value={avgPerDay.toFixed(1)}
-          icon={Activity}
-        />
+        <StatCard label="Avg / day" value={avgPerDay.toFixed(1)} icon={Activity} />
         <StatCard
           label="Avg time spent"
           value={formatDuration(avgTimeSpentMs)}
@@ -349,42 +300,24 @@ function ProAnalyticsPage() {
 
       {/* Row 2 — period comparison + velocity + peak day */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <PeriodCard
-          label="Last 30 days"
-          count={trend30d}
-          prior={new31_60}
-          isCurrent
-        />
-        <PeriodCard
-          label="Days 31–60"
-          count={new31_60}
-          prior={new61_90}
-        />
-        <PeriodCard
-          label="Days 61–90"
-          count={new61_90}
-        />
+        <PeriodCard label="Last 30 days" count={trend30d} prior={new31_60} isCurrent />
+        <PeriodCard label="Days 31–60" count={new31_60} prior={new61_90} />
+        <PeriodCard label="Days 61–90" count={new61_90} />
 
         <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
           <div className="flex items-start justify-between">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              Launch velocity
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Launch velocity</p>
             <Zap className="size-4 text-[color:var(--cf-orange)]" />
           </div>
           <p className="mt-4 cf-display text-[28px] leading-none tabular-nums">
             {velocityFirst24h}
           </p>
-          <p className="mt-1 text-[11px] text-[color:var(--cf-ink-soft)]">
-            responses in first 24h
-          </p>
+          <p className="mt-1 text-[11px] text-[color:var(--cf-ink-soft)]">responses in first 24h</p>
         </div>
 
         <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
           <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Peak day</p>
-          <p className="mt-4 cf-display text-[24px] leading-tight">
-            {peakDay ?? "—"}
-          </p>
+          <p className="mt-4 cf-display text-[24px] leading-tight">{peakDay ?? "—"}</p>
           <p className="mt-1 text-[11px] text-[color:var(--cf-ink-soft)] leading-relaxed">
             {medianResponseTime != null
               ? `Median: ${
@@ -399,10 +332,7 @@ function ProAnalyticsPage() {
 
       {/* Row 3 — timeline + device */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <ResponseTimeline
-          totalResponses={totalResponses}
-          trends={dailyTrends}
-        />
+        <ResponseTimeline totalResponses={totalResponses} trends={dailyTrends} />
         <DeviceBreakdown totalViews={totalViews} deviceData={deviceData} />
       </div>
 
@@ -413,10 +343,7 @@ function ProAnalyticsPage() {
       </div>
 
       {/* Row 5 — traffic sources */}
-      <TrafficSources
-        topReferrers={topReferrers}
-        utmSources={utmSources}
-      />
+      <TrafficSources topReferrers={topReferrers} utmSources={utmSources} />
 
       {/* Row 6 — question distribution */}
       <QuestionDistribution questionDistribution={questionDistribution} />

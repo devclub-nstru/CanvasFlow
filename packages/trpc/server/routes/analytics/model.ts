@@ -9,4 +9,4 @@ export {
   recordViewOutput as recordViewOutputModel,
   recordFieldAnswerInput as recordFieldAnswerInputModel,
   recordFieldAnswerOutput as recordFieldAnswerOutputModel,
-} from "@repo/services/analytics/model"
+} from "@repo/services/analytics/model";

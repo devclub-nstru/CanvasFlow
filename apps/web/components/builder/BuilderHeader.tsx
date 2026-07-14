@@ -8,6 +8,7 @@ import {
   Eye,
   MoreVertical,
   Save,
+  Settings,
   Share2,
   Trash2,
 } from "lucide-react";
@@ -34,12 +35,13 @@ interface BuilderHeaderProps {
   setShowDeleteConfirm: (val: boolean) => void;
   publishForm: (
     args: { id: string },
-    callbacks: { onSuccess: () => void; onError: (err: any) => void }
+    callbacks: { onSuccess: () => void; onError: (err: any) => void },
   ) => void;
   onPublishSuccess?: () => void;
   pendingNavRef: React.MutableRefObject<string | null>;
   setShowUnsavedDialog: (val: boolean) => void;
   onShare: () => void;
+  onSettings: () => void;
 }
 
 export function BuilderHeader({
@@ -56,11 +58,13 @@ export function BuilderHeader({
   setShowUnsavedDialog,
   onPublishSuccess,
   onShare,
+  onSettings,
 }: BuilderHeaderProps) {
   const isPublished = form?.isPublished ?? false;
+  const isOwner = form?.role === "owner";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const canDelete = form?.permissions?.settings?.canDelete ?? (form?.role === "owner");
+  const canDelete = form?.permissions?.settings?.canDelete ?? form?.role === "owner";
 
   // Close kebab menu on outside click / ESC
   useEffect(() => {
@@ -78,7 +82,6 @@ export function BuilderHeader({
       window.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
-
 
   return (
     <header className="h-14 px-3 sm:px-4 border-b border-[color:var(--cf-line)] flex items-center justify-between bg-[color:var(--cf-cream-2)] z-20 shrink-0 gap-2">
@@ -119,9 +122,7 @@ export function BuilderHeader({
         >
           <span
             className={`size-1.5 rounded-full ${
-              isPublished
-                ? "bg-[color:var(--cf-orange)]"
-                : "bg-[color:var(--cf-ink-soft)]/40"
+              isPublished ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink-soft)]/40"
             }`}
           />
           {isPublished ? "Live" : "Draft"}
@@ -149,11 +150,7 @@ export function BuilderHeader({
               : "ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)] disabled:opacity-35"
           }`}
         >
-          {justSaved && !isSaving ? (
-            <Check className="size-3.5" />
-          ) : (
-            <Save className="size-3.5" />
-          )}
+          {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
           <span className="hidden sm:inline">
             {isSaving ? "Saving..." : justSaved ? "Saved" : "Save"}
           </span>
@@ -178,6 +175,17 @@ export function BuilderHeader({
           <Share2 className="size-3.5" />
           <span className="hidden md:inline">Share</span>
         </button>
+
+        {isOwner && (
+          <button
+            onClick={onSettings}
+            title="Form settings"
+            className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[12px] font-medium text-[color:var(--cf-ink)] transition-colors cursor-pointer"
+          >
+            <Settings className="size-3.5" />
+            <span className="hidden md:inline">Settings</span>
+          </button>
+        )}
 
         {canDelete && (
           <>
@@ -229,6 +237,18 @@ export function BuilderHeader({
                 <Share2 className="size-3.5 text-[color:var(--cf-ink-soft)]" />
                 Share form
               </button>
+              {isOwner && (
+                <button
+                  onClick={() => {
+                    onSettings();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors text-left cursor-pointer"
+                >
+                  <Settings className="size-3.5 text-[color:var(--cf-ink-soft)]" />
+                  Settings
+                </button>
+              )}
               {canDelete && (
                 <>
                   <div className="h-px bg-[color:var(--cf-line)] my-1" />
@@ -259,9 +279,8 @@ export function BuilderHeader({
                   toast.success("Form published");
                   onPublishSuccess?.();
                 },
-                onError: (err) =>
-                  toast.error(err.message || "Failed to publish"),
-              }
+                onError: (err) => toast.error(err.message || "Failed to publish"),
+              },
             );
           }}
           disabled={publishPending || isPublished}

@@ -63,9 +63,7 @@ export function StatsRow({
               className="flex items-center gap-2 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] px-3 py-1.5 rounded-full"
             >
               <Icon className="size-3 text-[color:var(--cf-orange)] shrink-0" />
-              <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                {chip.label}
-              </span>
+              <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{chip.label}</span>
               <span className="text-[13px] font-medium text-[color:var(--cf-ink)] tabular-nums">
                 {chip.value}
               </span>

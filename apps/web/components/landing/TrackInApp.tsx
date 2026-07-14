@@ -11,9 +11,7 @@ import Image from "next/image";
  */
 export function TrackInApp() {
   return (
-    <section
-      className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] overflow-hidden"
-    >
+    <section className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] overflow-hidden">
       <div className="relative mx-auto w-full max-w-[1320px] px-0 border-t border-[color:var(--cf-line)]">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           {/* left: empty paper column (desktop only) */}

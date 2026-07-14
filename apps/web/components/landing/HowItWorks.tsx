@@ -17,23 +17,20 @@ const STEPS = [
     n: "step 1",
     h: "Open the canvas",
     s: "A canvas you can sketch on",
-    body:
-      "Drag fields onto an open canvas, connect them like nodes, and watch logic appear in the same place as layout.",
+    body: "Drag fields onto an open canvas, connect them like nodes, and watch logic appear in the same place as layout.",
     cta: { label: "Get your estimate", href: "/signUp" },
   },
   {
     n: "Step 2",
     h: "We handle the wiring",
     s: "CanvasFlow handles everything",
-    body:
-      "Field keys are slugged into permanent identifiers the moment you create them. Rename labels freely; your endpoints, exports, and webhooks keep flowing.",
+    body: "Field keys are slugged into permanent identifiers the moment you create them. Rename labels freely; your endpoints, exports, and webhooks keep flowing.",
   },
   {
     n: "Step 3",
     h: "Publish & measure",
     s: "Responses you control",
-    body:
-      "Share a single link. Submissions, devices, and conversion rates light up your dashboard the instant they arrive.",
+    body: "Share a single link. Submissions, devices, and conversion rates light up your dashboard the instant they arrive.",
     chart: true,
   },
 ];
@@ -58,17 +55,15 @@ export function HowItWorks({ isLoggedIn }: { isLoggedIn: boolean }) {
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 0.8, ease: EASE }}
           >
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              How CanvasFlow Works
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">How CanvasFlow Works</p>
             <h2 className="mt-4 sm:mt-5 cf-display text-[36px] sm:text-[52px] md:text-[64px] lg:text-[72px] leading-[0.95]">
               A new way to build
               <span className="block">your forms</span>
             </h2>
             <p className="mt-6 max-w-md text-[15px] leading-relaxed text-[color:var(--cf-ink-soft)]">
-              With CanvasFlow, your form generates and stores responses with durable
-              keys and real-time analytics. We cover the infrastructure and upfront
-              setup. You get instant publishing and below-spreadsheet pricing.
+              With CanvasFlow, your form generates and stores responses with durable keys and
+              real-time analytics. We cover the infrastructure and upfront setup. You get instant
+              publishing and below-spreadsheet pricing.
             </p>
             <Link
               href={isLoggedIn ? "/dashboard" : "/signUp"}
@@ -92,9 +87,7 @@ export function HowItWorks({ isLoggedIn }: { isLoggedIn: boolean }) {
               >
                 <div className="flex items-start justify-between gap-4 sm:gap-6">
                   <div className="flex-1 min-w-0">
-                    <p className="cf-eyebrow text-[color:var(--cf-orange)]">
-                      {step.n}
-                    </p>
+                    <p className="cf-eyebrow text-[color:var(--cf-orange)]">{step.n}</p>
                     <h3 className="mt-3 sm:mt-4 cf-display text-[22px] sm:text-[26px] md:text-[30px] leading-tight">
                       {step.h}
                     </h3>
@@ -156,9 +149,7 @@ function StepChart() {
       className="mt-8 bg-[color:var(--cf-cream)] rounded-[14px] p-5 ring-1 ring-[color:var(--cf-line)]"
     >
       <div className="flex items-baseline justify-between">
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-          Response Earnings
-        </p>
+        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Response Earnings</p>
         <motion.p
           className="text-[13px] font-medium text-[color:var(--cf-ink-soft)]"
           initial={{ opacity: 0 }}
@@ -190,10 +181,7 @@ function StepChart() {
         </motion.span>
       </div>
 
-      <div
-        className="mt-4 grid grid-cols-7 gap-1.5 items-end"
-        style={{ height: `${maxH}px` }}
-      >
+      <div className="mt-4 grid grid-cols-7 gap-1.5 items-end" style={{ height: `${maxH}px` }}>
         {heights.map((h, i) => (
           <motion.div
             key={i}

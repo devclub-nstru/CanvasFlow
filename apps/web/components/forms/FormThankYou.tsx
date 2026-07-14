@@ -38,15 +38,12 @@ export function FormThankYou({ siteRating, setSiteRating }: FormThankYouProps) {
 
       {/* message */}
       <div className="space-y-3">
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-          Response received
-        </p>
+        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Response received</p>
         <h2 className="cf-display text-[34px] sm:text-[40px] leading-tight text-[color:var(--cf-ink)]">
           Thanks for your time.
         </h2>
         <p className="text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-sm mx-auto">
-          Your response has been recorded. You can close this tab whenever
-          you&apos;re ready.
+          Your response has been recorded. You can close this tab whenever you&apos;re ready.
         </p>
       </div>
 

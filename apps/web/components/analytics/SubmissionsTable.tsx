@@ -41,7 +41,7 @@ interface SubmissionsTableProps {
 // stays out of the initial bundle.
 const SubmissionDetailModal = dynamic(
   () => import("./SubmissionDetailModal").then((m) => m.SubmissionDetailModal),
-  { ssr: false }
+  { ssr: false },
 );
 
 const ROW_HEIGHT = 64; // px — fixed-height rows make virtualization simple
@@ -82,20 +82,10 @@ export function SubmissionsTable({
   React.useEffect(() => {
     const last = virtualItems[virtualItems.length - 1];
     if (!last) return;
-    if (
-      hasNextPage &&
-      !isFetchingNextPage &&
-      last.index >= filteredSubmissions.length - 3
-    ) {
+    if (hasNextPage && !isFetchingNextPage && last.index >= filteredSubmissions.length - 3) {
       fetchNextPage?.();
     }
-  }, [
-    virtualItems,
-    hasNextPage,
-    isFetchingNextPage,
-    filteredSubmissions.length,
-    fetchNextPage,
-  ]);
+  }, [virtualItems, hasNextPage, isFetchingNextPage, filteredSubmissions.length, fetchNextPage]);
 
   // Cap the scroll area: tall enough to feel like a real table, capped so
   // it doesn't push the page off the bottom on small viewports.
@@ -111,13 +101,10 @@ export function SubmissionsTable({
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Latest</p>
-            <h4 className="mt-2 cf-display text-[20px] leading-tight">
-              Responses
-            </h4>
+            <h4 className="mt-2 cf-display text-[20px] leading-tight">Responses</h4>
             {filteredSubmissions.length > 0 && (
               <p className="mt-1 text-[11px] font-mono text-[color:var(--cf-ink-soft)]">
-                {filteredSubmissions.length}{" "}
-                {filteredSubmissions.length === 1 ? "row" : "rows"} ·
+                {filteredSubmissions.length} {filteredSubmissions.length === 1 ? "row" : "rows"} ·
                 virtualised
                 {hasNextPage ? " · more available" : ""}
               </p>
@@ -146,9 +133,7 @@ export function SubmissionsTable({
                   when the viewport is narrow; horizontal scroll on phones */}
               <div className="min-w-[640px]">
                 {/* Header — outside the virtualized scroll area, always visible */}
-                <div
-                  className={`${GRID_COLS} px-1 pb-3 border-b border-[color:var(--cf-line)]`}
-                >
+                <div className={`${GRID_COLS} px-1 pb-3 border-b border-[color:var(--cf-line)]`}>
                   <div className="font-mono text-[11px] uppercase tracking-wider text-[color:var(--cf-ink-soft)] font-medium">
                     Respondent
                   </div>
@@ -181,9 +166,7 @@ export function SubmissionsTable({
                     {virtualItems.map((vi) => {
                       const sub = filteredSubmissions[vi.index]!;
                       const details = getRespondentDetails(sub);
-                      const initials = details.name
-                        .substring(0, 2)
-                        .toUpperCase();
+                      const initials = details.name.substring(0, 2).toUpperCase();
 
                       return (
                         <div

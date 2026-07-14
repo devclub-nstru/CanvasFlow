@@ -9,20 +9,13 @@ interface UnsavedDialogProps {
   onSaveAndLeave: () => Promise<void>;
 }
 
-export function UnsavedDialog({
-  show,
-  onCancel,
-  onDiscard,
-  onSaveAndLeave,
-}: UnsavedDialogProps) {
+export function UnsavedDialog({ show, onCancel, onDiscard, onSaveAndLeave }: UnsavedDialogProps) {
   if (!show) return null;
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
       <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)]">
-        <p className="cf-eyebrow text-[color:var(--cf-orange)]">
-          Unsaved changes
-        </p>
+        <p className="cf-eyebrow text-[color:var(--cf-orange)]">Unsaved changes</p>
         <h3 className="mt-3 cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
           Save before leaving?
         </h3>
