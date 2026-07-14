@@ -64,6 +64,13 @@
       "when": 1782661015607,
       "tag": "0008_lame_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783961515151,
+      "tag": "0009_material_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

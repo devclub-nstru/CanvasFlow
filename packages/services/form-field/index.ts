@@ -1,5 +1,6 @@
 import { db, eq, and, max } from "@repo/database"
 import { formFieldsTable } from "@repo/database/models/form-field"
+import { requireEditor } from "../form"
 import {
     createFormFieldInput,
     type CreateFormFieldInputType,
@@ -25,8 +26,10 @@ class FormFieldService {
         return next.toFixed(2)
     }
 
-    public async createFormField(payload: CreateFormFieldInputType) {
+    public async createFormField(payload: CreateFormFieldInputType & { userId: string }) {
         const { formId, label, placeholder, isRequired, index: clientIndex, type, options, description } = await createFormFieldInput.parseAsync(payload)
+
+        await requireEditor(formId, payload.userId)
 
         const labelKey = label
             .toLowerCase()
@@ -67,7 +70,7 @@ class FormFieldService {
         }
     }
 
-    public async updateFormField(payload: UpdateFormFieldInputType) {
+    public async updateFormField(payload: UpdateFormFieldInputType & { userId: string }) {
         const { id, label, placeholder, isRequired, index, type, options, description, expectedVersion } = await updateFormFieldInput.parseAsync(payload)
 
         const existingFieldResult = await db.select().from(formFieldsTable).where(eq(formFieldsTable.id, id))
@@ -75,6 +78,8 @@ class FormFieldService {
         if (!existingField) {
             throw new Error("Form field not found")
         }
+
+        await requireEditor(existingField.formId, payload.userId)
 
         // Optimistic-lock check — if the caller supplied an expected version
         // and the row has since moved past it, another client wrote first.
@@ -138,8 +143,16 @@ class FormFieldService {
         }
     }
 
-    public async deleteFormField(payload: DeleteFormFieldInputType) {
+    public async deleteFormField(payload: DeleteFormFieldInputType & { userId: string }) {
         const { id } = await deleteFormFieldInput.parseAsync(payload)
+
+        const existingFieldResult = await db.select().from(formFieldsTable).where(eq(formFieldsTable.id, id))
+        const existingField = existingFieldResult[0]
+        if (!existingField) {
+            throw new Error("Form field not found")
+        }
+
+        await requireEditor(existingField.formId, payload.userId)
 
         const deleteResult = await db.delete(formFieldsTable)
             .where(eq(formFieldsTable.id, id))
@@ -156,7 +169,7 @@ class FormFieldService {
         }
     }
 
-    public async getFormField(payload: GetFormFieldInputType) {
+    public async getFormField(payload: GetFormFieldInputType & { userId: string }) {
         const { id } = await getFormFieldInput.parseAsync(payload)
 
         const result = await db.select().from(formFieldsTable).where(eq(formFieldsTable.id, id))
@@ -166,11 +179,15 @@ class FormFieldService {
             throw new Error("Form field not found")
         }
 
+        await requireEditor(field.formId, payload.userId)
+
         return field
     }
 
-    public async listFormFields(payload: ListFormFieldsInputType) {
+    public async listFormFields(payload: ListFormFieldsInputType & { userId: string }) {
         const { formId } = await listFormFieldsInput.parseAsync(payload)
+
+        await requireEditor(formId, payload.userId)
 
         const result = await db.select()
             .from(formFieldsTable)

@@ -47,6 +47,7 @@ import { DeleteFormDialog } from "~/components/builder/DeleteFormDialog";
 import { MobileFieldList } from "~/components/builder/mobile/MobileFieldList";
 import { MobileAddFieldSheet } from "~/components/builder/mobile/MobileAddFieldSheet";
 import { MobileFieldEditorSheet } from "~/components/builder/mobile/MobileFieldEditorSheet";
+import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
 
 function BuilderCanvas() {
   const params = useParams();
@@ -72,6 +73,8 @@ function BuilderCanvas() {
   const { publishForm, isPending: publishPending } = usePublishForm();
   const { deleteFormAsync, isPending: deletePending } = useDeleteForm();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
 
   /* ─── Local draft state ────────────────────────────────────────────── */
   type LocalField = NonNullable<typeof fields>[number] & { _isNew?: boolean };
@@ -593,6 +596,38 @@ function BuilderCanvas() {
     );
   }
 
+  if (form.role === "viewer") {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)] p-4 text-center">
+        <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)] space-y-4">
+          <p className="cf-eyebrow text-[color:var(--cf-orange)]">
+            No edit access
+          </p>
+          <h3 className="cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
+            You don&apos;t have access to edit this form
+          </h3>
+          <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+            You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions and analytics, but you cannot make changes to the fields.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Link
+              href={`/dashboard/analytics?form=${formId}`}
+              className="inline-flex items-center justify-center gap-1.5 px-5 h-[40px] rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[13px] font-medium transition-colors"
+            >
+              View Analytics & Submissions
+            </Link>
+            <Link
+              href="/dashboard/sketches"
+              className="inline-flex items-center justify-center gap-1.5 px-5 h-[40px] rounded-full text-[13px] font-medium text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors ring-1 ring-[color:var(--cf-line-strong)]"
+            >
+              Back to studio
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 flex flex-col bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]">
       <BuilderHeader
@@ -610,6 +645,7 @@ function BuilderCanvas() {
         onPublishSuccess={() => {
           void refetchForm();
         }}
+        onShare={() => setShowShareDialog(true)}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -795,6 +831,17 @@ function BuilderCanvas() {
             window.location.href = pendingNavRef.current;
         }}
       />
+
+      {showShareDialog && form && (
+        <ShareCollaboratorsDialog
+          show={showShareDialog}
+          formId={formId}
+          formTitle={form.title}
+          ownerEmail={form.ownerEmail}
+          role={form.role}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   );
 }
