@@ -33,14 +33,10 @@ export function MetricsGrid({
             className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] transition-shadow p-5"
           >
             <div className="flex items-start justify-between">
-              <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                {stat.title}
-              </p>
+              <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{stat.title}</p>
               <Icon className="size-4 text-[color:var(--cf-orange)]" />
             </div>
-            <p className="mt-5 cf-display text-[36px] leading-none tabular-nums">
-              {stat.val}
-            </p>
+            <p className="mt-5 cf-display text-[36px] leading-none tabular-nums">{stat.val}</p>
           </div>
         );
       })}

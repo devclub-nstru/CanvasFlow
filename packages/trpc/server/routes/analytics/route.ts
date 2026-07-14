@@ -1,5 +1,10 @@
-import { authenticatedProcedure, proAuthenticatedProcedure, publicProcedure, router } from "../../trpc"
-import { generatePath } from "../../utils/path-generator"
+import {
+  authenticatedProcedure,
+  proAuthenticatedProcedure,
+  publicProcedure,
+  router,
+} from "../../trpc";
+import { generatePath } from "../../utils/path-generator";
 import {
   getFormAnalyticsInputModel,
   getFormAnalyticsOutputModel,
@@ -11,14 +16,13 @@ import {
   recordViewOutputModel,
   recordFieldAnswerInputModel,
   recordFieldAnswerOutputModel,
-} from "./model"
-import { analyticsService } from "../../services"
+} from "./model";
+import { analyticsService } from "../../services";
 
-const TAGS = ["Analytics"]
-const getPath = generatePath("/analytics")
+const TAGS = ["Analytics"];
+const getPath = generatePath("/analytics");
 
 export const analyticsRouter = router({
-
   /**
    * GET /analytics/getFormAnalytics/{formId}
    * Returns all free-tier analytics metrics for a form in a single call:
@@ -28,21 +32,22 @@ export const analyticsRouter = router({
    *   - hourlyDistribution (0–23 buckets)
    *   - peakHour, peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek
    */
-  getFormAnalytics: authenticatedProcedure.meta({
-    openapi: {
-      method: "GET",
-      path: getPath("/getFormAnalytics/{formId}"),
-      tags: TAGS,
-      protect: true,
-    },
-  })
+  getFormAnalytics: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getFormAnalytics/{formId}"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
     .input(getFormAnalyticsInputModel)
     .output(getFormAnalyticsOutputModel)
     .query(async ({ input, ctx }) => {
       return analyticsService.getFormAnalytics({
         formId: input.formId,
         ownerId: ctx.user.id,
-      })
+      });
     }),
 
   /**
@@ -50,14 +55,15 @@ export const analyticsRouter = router({
    * Returns the full submission rows (including values jsonb) for the table view.
    * Kept separate from getFormAnalytics so the heavy jsonb is only loaded on demand.
    */
-  getSubmissions: authenticatedProcedure.meta({
-    openapi: {
-      method: "GET",
-      path: getPath("/getSubmissions/{formId}"),
-      tags: TAGS,
-      protect: true,
-    },
-  })
+  getSubmissions: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getSubmissions/{formId}"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
     .input(getSubmissionsListInputModel)
     .output(getSubmissionsListOutputModel)
     .query(async ({ input, ctx }) => {
@@ -66,7 +72,7 @@ export const analyticsRouter = router({
         ownerId: ctx.user.id,
         cursor: input.cursor ?? null,
         limit: input.limit,
-      })
+      });
     }),
 
   /**
@@ -74,18 +80,19 @@ export const analyticsRouter = router({
    * Records a view for a public form. Called by the public form page.
    * Public — no auth required.
    */
-  recordView: publicProcedure.meta({
-    openapi: {
-      method: "POST",
-      path: getPath("/recordView"),
-      tags: TAGS,
-      protect: false,
-    },
-  })
+  recordView: publicProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/recordView"),
+        tags: TAGS,
+        protect: false,
+      },
+    })
     .input(recordViewInputModel)
     .output(recordViewOutputModel)
     .mutation(async ({ input }) => {
-      return analyticsService.recordView(input)
+      return analyticsService.recordView(input);
     }),
 
   /**
@@ -93,18 +100,19 @@ export const analyticsRouter = router({
    * Records that a visitor answered a field and clicked Next.
    * Called by the public form page on each Next click — no auth required.
    */
-  recordFieldAnswer: publicProcedure.meta({
-    openapi: {
-      method: "POST",
-      path: getPath("/recordFieldAnswer"),
-      tags: TAGS,
-      protect: false,
-    },
-  })
+  recordFieldAnswer: publicProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/recordFieldAnswer"),
+        tags: TAGS,
+        protect: false,
+      },
+    })
     .input(recordFieldAnswerInputModel)
     .output(recordFieldAnswerOutputModel)
     .mutation(async ({ input }) => {
-      return analyticsService.recordFieldAnswer(input)
+      return analyticsService.recordFieldAnswer(input);
     }),
 
   /**
@@ -115,20 +123,21 @@ export const analyticsRouter = router({
    *
    * Returns FORBIDDEN for Free-tier users.
    */
-  getProAnalytics: proAuthenticatedProcedure.meta({
-    openapi: {
-      method: "GET",
-      path: getPath("/getProAnalytics/{formId}"),
-      tags: TAGS,
-      protect: true,
-    },
-  })
+  getProAnalytics: proAuthenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getProAnalytics/{formId}"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
     .input(getProAnalyticsInputModel)
     .output(getProAnalyticsOutputModel)
     .query(async ({ input, ctx }) => {
       return analyticsService.getProAnalytics({
         formId: input.formId,
         ownerId: ctx.user.id,
-      })
+      });
     }),
-})
+});

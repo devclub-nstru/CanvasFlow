@@ -45,10 +45,7 @@ export function FormQuestion({
     : (currentField.options as any)?.choices || [];
 
   return (
-    <div
-      key={currentQuestionIndex}
-      className="w-full max-w-xl space-y-8 cf-animate-card"
-    >
+    <div key={currentQuestionIndex} className="w-full max-w-xl space-y-8 cf-animate-card">
       {/* progress eyebrow */}
       <div className="flex items-center justify-center gap-2 cf-eyebrow text-[color:var(--cf-ink-soft)]">
         <span>
@@ -81,9 +78,7 @@ export function FormQuestion({
             type="text"
             placeholder={currentField.placeholder || "Type your answer..."}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             className={INPUT_CLS}
           />
         )}
@@ -92,9 +87,7 @@ export function FormQuestion({
           <textarea
             placeholder={currentField.placeholder || "Type your answer..."}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             rows={4}
             className="w-full bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line-strong)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none px-5 py-4 text-[16px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 resize-none transition-shadow"
           />
@@ -105,9 +98,7 @@ export function FormQuestion({
             type="email"
             placeholder={currentField.placeholder || "name@domain.com"}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             className={INPUT_CLS}
             autoComplete="email"
           />
@@ -118,9 +109,7 @@ export function FormQuestion({
             type="number"
             placeholder={currentField.placeholder || "0"}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             className={INPUT_CLS}
           />
         )}
@@ -130,9 +119,7 @@ export function FormQuestion({
             type="tel"
             placeholder={currentField.placeholder || "+1 (555) 000-0000"}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             className={INPUT_CLS}
             autoComplete="tel"
           />
@@ -143,9 +130,7 @@ export function FormQuestion({
             type="url"
             placeholder={currentField.placeholder || "https://example.com"}
             value={answers[currentField.id] || ""}
-            onChange={(e) =>
-              handleFieldChange(currentField.id, e.target.value)
-            }
+            onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
             className={INPUT_CLS}
           />
         )}
@@ -234,15 +219,12 @@ export function FormQuestion({
               length: (currentField.options as any)?.max || 5,
             }).map((_, i) => {
               const score = i + 1;
-              const isStarred =
-                (answers[currentField.id] || 0) >= score;
+              const isStarred = (answers[currentField.id] || 0) >= score;
               return (
                 <button
                   key={i}
                   type="button"
-                  onClick={() =>
-                    handleFieldChange(currentField.id, score)
-                  }
+                  onClick={() => handleFieldChange(currentField.id, score)}
                   className="p-1.5 hover:scale-110 transition-transform cursor-pointer"
                   aria-label={`Rate ${score}`}
                 >
@@ -266,9 +248,7 @@ export function FormQuestion({
               min={(currentField.options as any)?.minDate || undefined}
               max={(currentField.options as any)?.maxDate || undefined}
               value={answers[currentField.id] || ""}
-              onChange={(e) =>
-                handleFieldChange(currentField.id, e.target.value)
-              }
+              onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
               className={`${INPUT_CLS} pr-12 text-center`}
             />
             <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[color:var(--cf-ink-soft)] pointer-events-none" />
@@ -282,9 +262,7 @@ export function FormQuestion({
               min={(currentField.options as any)?.minTime || undefined}
               max={(currentField.options as any)?.maxTime || undefined}
               value={answers[currentField.id] || ""}
-              onChange={(e) =>
-                handleFieldChange(currentField.id, e.target.value)
-              }
+              onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
               className={`${INPUT_CLS} pr-12 text-center`}
             />
             <Clock className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[color:var(--cf-ink-soft)] pointer-events-none" />
@@ -304,12 +282,7 @@ export function FormQuestion({
             </span>
             <button
               type="button"
-              onClick={() =>
-                handleFieldChange(
-                  currentField.id,
-                  !answers[currentField.id]
-                )
-              }
+              onClick={() => handleFieldChange(currentField.id, !answers[currentField.id])}
               className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none ${
                 answers[currentField.id]
                   ? "bg-[color:var(--cf-orange)]"
@@ -319,9 +292,7 @@ export function FormQuestion({
             >
               <span
                 className={`pointer-events-none inline-block size-5 mt-1 transform rounded-full bg-white shadow transition-transform ${
-                  answers[currentField.id]
-                    ? "translate-x-6"
-                    : "translate-x-1"
+                  answers[currentField.id] ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>
@@ -356,11 +327,7 @@ export function FormQuestion({
           disabled={isPending}
           className="group inline-flex items-center gap-1.5 h-[44px] px-6 bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-full text-[14px] font-medium tracking-tight transition-colors cursor-pointer"
         >
-          {isLast
-            ? isPending
-              ? "Submitting..."
-              : "Submit"
-            : "Next"}
+          {isLast ? (isPending ? "Submitting..." : "Submit") : "Next"}
           <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </button>
       </div>

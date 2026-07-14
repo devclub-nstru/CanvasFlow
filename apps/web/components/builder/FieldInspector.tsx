@@ -25,14 +25,9 @@ export interface FieldInspectorProps {
 // SELECT/CHECKBOX `choices` live alongside other config (like `position`) on
 // the field's options. Merge the new choices into the existing object so we
 // don't clobber position or any future config when editing the choice list.
-function mergeChoices(
-  currentOptions: any,
-  nextChoices: string[]
-): Record<string, any> {
+function mergeChoices(currentOptions: any, nextChoices: string[]): Record<string, any> {
   const base =
-    currentOptions &&
-    typeof currentOptions === "object" &&
-    !Array.isArray(currentOptions)
+    currentOptions && typeof currentOptions === "object" && !Array.isArray(currentOptions)
       ? (currentOptions as Record<string, any>)
       : {};
   return { ...base, choices: nextChoices };
@@ -42,22 +37,14 @@ function mergeChoices(
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block cf-eyebrow text-[color:var(--cf-ink-soft)] mb-1.5">
-      {children}
-    </label>
+    <label className="block cf-eyebrow text-[color:var(--cf-ink-soft)] mb-1.5">{children}</label>
   );
 }
 
 const INPUT_CLS =
   "w-full bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none rounded-md px-3 h-[36px] text-[13px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 transition-shadow";
 
-function Section({
-  children,
-  title,
-}: {
-  children: React.ReactNode;
-  title?: string;
-}) {
+function Section({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
     <div className="space-y-3">
       {title && (
@@ -70,20 +57,12 @@ function Section({
   );
 }
 
-function Toggle({
-  on,
-  onChange,
-}: {
-  on: boolean;
-  onChange: (v: boolean) => void;
-}) {
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none ${
-        on
-          ? "bg-[color:var(--cf-orange)]"
-          : "bg-[color:var(--cf-ink)]/15"
+        on ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink)]/15"
       }`}
       aria-pressed={on}
     >
@@ -166,16 +145,13 @@ export function FieldInspectorBody({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[13px] text-[color:var(--cf-ink)]">Required</p>
-            <p className="text-[11px] text-[color:var(--cf-ink-soft)]">
-              Force an answer
-            </p>
+            <p className="text-[11px] text-[color:var(--cf-ink-soft)]">Force an answer</p>
           </div>
           <Toggle on={isRequired} onChange={handleRequiredChange} />
         </div>
       </Section>
 
-      {(selectedField.type === "SELECT" ||
-        selectedField.type === "CHECKBOX") && (
+      {(selectedField.type === "SELECT" || selectedField.type === "CHECKBOX") && (
         <Section title="Options">
           <div className="space-y-1.5">
             {optionsList.map((opt, idx) => (
@@ -213,10 +189,7 @@ export function FieldInspectorBody({
           </div>
           <button
             onClick={() => {
-              const next = [
-                ...optionsList,
-                `Option ${optionsList.length + 1}`,
-              ];
+              const next = [...optionsList, `Option ${optionsList.length + 1}`];
               setOptionsList(next);
               updateLocal(selectedField.id, {
                 options: mergeChoices(selectedField.options, next),
@@ -334,9 +307,7 @@ export function FieldInspectorBody({
       {selectedField.type === "TOGGLE" && (
         <Section title="Toggle">
           <div className="flex items-center justify-between">
-            <p className="text-[13px] text-[color:var(--cf-ink)]">
-              Default on
-            </p>
+            <p className="text-[13px] text-[color:var(--cf-ink)]">Default on</p>
             <Toggle
               on={!!(selectedField.options as any)?.defaultValue}
               onChange={(v) =>
@@ -354,9 +325,7 @@ export function FieldInspectorBody({
               <Label>Active label</Label>
               <input
                 type="text"
-                defaultValue={
-                  (selectedField.options as any)?.activeLabel || "Yes"
-                }
+                defaultValue={(selectedField.options as any)?.activeLabel || "Yes"}
                 onBlur={(e) =>
                   updateLocal(selectedField.id, {
                     options: {
@@ -372,9 +341,7 @@ export function FieldInspectorBody({
               <Label>Inactive label</Label>
               <input
                 type="text"
-                defaultValue={
-                  (selectedField.options as any)?.inactiveLabel || "No"
-                }
+                defaultValue={(selectedField.options as any)?.inactiveLabel || "No"}
                 onBlur={(e) =>
                   updateLocal(selectedField.id, {
                     options: {
@@ -405,9 +372,7 @@ export function FieldInspector(props: FieldInspectorProps) {
           <MousePointerClick className="size-5" />
         </div>
         <div className="text-center space-y-1.5">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            No field selected
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">No field selected</p>
           <p className="text-[12px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-[200px]">
             Click a field on the canvas to inspect and configure it.
           </p>
@@ -424,9 +389,7 @@ export function FieldInspector(props: FieldInspectorProps) {
       <div className="px-4 py-3 border-b border-[color:var(--cf-line)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="size-3.5 text-[color:var(--cf-orange)]" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink)]">
-            Inspector
-          </span>
+          <span className="cf-eyebrow text-[color:var(--cf-ink)]">Inspector</span>
         </div>
         <div className="inline-flex items-center gap-1.5 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] px-2 py-0.5 rounded-full">
           <FieldIcon className="size-3 text-[color:var(--cf-orange)]" />

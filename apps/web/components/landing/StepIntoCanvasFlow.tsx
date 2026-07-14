@@ -22,21 +22,14 @@ export function StepIntoCanvasFlow({ isLoggedIn }: { isLoggedIn: boolean }) {
 
         <div className="mt-10 sm:mt-16 flex flex-col items-center gap-6 sm:gap-8">
           <div className="relative w-14 h-14 sm:w-16 sm:h-16">
-            <Image
-              src="/logo.svg"
-              alt="CanvasFlow"
-              fill
-              sizes="64px"
-              className="object-contain"
-            />
+            <Image src="/logo.svg" alt="CanvasFlow" fill sizes="64px" className="object-contain" />
           </div>
           <h3 className="cf-display text-[24px] sm:text-[34px] leading-tight text-center max-w-md px-4">
             The canvas is bright
           </h3>
           <p className="text-[14px] sm:text-[15px] leading-relaxed text-[color:var(--cf-ink-soft)] text-center max-w-md px-4">
-            Ready to take control of your forms? It&apos;s time to step out of
-            spreadsheet templates and into a more resilient, real-time data
-            future.
+            Ready to take control of your forms? It&apos;s time to step out of spreadsheet templates
+            and into a more resilient, real-time data future.
           </p>
           <Link
             href={isLoggedIn ? "/dashboard" : "/signUp"}

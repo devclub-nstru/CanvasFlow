@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Copy, Crown, Plus, QrCode, Shield, Trash2, User, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -10,6 +10,8 @@ import {
   useRemoveCollaborator,
   useTransferOwnership,
 } from "~/hooks/api/form";
+import { useSearchUsers } from "~/hooks/api/user";
+import { useDebounce } from "~/hooks/useDebounce";
 
 interface ShareCollaboratorsDialogProps {
   show: boolean;
@@ -40,6 +42,23 @@ export function ShareCollaboratorsDialog({
   const [showQr, setShowQr] = useState(true);
   const { transferOwnershipAsync } = useTransferOwnership();
 
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debouncedEmail = useDebounce(email, 200);
+  const { users: suggestions } = useSearchUsers(debouncedEmail);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
   if (!show) return null;
 
   const isOwner = role === "owner";
@@ -56,7 +75,7 @@ export function ShareCollaboratorsDialog({
       const response = await fetch(qrUrl);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      
+
       const link = document.createElement("a");
       link.href = blobUrl;
       link.download = `${formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-qr-code.png`;
@@ -133,7 +152,6 @@ export function ShareCollaboratorsDialog({
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
       <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-6 max-w-md w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)] flex flex-col gap-5">
-        
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
@@ -203,15 +221,19 @@ export function ShareCollaboratorsDialog({
         )}
 
         {/* Owner Invite Form or Transfer Confirmation */}
-        {isOwner && (
-          confirmTransferUserId ? (
+        {isOwner &&
+          (confirmTransferUserId ? (
             <div className="bg-[color:var(--cf-cream)] p-4 rounded-xl ring-1 ring-[color:var(--cf-orange)]/40 space-y-3">
               <h4 className="font-semibold text-[13.5px] text-[color:var(--cf-ink)] flex items-center gap-1.5">
                 <Crown className="size-4 text-[color:var(--cf-orange)]" />
                 Transfer Ownership?
               </h4>
               <p className="text-[12px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-                Make <span className="font-semibold text-[color:var(--cf-ink)]">{confirmTransferUserEmail}</span> the new owner? You will become an editor collaborator.
+                Make{" "}
+                <span className="font-semibold text-[color:var(--cf-ink)]">
+                  {confirmTransferUserEmail}
+                </span>{" "}
+                the new owner? You will become an editor collaborator.
               </p>
               <div className="flex justify-end gap-2 pt-1">
                 <button
@@ -231,19 +253,48 @@ export function ShareCollaboratorsDialog({
               </div>
             </div>
           ) : (
-            <form onSubmit={handleAdd} className="space-y-1.5 pt-1 border-t border-[color:var(--cf-line)]">
+            <form
+              onSubmit={handleAdd}
+              className="space-y-1.5 pt-1 border-t border-[color:var(--cf-line)]"
+            >
               <label className="block text-[11px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)]">
                 Invite collaborator
               </label>
               <div className="flex gap-2">
-                <input
-                  type="email"
-                  required
-                  placeholder="email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line)] px-3 py-1.5 text-[13px] text-[color:var(--cf-ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--cf-orange)]"
-                />
+                <div className="relative flex-1" ref={suggestionsRef}>
+                  <input
+                    type="email"
+                    required
+                    placeholder="email@example.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    className="w-full bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line)] px-3 py-1.5 text-[13px] text-[color:var(--cf-ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--cf-orange)]"
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-[color:var(--cf-cream-2)] rounded-lg ring-1 ring-[color:var(--cf-line-strong)] shadow-lg max-h-48 overflow-y-auto z-[350] py-1">
+                      {suggestions.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            setEmail(u.email);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-[12.5px] hover:bg-[color:var(--cf-cream)] flex flex-col transition-colors cursor-pointer"
+                        >
+                          <span className="font-medium text-[color:var(--cf-ink)]">{u.name}</span>
+                          <span className="text-[11px] text-[color:var(--cf-ink-soft)]">
+                            {u.email}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as "viewer" | "editor")}
@@ -262,8 +313,7 @@ export function ShareCollaboratorsDialog({
                 </button>
               </div>
             </form>
-          )
-        )}
+          ))}
 
         {/* Collaborators List */}
         <div className="space-y-2 pt-1 border-t border-[color:var(--cf-line)]">
@@ -280,7 +330,11 @@ export function ShareCollaboratorsDialog({
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-[color:var(--cf-ink)] truncate">Workspace Owner</p>
-                  {ownerEmail && <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">{ownerEmail}</p>}
+                  {ownerEmail && (
+                    <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">
+                      {ownerEmail}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="text-[11.5px] font-mono text-[color:var(--cf-ink-soft)] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] px-2 py-0.5 rounded-full">
@@ -319,7 +373,9 @@ export function ShareCollaboratorsDialog({
                       <>
                         <select
                           value={c.role}
-                          onChange={(e) => handleUpdateRole(c.id, e.target.value as "viewer" | "editor")}
+                          onChange={(e) =>
+                            handleUpdateRole(c.id, e.target.value as "viewer" | "editor")
+                          }
                           className="bg-[color:var(--cf-cream)] rounded-md ring-1 ring-[color:var(--cf-line)] px-2 py-1 text-[11.5px] text-[color:var(--cf-ink)] focus:outline-none cursor-pointer"
                         >
                           <option value="viewer">Viewer</option>
@@ -354,7 +410,6 @@ export function ShareCollaboratorsDialog({
             )}
           </div>
         </div>
-
       </div>
     </div>
   );

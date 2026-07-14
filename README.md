@@ -22,18 +22,18 @@ Drag fields onto an open canvas, connect them like nodes, watch responses light 
 
 ## Tech stack
 
-| Layer | Choice |
-| --- | --- |
-| Monorepo | Turborepo + pnpm workspaces |
-| Web app | Next.js 16 (App Router, Turbopack), React 19, Tailwind v4, Radix UI primitives, Motion |
-| Canvas builder | `@xyflow/react` |
-| Charts | Recharts (lazy-loaded per route) |
-| API | Express 5 + tRPC 11 (OpenAPI generated via `trpc-to-openapi`) |
-| Auth | Better Auth with email/password, Google OAuth, GitHub OAuth, signed cookie cache |
-| DB | PostgreSQL via Drizzle ORM, `pg` connection pool, migrations via `drizzle-kit` |
-| Validation | Zod (shared between client, server, and OpenAPI schema) |
-| State / data | TanStack Query (tRPC React Query adapter) |
-| Logging | Winston |
+| Layer          | Choice                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Monorepo       | Turborepo + pnpm workspaces                                                            |
+| Web app        | Next.js 16 (App Router, Turbopack), React 19, Tailwind v4, Radix UI primitives, Motion |
+| Canvas builder | `@xyflow/react`                                                                        |
+| Charts         | Recharts (lazy-loaded per route)                                                       |
+| API            | Express 5 + tRPC 11 (OpenAPI generated via `trpc-to-openapi`)                          |
+| Auth           | Better Auth with email/password, Google OAuth, GitHub OAuth, signed cookie cache       |
+| DB             | PostgreSQL via Drizzle ORM, `pg` connection pool, migrations via `drizzle-kit`         |
+| Validation     | Zod (shared between client, server, and OpenAPI schema)                                |
+| State / data   | TanStack Query (tRPC React Query adapter)                                              |
+| Logging        | Winston                                                                                |
 
 ## Architecture
 
@@ -123,12 +123,12 @@ pnpm dev
 
 This boots, in parallel:
 
-| URL | What |
-| --- | --- |
-| `http://localhost:3000` | Next.js studio (web) |
-| `http://localhost:8000/trpc` | tRPC HTTP endpoint |
-| `http://localhost:8000/docs` | Auto-generated Scalar API reference |
-| `http://localhost:8000/openapi.json` | OpenAPI 3.1 spec |
+| URL                                  | What                                |
+| ------------------------------------ | ----------------------------------- |
+| `http://localhost:3000`              | Next.js studio (web)                |
+| `http://localhost:8000/trpc`         | tRPC HTTP endpoint                  |
+| `http://localhost:8000/docs`         | Auto-generated Scalar API reference |
+| `http://localhost:8000/openapi.json` | OpenAPI 3.1 spec                    |
 
 Sign up at `/signUp`, build a form, publish it, share `/forms/<id>`, watch responses populate `/dashboard/analytics`.
 
@@ -136,15 +136,15 @@ Sign up at `/signUp`, build a form, publish it, share `/forms/<id>`, watch respo
 
 All scripts are turbo-orchestrated and `dotenv -- ...` wrapped so workspaces share the root env.
 
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Run every workspace's dev task |
-| `pnpm build` | Build the API and the web app for production |
-| `pnpm lint` | ESLint across all workspaces (zero-warning) |
-| `pnpm check-types` | TypeScript no-emit type-check |
-| `pnpm format` | Prettier across `**/*.{ts,tsx,md}` |
+| Script             | What it does                                     |
+| ------------------ | ------------------------------------------------ |
+| `pnpm dev`         | Run every workspace's dev task                   |
+| `pnpm build`       | Build the API and the web app for production     |
+| `pnpm lint`        | ESLint across all workspaces (zero-warning)      |
+| `pnpm check-types` | TypeScript no-emit type-check                    |
+| `pnpm format`      | Prettier across `**/*.{ts,tsx,md}`               |
 | `pnpm db:generate` | Generate a Drizzle migration from schema changes |
-| `pnpm db:migrate` | Apply pending migrations |
+| `pnpm db:migrate`  | Apply pending migrations                         |
 
 Filter to a single workspace with `pnpm -F web <script>` or `pnpm -F @repo/api <script>`.
 

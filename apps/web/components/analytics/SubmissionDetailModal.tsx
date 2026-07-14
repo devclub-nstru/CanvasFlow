@@ -54,9 +54,7 @@ export function SubmissionDetailModal({
             <X className="size-4" />
           </button>
 
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Submission
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Submission</p>
           <h4 className="mt-2 cf-display text-[22px] leading-tight pr-8 truncate">
             {respondent.name}
           </h4>
@@ -67,15 +65,9 @@ export function SubmissionDetailModal({
 
         <div className="px-6 py-5 overflow-y-auto flex-1 space-y-4">
           {form.fields.map((field) => {
-            const answer = submission.values.find(
-              (v) => v.formFieldId === field.id
-            );
+            const answer = submission.values.find((v) => v.formFieldId === field.id);
             let displayVal = "No answer provided";
-            if (
-              answer?.value !== undefined &&
-              answer?.value !== null &&
-              answer?.value !== ""
-            ) {
+            if (answer?.value !== undefined && answer?.value !== null && answer?.value !== "") {
               if (Array.isArray(answer.value)) {
                 displayVal = answer.value.join(", ");
               } else if (typeof answer.value === "boolean") {
@@ -87,9 +79,7 @@ export function SubmissionDetailModal({
 
             return (
               <div key={field.id} className="space-y-1.5">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                  {field.label}
-                </p>
+                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{field.label}</p>
                 <div className="text-[13px] text-[color:var(--cf-ink)] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2.5">
                   {displayVal}
                 </div>

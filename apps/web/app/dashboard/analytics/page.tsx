@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,23 +20,16 @@ import { SubmissionsTable } from "~/components/analytics/SubmissionsTable";
 // Lazy-load the recharts-backed widgets and the on-demand modal. Keeps the
 // initial route bundle lean — recharts alone is ~140kb gzipped.
 const ResponseTimeline = dynamic(
-  () =>
-    import("~/components/analytics/ResponseTimeline").then(
-      (m) => m.ResponseTimeline
-    ),
-  { ssr: false }
+  () => import("~/components/analytics/ResponseTimeline").then((m) => m.ResponseTimeline),
+  { ssr: false },
 );
 const DeviceBreakdown = dynamic(
-  () =>
-    import("~/components/analytics/DeviceBreakdown").then(
-      (m) => m.DeviceBreakdown
-    ),
-  { ssr: false }
+  () => import("~/components/analytics/DeviceBreakdown").then((m) => m.DeviceBreakdown),
+  { ssr: false },
 );
 const UpgradeModal = dynamic(
-  () =>
-    import("~/components/analytics/UpgradeModal").then((m) => m.UpgradeModal),
-  { ssr: false }
+  () => import("~/components/analytics/UpgradeModal").then((m) => m.UpgradeModal),
+  { ssr: false },
 );
 
 interface SubmissionValue {
@@ -64,8 +51,7 @@ export function AnalyticsPage() {
   // Debounce so filtering and any future expensive operations on the
   // submissions list don't run on every keystroke.
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
-  const [viewingSubmission, setViewingSubmission] =
-    useState<Submission | null>(null);
+  const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const selectedFormId = searchParams.get("form");
@@ -75,15 +61,15 @@ export function AnalyticsPage() {
   };
 
   const { forms, isLoading: isLoadingForms } = useListFormsByUserId();
-  const { form, isLoading: isLoadingForm } = useGetFormById(
-    selectedFormId || ""
-  );
-  const { analytics, isLoading: isLoadingAnalytics } = useGetFormAnalytics(
-    selectedFormId || ""
-  );
-  const { submissions, isLoading: isLoadingSubmissions, hasNextPage, isFetchingNextPage, fetchNextPage } = useGetSubmissions(
-    selectedFormId || ""
-  );
+  const { form, isLoading: isLoadingForm } = useGetFormById(selectedFormId || "");
+  const { analytics, isLoading: isLoadingAnalytics } = useGetFormAnalytics(selectedFormId || "");
+  const {
+    submissions,
+    isLoading: isLoadingSubmissions,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useGetSubmissions(selectedFormId || "");
   const { hasDetailedAnalytics: isFreeTier } = useGetMe();
 
   // Auto-select the first form when none is in the URL
@@ -102,8 +88,7 @@ export function AnalyticsPage() {
 
       if (form?.fields) {
         const emailField = form.fields.find(
-          (f) =>
-            f.type === "EMAIL" || f.label.toLowerCase().includes("email")
+          (f) => f.type === "EMAIL" || f.label.toLowerCase().includes("email"),
         );
         if (emailField) {
           const val = sub.values.find((v) => v.formFieldId === emailField.id);
@@ -114,7 +99,7 @@ export function AnalyticsPage() {
           (f) =>
             f.type === "TEXT" &&
             (f.label.toLowerCase().includes("name") ||
-              f.label.toLowerCase().includes("respondent"))
+              f.label.toLowerCase().includes("respondent")),
         );
         if (nameField) {
           const val = sub.values.find((v) => v.formFieldId === nameField.id);
@@ -125,7 +110,7 @@ export function AnalyticsPage() {
       }
       return { name, email };
     },
-    [form]
+    [form],
   );
 
   const handleExportCSV = () => {
@@ -163,7 +148,7 @@ export function AnalyticsPage() {
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `${form.title.toLowerCase().replace(/\s+/g, "_")}_submissions.csv`
+      `${form.title.toLowerCase().replace(/\s+/g, "_")}_submissions.csv`,
     );
     document.body.appendChild(link);
     link.click();
@@ -175,9 +160,7 @@ export function AnalyticsPage() {
   const totalResponses = analytics?.totalResponses ?? 0;
   const totalViews = analytics?.totalViews ?? 0;
   const completionRate =
-    (analytics?.completionRate != null
-      ? analytics.completionRate.toFixed(1)
-      : "0.0") + "%";
+    (analytics?.completionRate != null ? analytics.completionRate.toFixed(1) : "0.0") + "%";
   const avgPerDay = analytics?.avgSubmissionsPerDay ?? 0;
   const avgPerWeek = analytics?.avgSubmissionsPerWeek ?? 0;
   const peakDay = analytics?.peakDay ?? null;
@@ -209,8 +192,7 @@ export function AnalyticsPage() {
     });
   }, [submissions, debouncedSearchQuery, getRespondentDetails]);
 
-  const isLoading =
-    isLoadingForm || isLoadingAnalytics || isLoadingSubmissions;
+  const isLoading = isLoadingForm || isLoadingAnalytics || isLoadingSubmissions;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-140px)] w-full">
@@ -234,15 +216,10 @@ export function AnalyticsPage() {
         ) : !form ? (
           <div className="h-64 flex items-center justify-center bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] text-center p-8">
             <div className="max-w-xs space-y-2">
-              <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                No form selected
-              </p>
-              <h4 className="cf-display text-[20px] leading-tight">
-                Pick a form
-              </h4>
+              <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">No form selected</p>
+              <h4 className="cf-display text-[20px] leading-tight">Pick a form</h4>
               <p className="text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-                Choose a form from the sidebar to load its analytics and
-                response history.
+                Choose a form from the sidebar to load its analytics and response history.
               </p>
             </div>
           </div>
@@ -251,9 +228,7 @@ export function AnalyticsPage() {
             {/* Header */}
             <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div className="min-w-0">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                  Analytics
-                </p>
+                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Analytics</p>
                 <h1 className="mt-2 cf-display text-[28px] sm:text-[32px] leading-tight truncate">
                   {form.title}
                 </h1>
@@ -324,9 +299,7 @@ export function AnalyticsPage() {
               </div>
             </div>
 
-            {showUpgrade && (
-              <UpgradeModal onClose={() => setShowUpgrade(false)} />
-            )}
+            {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
 
             <MetricsGrid
               totalResponses={totalResponses}
@@ -342,14 +315,8 @@ export function AnalyticsPage() {
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              <ResponseTimeline
-                totalResponses={totalResponses}
-                trends={dailyTrends}
-              />
-              <DeviceBreakdown
-                totalViews={totalViews}
-                deviceData={deviceData}
-              />
+              <ResponseTimeline totalResponses={totalResponses} trends={dailyTrends} />
+              <DeviceBreakdown totalViews={totalViews} deviceData={deviceData} />
             </div>
 
             <SubmissionsTable

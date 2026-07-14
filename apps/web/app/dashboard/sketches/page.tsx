@@ -138,12 +138,9 @@ export default function SketchesPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <div>
           <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">My forms</p>
-          <h1 className="mt-3 cf-display text-[36px] sm:text-[48px] leading-[0.95]">
-            Your studio
-          </h1>
+          <h1 className="mt-3 cf-display text-[36px] sm:text-[48px] leading-[0.95]">Your studio</h1>
           <p className="mt-3 text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-md">
-            {forms?.length ?? 0}{" "}
-            {forms?.length === 1 ? "form" : "forms"} in your workspace.
+            {forms?.length ?? 0} {forms?.length === 1 ? "form" : "forms"} in your workspace.
           </p>
         </div>
 
@@ -173,9 +170,7 @@ export default function SketchesPage() {
         {/* sort + filters */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
-            <span className="cf-eyebrow text-[color:var(--cf-ink-soft)] shrink-0">
-              Sort
-            </span>
+            <span className="cf-eyebrow text-[color:var(--cf-ink-soft)] shrink-0">Sort</span>
             <div className="relative">
               <select
                 value={sort}
@@ -219,9 +214,7 @@ export default function SketchesPage() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <div className="w-8 h-8 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Loading your forms...
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Loading your forms...</p>
         </div>
       ) : paginatedForms.length === 0 ? (
         <EmptyState
@@ -255,8 +248,7 @@ export default function SketchesPage() {
       {!isLoading && processedForms.length > ITEMS_PER_PAGE && (
         <div className="flex flex-col sm:flex-row justify-between items-center border-t border-[color:var(--cf-line)] pt-6 gap-3">
           <p className="text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
-            Page <span className="text-[color:var(--cf-ink)]">{page}</span> of{" "}
-            {totalPages}
+            Page <span className="text-[color:var(--cf-ink)]">{page}</span> of {totalPages}
           </p>
           <div className="flex gap-2">
             <button
@@ -283,9 +275,7 @@ export default function SketchesPage() {
       {confirmDeleteId && confirmDeleteForm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
           <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)]">
-            <p className="cf-eyebrow text-[color:var(--cf-orange)]">
-              Permanent action
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-orange)]">Permanent action</p>
             <h3 className="mt-3 cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
               Delete this form?
             </h3>
@@ -293,8 +283,7 @@ export default function SketchesPage() {
               <span className="text-[color:var(--cf-ink)] font-medium">
                 &ldquo;{confirmDeleteForm.title}&rdquo;
               </span>{" "}
-              and all its fields and submissions will be permanently removed.
-              This cannot be undone.
+              and all its fields and submissions will be permanently removed. This cannot be undone.
             </p>
 
             <div className="flex justify-end gap-3 pt-6">
@@ -353,7 +342,7 @@ interface FormCardProps {
 function FormCard({ form, onDelete, onShare }: FormCardProps) {
   const isPublished = form.isPublished;
   const responses = form.submissionsCount ?? 0;
-  const canDelete = form.permissions?.settings?.canDelete ?? (form.role === "owner");
+  const canDelete = form.permissions?.settings?.canDelete ?? form.role === "owner";
 
   // Hover/focus prefetch — warm the builder's tRPC caches so clicking the
   // Open / Continue editing link feels instant. Cheap to call multiple
@@ -387,9 +376,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
           <div className="mt-2">
             <span
               className={`block h-3 w-16 rounded-full ${
-                isPublished
-                  ? "bg-[color:var(--cf-ink)]"
-                  : "bg-[color:var(--cf-orange)]"
+                isPublished ? "bg-[color:var(--cf-ink)]" : "bg-[color:var(--cf-orange)]"
               }`}
             />
           </div>

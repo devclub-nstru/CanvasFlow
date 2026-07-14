@@ -23,7 +23,7 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
     ? AVAILABLE_FIELDS.filter(
         (f) =>
           f.label.toLowerCase().includes(query.toLowerCase()) ||
-          f.description.toLowerCase().includes(query.toLowerCase())
+          f.description.toLowerCase().includes(query.toLowerCase()),
       )
     : null;
 
@@ -60,9 +60,7 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
           )
         ) : (
           CATEGORIES.map((cat) => {
-            const catFields = AVAILABLE_FIELDS.filter((f) =>
-              cat.types.includes(f.type)
-            );
+            const catFields = AVAILABLE_FIELDS.filter((f) => cat.types.includes(f.type));
             if (catFields.length === 0) return null;
             return (
               <div key={cat.label}>
@@ -71,11 +69,7 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
                 </p>
                 <div className="space-y-0.5">
                   {catFields.map((f) => (
-                    <FieldItem
-                      key={f.type}
-                      field={f}
-                      onDragStart={onDragStart}
-                    />
+                    <FieldItem key={f.type} field={f} onDragStart={onDragStart} />
                   ))}
                 </div>
               </div>

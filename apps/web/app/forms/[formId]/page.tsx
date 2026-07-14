@@ -45,7 +45,7 @@ export default function PublicFormPage() {
   const idempotencyKeyRef = React.useRef<string>(
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
 
   // Restore "already submitted" from localStorage on first paint so a
@@ -70,11 +70,7 @@ export default function PublicFormPage() {
       let deviceType = "desktop";
       if (/tablet|ipad|playbook|silk/i.test(ua)) {
         deviceType = "tablet";
-      } else if (
-        /mobile|iphone|ipod|android|blackberry|opera mini|iemobile|webos/i.test(
-          ua
-        )
-      ) {
+      } else if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile|webos/i.test(ua)) {
         deviceType = "mobile";
       }
 
@@ -144,9 +140,7 @@ export default function PublicFormPage() {
 
   const progressPercent =
     totalQuestions > 0
-      ? Math.round(
-          (Math.max(currentQuestionIndex, answeredCount) / totalQuestions) * 100
-        )
+      ? Math.round((Math.max(currentQuestionIndex, answeredCount) / totalQuestions) * 100)
       : 0;
 
   const handleNext = () => {
@@ -155,13 +149,9 @@ export default function PublicFormPage() {
     const value = answers[currentField.id];
     if (
       currentField.isRequired &&
-      (value === undefined ||
-        value === "" ||
-        (Array.isArray(value) && value.length === 0))
+      (value === undefined || value === "" || (Array.isArray(value) && value.length === 0))
     ) {
-      toast.error(
-        `Please answer the required field: "${currentField.label}"`
-      );
+      toast.error(`Please answer the required field: "${currentField.label}"`);
       return;
     }
 
@@ -199,12 +189,10 @@ export default function PublicFormPage() {
     if (currentQuestionIndex < totalQuestions - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
-      const payloadValues = Object.entries(answers).map(
-        ([fieldId, value]) => ({
-          formFieldId: fieldId,
-          value,
-        })
-      );
+      const payloadValues = Object.entries(answers).map(([fieldId, value]) => ({
+        formFieldId: fieldId,
+        value,
+      }));
 
       submitForm(
         {
@@ -213,15 +201,9 @@ export default function PublicFormPage() {
           idempotencyKey: idempotencyKeyRef.current,
           visitorId: visitorIdRef.current,
           referrer: document.referrer || null,
-          utmSource: new URLSearchParams(window.location.search).get(
-            "utm_source"
-          ),
-          utmMedium: new URLSearchParams(window.location.search).get(
-            "utm_medium"
-          ),
-          utmCampaign: new URLSearchParams(window.location.search).get(
-            "utm_campaign"
-          ),
+          utmSource: new URLSearchParams(window.location.search).get("utm_source"),
+          utmMedium: new URLSearchParams(window.location.search).get("utm_medium"),
+          utmCampaign: new URLSearchParams(window.location.search).get("utm_campaign"),
           timeSpentMs: Date.now() - formOpenedAtRef.current,
         },
         {
@@ -252,7 +234,7 @@ export default function PublicFormPage() {
             }
             toast.error(err.message || "Failed to submit form");
           },
-        }
+        },
       );
     }
   };
@@ -266,6 +248,19 @@ export default function PublicFormPage() {
   if (isLoading) return <FormLoadingState />;
   if (error || !form) return <FormErrorState type="not-found" />;
   if (!form.isPublished) return <FormErrorState type="draft-mode" />;
+  if (!form.isOpen) return <FormErrorState type="closed" />;
+  if (form.expiresAt && new Date() > new Date(form.expiresAt)) {
+    return <FormErrorState type="expired" />;
+  }
+  if (
+    form.maxSubmissions !== null &&
+    form.maxSubmissions !== undefined &&
+    form.submissionsCount !== null &&
+    form.submissionsCount !== undefined &&
+    form.submissionsCount >= form.maxSubmissions
+  ) {
+    return <FormErrorState type="limit-reached" />;
+  }
   // Returning visitor (or a duplicate submit attempt that came back from
   // the server). Render the lockout instead of the form so they can't
   // even start typing a second response.
@@ -315,18 +310,11 @@ export default function PublicFormPage() {
 
       <main className="w-full max-w-2xl flex-1 flex flex-col items-center justify-center py-10 sm:py-14">
         {submitted ? (
-          <FormThankYou
-            siteRating={siteRating}
-            setSiteRating={setSiteRating}
-          />
+          <FormThankYou siteRating={siteRating} setSiteRating={setSiteRating} />
         ) : totalQuestions === 0 ? (
           <div className="w-full max-w-md text-center space-y-3 cf-animate-card">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              Empty form
-            </p>
-            <h3 className="cf-display text-[28px] leading-tight">
-              Nothing to fill out yet
-            </h3>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Empty form</p>
+            <h3 className="cf-display text-[28px] leading-tight">Nothing to fill out yet</h3>
             <p className="text-[14px] text-[color:var(--cf-ink-soft)] leading-relaxed">
               The author hasn&apos;t added any questions to this form.
             </p>

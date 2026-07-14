@@ -40,9 +40,7 @@ export function AnalyticsSidebar({
     <aside className="w-full lg:w-64 shrink-0 bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-4 lg:p-5 flex flex-col gap-3 lg:gap-4">
       <div className="space-y-1.5">
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Analytics</p>
-        <h3 className="cf-display text-[20px] lg:text-[22px] leading-tight">
-          Forms
-        </h3>
+        <h3 className="cf-display text-[20px] lg:text-[22px] leading-tight">Forms</h3>
       </div>
 
       <div className="border-t border-[color:var(--cf-line)] pt-3">

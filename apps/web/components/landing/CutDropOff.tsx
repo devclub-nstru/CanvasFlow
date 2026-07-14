@@ -19,10 +19,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function CutDropOff() {
   return (
-    <section
-      id="story"
-      className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]"
-    >
+    <section id="story" className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]">
       <div className="relative mx-auto w-full max-w-[1320px] px-0">
         {/* horizontal divider line at the top, like Daylight */}
         <div className="absolute inset-x-4 sm:inset-x-6 md:inset-x-8 top-0 h-px bg-[color:var(--cf-line)]" />

@@ -40,23 +40,13 @@ export const getFieldIcon = (type: string) => {
 
 export const getFieldOptionsArray = (field: any): string[] => {
   if (Array.isArray(field.options)) return field.options;
-  if (
-    field.options &&
-    typeof field.options === "object" &&
-    Array.isArray(field.options.choices)
-  ) {
+  if (field.options && typeof field.options === "object" && Array.isArray(field.options.choices)) {
     return field.options.choices;
   }
   return ["Option 1", "Option 2"];
 };
 
-export const FormFieldNode = ({
-  data,
-  selected,
-}: {
-  data: any;
-  selected: boolean;
-}) => {
+export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const { field } = data;
   const IconComponent = getFieldIcon(field.type);
 
@@ -85,8 +75,7 @@ export const FormFieldNode = ({
         {/* label + description */}
         <div className="space-y-1.5">
           <h4 className="cf-display text-[16px] leading-snug text-[color:var(--cf-ink)] line-clamp-2">
-            {field.label ||
-              `Untitled ${field.type.replace("_", " ").toLowerCase()}`}
+            {field.label || `Untitled ${field.type.replace("_", " ").toLowerCase()}`}
           </h4>
 
           {field.description && (
@@ -140,9 +129,7 @@ function FieldPreview({ field }: { field: any }) {
             className="flex items-center justify-between text-[11px] text-[color:var(--cf-ink-soft)]"
           >
             <span className="truncate pr-2">{opt}</span>
-            <span className="text-[9px] text-[color:var(--cf-ink-soft)]/50">
-              ▼
-            </span>
+            <span className="text-[9px] text-[color:var(--cf-ink-soft)]/50">▼</span>
           </div>
         ))}
         {options.length > 3 && (
@@ -181,10 +168,7 @@ function FieldPreview({ field }: { field: any }) {
     return (
       <div className="flex items-center gap-1">
         {Array.from({ length: max }).map((_, i) => (
-          <Star
-            key={i}
-            className="size-3.5 text-[color:var(--cf-ink)]/15 fill-current"
-          />
+          <Star key={i} className="size-3.5 text-[color:var(--cf-ink)]/15 fill-current" />
         ))}
       </div>
     );
@@ -194,9 +178,7 @@ function FieldPreview({ field }: { field: any }) {
     const o = field.options as any;
     const range =
       o?.minDate || o?.maxDate
-        ? `${o?.minDate ? `From ${o.minDate}` : ""}${
-            o?.maxDate ? ` to ${o.maxDate}` : ""
-          }`
+        ? `${o?.minDate ? `From ${o.minDate}` : ""}${o?.maxDate ? ` to ${o.maxDate}` : ""}`
         : field.placeholder || "Select a date";
     return (
       <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
@@ -210,9 +192,7 @@ function FieldPreview({ field }: { field: any }) {
     const o = field.options as any;
     const range =
       o?.minTime || o?.maxTime
-        ? `${o?.minTime ? `From ${o.minTime}` : ""}${
-            o?.maxTime ? ` to ${o.maxTime}` : ""
-          }`
+        ? `${o?.minTime ? `From ${o.minTime}` : ""}${o?.maxTime ? ` to ${o.maxTime}` : ""}`
         : field.placeholder || "Select a time";
     return (
       <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
@@ -229,18 +209,14 @@ function FieldPreview({ field }: { field: any }) {
       <div className="flex items-center justify-between gap-3">
         <span
           className={`text-[11px] ${
-            !on
-              ? "font-medium text-[color:var(--cf-ink)]"
-              : "text-[color:var(--cf-ink-soft)]/55"
+            !on ? "font-medium text-[color:var(--cf-ink)]" : "text-[color:var(--cf-ink-soft)]/55"
           }`}
         >
           {o?.inactiveLabel || "No"}
         </span>
         <div
           className={`relative inline-flex h-4 w-8 shrink-0 rounded-full transition-colors ${
-            on
-              ? "bg-[color:var(--cf-orange)]"
-              : "bg-[color:var(--cf-ink)]/15"
+            on ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink)]/15"
           }`}
         >
           <span
@@ -251,9 +227,7 @@ function FieldPreview({ field }: { field: any }) {
         </div>
         <span
           className={`text-[11px] ${
-            on
-              ? "font-medium text-[color:var(--cf-orange)]"
-              : "text-[color:var(--cf-ink-soft)]/55"
+            on ? "font-medium text-[color:var(--cf-orange)]" : "text-[color:var(--cf-ink-soft)]/55"
           }`}
         >
           {o?.activeLabel || "Yes"}

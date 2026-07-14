@@ -29,10 +29,7 @@ function formatHourLabel(hour: number): string {
   return "";
 }
 
-export function HourlyHeatmap({
-  hourlyDistribution,
-  peakHour,
-}: HourlyHeatmapProps) {
+export function HourlyHeatmap({ hourlyDistribution, peakHour }: HourlyHeatmapProps) {
   const distributionMap = new Map(hourlyDistribution.map((d) => [d.hour, d.count]));
   const chartData = Array.from({ length: 24 }, (_, i) => ({
     hour: i,
@@ -44,9 +41,7 @@ export function HourlyHeatmap({
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 min-h-[280px] flex flex-col">
       <div>
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Hours</p>
-        <h4 className="mt-2 cf-display text-[20px] leading-tight">
-          Submission hours
-        </h4>
+        <h4 className="mt-2 cf-display text-[20px] leading-tight">Submission hours</h4>
         <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">
           When your audience responds
         </p>
@@ -59,7 +54,11 @@ export function HourlyHeatmap({
       ) : (
         <div className="flex-1 w-full min-h-[200px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barCategoryGap="10%" margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <BarChart
+              data={chartData}
+              barCategoryGap="10%"
+              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+            >
               <XAxis
                 dataKey="hour"
                 stroke="#56504a"
@@ -84,10 +83,10 @@ export function HourlyHeatmap({
                     hour === 0
                       ? "12am"
                       : hour < 12
-                      ? `${hour}am`
-                      : hour === 12
-                      ? "12pm"
-                      : `${hour - 12}pm`;
+                        ? `${hour}am`
+                        : hour === 12
+                          ? "12pm"
+                          : `${hour - 12}pm`;
                   return [value, label];
                 }}
                 contentStyle={{

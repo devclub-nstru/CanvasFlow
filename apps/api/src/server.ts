@@ -6,7 +6,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
-import cookieParser from 'cookie-parser'
+import cookieParser from "cookie-parser";
 
 import { serverRouter, createContext } from "@repo/trpc/server";
 import { auth } from "@repo/trpc/server/auth";
@@ -73,7 +73,7 @@ app.use(
       if (req.headers["x-no-compression"]) return false;
       return compression.filter(req, res);
     },
-  })
+  }),
 );
 
 app.use(cookieParser());
@@ -125,7 +125,7 @@ const authGlobalLimiter = rateLimit({
 // HTTP path includes the procedure name, so we can match on it.
 app.use(
   ["/trpc/analytics.recordView", "/trpc/analytics.recordFieldAnswer", "/trpc/form.submitForm"],
-  publicWriteLimiter
+  publicWriteLimiter,
 );
 
 // Better Auth handler must be mounted BEFORE express.json().

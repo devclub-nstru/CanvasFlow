@@ -2,15 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  BarChart3,
-  Sparkles,
-  Target,
-  TrendingUp,
-  X,
-  Zap,
-} from "lucide-react";
+import { ArrowUpRight, BarChart3, Sparkles, Target, TrendingUp, X, Zap } from "lucide-react";
 
 interface UpgradeModalProps {
   onClose: () => void;
@@ -40,19 +32,15 @@ export function UpgradeModal({ onClose }: UpgradeModalProps) {
             <Sparkles className="size-4 fill-current" />
             <p className="cf-eyebrow">Pro+ feature</p>
           </div>
-          <h3 className="mt-3 cf-display text-[26px] leading-tight">
-            Detailed analytics
-          </h3>
+          <h3 className="mt-3 cf-display text-[26px] leading-tight">Detailed analytics</h3>
           <p className="mt-2 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-            Available on Pro+ and Business plans. Unlock deeper per-question
-            insights and engagement breakdowns.
+            Available on Pro+ and Business plans. Unlock deeper per-question insights and engagement
+            breakdowns.
           </p>
         </div>
 
         <div className="px-6 py-5 space-y-3">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            What you&apos;ll get
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">What you&apos;ll get</p>
           {PRO_FEATURES.map((f, i) => {
             const Icon = f.icon;
             return (
@@ -60,9 +48,7 @@ export function UpgradeModal({ onClose }: UpgradeModalProps) {
                 <div className="size-7 rounded-md bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] flex items-center justify-center shrink-0">
                   <Icon className="size-3.5 text-[color:var(--cf-orange)]" />
                 </div>
-                <span className="text-[13.5px] text-[color:var(--cf-ink)]">
-                  {f.label}
-                </span>
+                <span className="text-[13.5px] text-[color:var(--cf-ink)]">{f.label}</span>
               </div>
             );
           })}

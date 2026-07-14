@@ -23,12 +23,7 @@ interface MobileFieldListProps {
  * that opens the edit sheet; reorder is done with up/down arrows since
  * touch drag-and-drop fights vertical scrolling on phones.
  */
-export function MobileFieldList({
-  fields,
-  onTapField,
-  onMove,
-  onAdd,
-}: MobileFieldListProps) {
+export function MobileFieldList({ fields, onTapField, onMove, onAdd }: MobileFieldListProps) {
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
       {/* count bar */}
@@ -36,8 +31,7 @@ export function MobileFieldList({
         <div>
           <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Fields</p>
           <p className="text-[12px] font-mono text-[color:var(--cf-ink-soft)] mt-0.5">
-            {fields.length}{" "}
-            {fields.length === 1 ? "field" : "fields"} · tap to edit
+            {fields.length} {fields.length === 1 ? "field" : "fields"} · tap to edit
           </p>
         </div>
       </div>
@@ -92,9 +86,7 @@ function FieldCard({
   onMove: (direction: "up" | "down") => void;
 }) {
   const Icon = getFieldIcon(field.type);
-  const displayLabel =
-    field.label ||
-    `Untitled ${field.type.replace("_", " ").toLowerCase()}`;
+  const displayLabel = field.label || `Untitled ${field.type.replace("_", " ").toLowerCase()}`;
 
   return (
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] active:ring-[color:var(--cf-line-strong)] transition-shadow overflow-hidden">
@@ -170,12 +162,9 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-dashed ring-[color:var(--cf-line-strong)] p-8 text-center space-y-4 mt-6">
       <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Empty canvas</p>
-      <h3 className="cf-display text-[24px] leading-tight">
-        Add your first field
-      </h3>
+      <h3 className="cf-display text-[24px] leading-tight">Add your first field</h3>
       <p className="text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-xs mx-auto">
-        Build your form one question at a time. Tap below to pick a field
-        type.
+        Build your form one question at a time. Tap below to pick a field type.
       </p>
       <button
         onClick={onAdd}

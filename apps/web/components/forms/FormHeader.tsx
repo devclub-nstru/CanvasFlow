@@ -10,25 +10,14 @@ interface FormHeaderProps {
   formTitle?: string;
 }
 
-export function FormHeader({
-  progressPercent,
-  submitted,
-  formCode,
-  formTitle,
-}: FormHeaderProps) {
+export function FormHeader({ progressPercent, submitted, formCode, formTitle }: FormHeaderProps) {
   const pct = submitted ? 100 : progressPercent;
 
   return (
     <header className="w-full max-w-2xl flex items-center justify-between gap-4">
       {/* brand */}
       <div className="flex items-center gap-2 min-w-0">
-        <Image
-          src="/logo.svg"
-          alt=""
-          width={20}
-          height={20}
-          className="object-contain shrink-0"
-        />
+        <Image src="/logo.svg" alt="" width={20} height={20} className="object-contain shrink-0" />
         <span className="cf-display text-[16px] leading-none text-[color:var(--cf-ink)] truncate">
           {formTitle || "CanvasFlow"}
         </span>
@@ -45,9 +34,7 @@ export function FormHeader({
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-          {formCode}
-        </span>
+        <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{formCode}</span>
       </div>
     </header>
   );

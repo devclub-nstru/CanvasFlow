@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  ArrowUpRight,
-  Building2,
-  Check,
-  Flame,
-  Sparkles,
-  User,
-  Zap,
-} from "lucide-react";
+import { ArrowUpRight, Building2, Check, Flame, Sparkles, User, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 interface Plan {
@@ -134,17 +126,14 @@ export default function PricingPage() {
       <div className="text-center space-y-5 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)]">
           <Sparkles className="size-3 text-[color:var(--cf-orange)]" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Plans
-          </span>
+          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Plans</span>
         </div>
         <h1 className="cf-display text-[40px] sm:text-[52px] leading-[0.95]">
           Simple, transparent pricing
         </h1>
         <p className="text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-          Start free. Upgrade when you outgrow it. Every plan includes durable
-          data keys, real-time analytics, and unlimited respondents — only your
-          monthly submissions and form count scale.
+          Start free. Upgrade when you outgrow it. Every plan includes durable data keys, real-time
+          analytics, and unlimited respondents — only your monthly submissions and form count scale.
         </p>
       </div>
 
@@ -237,17 +226,13 @@ export default function PricingPage() {
                     isCurrent
                       ? "bg-[color:var(--cf-ink)] text-white"
                       : isFree
-                      ? plan.popular
-                        ? "bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white"
-                        : "ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)]"
-                      : "ring-1 ring-[color:var(--cf-line)] bg-transparent text-[color:var(--cf-ink-soft)]"
+                        ? plan.popular
+                          ? "bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white"
+                          : "ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)]"
+                        : "ring-1 ring-[color:var(--cf-line)] bg-transparent text-[color:var(--cf-ink-soft)]"
                   }`}
                 >
-                  {isCurrent
-                    ? "Current plan"
-                    : isFree
-                    ? "Select plan"
-                    : "Coming soon"}
+                  {isCurrent ? "Current plan" : isFree ? "Select plan" : "Coming soon"}
                   {isFree && !isCurrent && (
                     <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   )}
@@ -261,9 +246,7 @@ export default function PricingPage() {
       {/* ───── compare strip ───── */}
       <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1.5">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            Built into every plan
-          </p>
+          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Built into every plan</p>
           <h3 className="cf-display text-[20px] leading-tight">
             The same canvas, the same data layer
           </h3>
@@ -288,9 +271,7 @@ export default function PricingPage() {
       <div className="space-y-5">
         <div className="text-center space-y-2 max-w-md mx-auto">
           <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">FAQ</p>
-          <h2 className="cf-display text-[28px] leading-tight">
-            Common questions
-          </h2>
+          <h2 className="cf-display text-[28px] leading-tight">Common questions</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {FAQ.map((item, i) => (

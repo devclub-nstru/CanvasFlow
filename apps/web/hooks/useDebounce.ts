@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Returns a value that updates only after `delay` ms have passed without
@@ -12,14 +12,14 @@ import { useEffect, useRef, useState } from "react"
  *   // expensive operation reads `debouncedQuery`, controlled input reads `query`
  */
 export function useDebounce<T>(value: T, delay = 200): T {
-    const [debounced, setDebounced] = useState(value)
+  const [debounced, setDebounced] = useState(value);
 
-    useEffect(() => {
-        const handle = window.setTimeout(() => setDebounced(value), delay)
-        return () => window.clearTimeout(handle)
-    }, [value, delay])
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(handle);
+  }, [value, delay]);
 
-    return debounced
+  return debounced;
 }
 
 /**
@@ -31,28 +31,28 @@ export function useDebounce<T>(value: T, delay = 200): T {
  * after the component goes away.
  */
 export function useDebouncedCallback<TArgs extends unknown[]>(
-    callback: (...args: TArgs) => void,
-    delay = 200
+  callback: (...args: TArgs) => void,
+  delay = 200,
 ): (...args: TArgs) => void {
-    const callbackRef = useRef(callback)
-    const timerRef = useRef<number | null>(null)
+  const callbackRef = useRef(callback);
+  const timerRef = useRef<number | null>(null);
 
-    // Always invoke the latest version of the callback without forcing
-    // consumers to memo it.
-    useEffect(() => {
-        callbackRef.current = callback
-    }, [callback])
+  // Always invoke the latest version of the callback without forcing
+  // consumers to memo it.
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
-    useEffect(() => {
-        return () => {
-            if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-        }
-    }, [])
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
-    return (...args: TArgs) => {
-        if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-        timerRef.current = window.setTimeout(() => {
-            callbackRef.current(...args)
-        }, delay)
-    }
+  return (...args: TArgs) => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      callbackRef.current(...args);
+    }, delay);
+  };
 }

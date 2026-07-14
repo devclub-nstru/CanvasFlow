@@ -5,4 +5,3 @@ export * from "./models/form-submission";
 export * from "./models/form-view";
 export * from "./models/form-field-view";
 export * from "./models/form-collaborator";
-

@@ -15,20 +15,17 @@ import { motion } from "motion/react";
 const ARTICLES = [
   {
     eyebrow: "Why CanvasFlow",
-    body:
-      "Most form tools force a tradeoff between a tidy linear builder and the messy reality of branching logic. CanvasFlow keeps both in one warm, visual canvas.",
+    body: "Most form tools force a tradeoff between a tidy linear builder and the messy reality of branching logic. CanvasFlow keeps both in one warm, visual canvas.",
     img: "/new-image-4.png",
   },
   {
     eyebrow: "The brittle stack",
-    body:
-      "Renaming a field shouldn't break your webhooks. CanvasFlow locks every field to an immutable key the moment it's created, so your data layer stays stable forever.",
+    body: "Renaming a field shouldn't break your webhooks. CanvasFlow locks every field to an immutable key the moment it's created, so your data layer stays stable forever.",
     img: "/new-image-5.png",
   },
   {
     eyebrow: "One form at a time",
-    body:
-      "Every published form makes the studio more useful: shared field templates, reusable answer routes, and analytics that compound across your projects.",
+    body: "Every published form makes the studio more useful: shared field templates, reusable answer routes, and analytics that compound across your projects.",
     img: "/new-image-6.png",
   },
 ];
@@ -37,9 +34,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function ArticleTrio() {
   return (
-    <section
-      className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]"
-    >
+    <section className="relative bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]">
       <div className="mx-auto w-full max-w-[1320px] px-0 border-t border-[color:var(--cf-line)]">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           {ARTICLES.map((a, i) => (

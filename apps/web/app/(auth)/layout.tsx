@@ -30,16 +30,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="relative inline-flex items-center gap-3 z-10"
             aria-label="CanvasFlow home"
           >
-            <Image
-              src="/logo.svg"
-              alt=""
-              width={32}
-              height={32}
-              className="object-contain"
-            />
-            <span className="cf-display text-[22px] leading-none">
-              CanvasFlow
-            </span>
+            <Image src="/logo.svg" alt="" width={32} height={32} className="object-contain" />
+            <span className="cf-display text-[22px] leading-none">CanvasFlow</span>
           </Link>
 
           {/* big serif quote */}
@@ -50,8 +42,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <span className="block">in golden hour.</span>
             </h2>
             <p className="mt-5 max-w-sm text-[14.5px] leading-relaxed text-[color:var(--cf-ink-soft)]">
-              A studio for makers of beautiful data. Sketch on an open canvas,
-              ship durable forms, watch responses land in real time.
+              A studio for makers of beautiful data. Sketch on an open canvas, ship durable forms,
+              watch responses land in real time.
             </p>
           </div>
 

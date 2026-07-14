@@ -48,13 +48,9 @@ export default function DashboardPage() {
 
   // ── chart summary stats (for the strip above the chart) ──────────────
   const trendSummary = useMemo(() => {
-    if (trendData.length === 0)
-      return { total: 0, avgPerDay: 0, peakLabel: "—", peakCount: 0 };
+    if (trendData.length === 0) return { total: 0, avgPerDay: 0, peakLabel: "—", peakCount: 0 };
     const total = trendData.reduce((sum, d) => sum + d.count, 0);
-    const peak = trendData.reduce(
-      (best, d) => (d.count > best.count ? d : best),
-      trendData[0]!
-    );
+    const peak = trendData.reduce((best, d) => (d.count > best.count ? d : best), trendData[0]!);
     return {
       total,
       avgPerDay: total / trendData.length,
@@ -64,17 +60,14 @@ export default function DashboardPage() {
   }, [trendData]);
 
   // tick density per range: 7d shows all, 30d every 4th, 3m every ~8th
-  const xTickInterval =
-    activeRange.id === "7d" ? 0 : activeRange.id === "30d" ? 3 : 7;
+  const xTickInterval = activeRange.id === "7d" ? 0 : activeRange.id === "30d" ? 3 : 7;
 
   const totalSketches = stats?.totalSketches ?? 0;
   const publishedSketches = stats?.publishedSketches ?? 0;
   const totalResponses = stats?.totalResponses ?? 0;
   const responsesThisMonth = stats?.responsesThisMonth ?? 0;
   const activePercent =
-    totalSketches > 0
-      ? Math.round((publishedSketches / totalSketches) * 100)
-      : 0;
+    totalSketches > 0 ? Math.round((publishedSketches / totalSketches) * 100) : 0;
 
   const STATS = [
     {
@@ -103,8 +96,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const hasTrendData =
-    trendData.length > 0 && trendData.some((t) => t.count > 0);
+  const hasTrendData = trendData.length > 0 && trendData.some((t) => t.count > 0);
 
   return (
     <div className="space-y-10">
@@ -137,17 +129,11 @@ export default function DashboardPage() {
               className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] transition-shadow p-5"
             >
               <div className="flex items-start justify-between">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                  {stat.title}
-                </p>
+                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{stat.title}</p>
                 <Icon className="size-4 text-[color:var(--cf-orange)]" />
               </div>
-              <p className="mt-5 cf-display text-[40px] leading-none">
-                {stat.val}
-              </p>
-              <p className="mt-2 text-[12px] text-[color:var(--cf-ink-soft)]">
-                {stat.sub}
-              </p>
+              <p className="mt-5 cf-display text-[40px] leading-none">{stat.val}</p>
+              <p className="mt-2 text-[12px] text-[color:var(--cf-ink-soft)]">{stat.sub}</p>
             </div>
           );
         })}
@@ -157,9 +143,7 @@ export default function DashboardPage() {
       <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-[color:var(--cf-line)] flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-              Analytics
-            </p>
+            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Analytics</p>
             <h3 className="mt-2 cf-display text-[24px] sm:text-[28px] leading-tight">
               Response trends
             </h3>
@@ -191,22 +175,14 @@ export default function DashboardPage() {
 
         {/* mini summary row */}
         <div className="px-5 sm:px-6 py-4 border-b border-[color:var(--cf-line)] grid grid-cols-3 gap-4 sm:gap-8">
-          <SummaryMetric
-            label="Total in range"
-            value={trendSummary.total.toLocaleString()}
-          />
-          <SummaryMetric
-            label="Avg / day"
-            value={trendSummary.avgPerDay.toFixed(1)}
-          />
+          <SummaryMetric label="Total in range" value={trendSummary.total.toLocaleString()} />
+          <SummaryMetric label="Avg / day" value={trendSummary.avgPerDay.toFixed(1)} />
           <SummaryMetric
             label="Peak day"
             value={trendSummary.peakLabel}
             sub={
               trendSummary.peakCount > 0
-                ? `${trendSummary.peakCount} response${
-                    trendSummary.peakCount === 1 ? "" : "s"
-                  }`
+                ? `${trendSummary.peakCount} response${trendSummary.peakCount === 1 ? "" : "s"}`
                 : undefined
             }
           />
@@ -219,21 +195,16 @@ export default function DashboardPage() {
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[color:var(--cf-cream)] flex items-center justify-center ring-1 ring-[color:var(--cf-line)]">
                   <Inbox className="size-5 text-[color:var(--cf-orange)]" />
                 </div>
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-                  Awaiting data
-                </p>
+                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Awaiting data</p>
                 <p className="mt-3 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-                  Publish your first form to start collecting responses and
-                  watch trends light up here.
+                  Publish your first form to start collecting responses and watch trends light up
+                  here.
                 </p>
               </div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={trendData}
-                margin={{ top: 24, right: 24, left: 4, bottom: 12 }}
-              >
+              <AreaChart data={trendData} margin={{ top: 24, right: 24, left: 4, bottom: 12 }}>
                 <defs>
                   <linearGradient id="cf-trend-gradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#f66f00" stopOpacity={0.32} />
@@ -280,10 +251,8 @@ export default function DashboardPage() {
                           {label}
                         </p>
                         <p className="mt-1 text-[13px] font-medium text-[color:var(--cf-ink)] tabular-nums">
-                          <span className="text-[color:var(--cf-orange)]">
-                            {count}
-                          </span>{" "}
-                          response{count === 1 ? "" : "s"}
+                          <span className="text-[color:var(--cf-orange)]">{count}</span> response
+                          {count === 1 ? "" : "s"}
                         </p>
                       </div>
                     );
@@ -313,9 +282,7 @@ export default function DashboardPage() {
         <div className="flex justify-between items-end pb-3 border-b border-[color:var(--cf-line)]">
           <div>
             <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Recent</p>
-            <h3 className="mt-2 cf-display text-[24px] sm:text-[28px] leading-tight">
-              Forms
-            </h3>
+            <h3 className="mt-2 cf-display text-[24px] sm:text-[28px] leading-tight">Forms</h3>
           </div>
           <Link
             href="/dashboard/sketches"
@@ -347,9 +314,7 @@ export default function DashboardPage() {
                     <FileText className="size-4 text-[color:var(--cf-orange)]" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="cf-display text-[18px] leading-tight truncate">
-                      {item.title}
-                    </h4>
+                    <h4 className="cf-display text-[18px] leading-tight truncate">{item.title}</h4>
                     <p className="text-[12px] text-[color:var(--cf-ink-soft)] mt-0.5">
                       {item.isPublished ? "Published" : "Draft"}
                       <span className="mx-1.5">·</span>
@@ -362,9 +327,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-[12px] font-mono text-[color:var(--cf-ink-soft)] shrink-0">
-                  <span className="text-[color:var(--cf-ink)]">
-                    {item.submissionsCount}
-                  </span>
+                  <span className="text-[color:var(--cf-ink)]">{item.submissionsCount}</span>
                   <span>resp.</span>
                   <ArrowUpRight className="size-3.5 text-[color:var(--cf-ink-soft)] group-hover:text-[color:var(--cf-orange)] transition-colors" />
                 </div>
@@ -390,15 +353,7 @@ export default function DashboardPage() {
 
 /* ─── chart summary metric ──────────────────────────────────────────── */
 
-function SummaryMetric({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
+function SummaryMetric({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="min-w-0">
       <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{label}</p>
@@ -406,9 +361,7 @@ function SummaryMetric({
         {value}
       </p>
       {sub && (
-        <p className="mt-1 text-[11px] font-mono text-[color:var(--cf-ink-soft)] truncate">
-          {sub}
-        </p>
+        <p className="mt-1 text-[11px] font-mono text-[color:var(--cf-ink-soft)] truncate">{sub}</p>
       )}
     </div>
   );

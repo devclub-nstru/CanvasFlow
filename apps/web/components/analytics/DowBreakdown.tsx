@@ -22,12 +22,8 @@ export function DowBreakdown({ dowBreakdown }: DowBreakdownProps) {
     <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 min-h-[260px] flex flex-col">
       <div>
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Cadence</p>
-        <h4 className="mt-2 cf-display text-[20px] leading-tight">
-          Day of week
-        </h4>
-        <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">
-          When do people respond?
-        </p>
+        <h4 className="mt-2 cf-display text-[20px] leading-tight">Day of week</h4>
+        <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">When do people respond?</p>
       </div>
       <div className="flex-1 w-full min-h-[160px] mt-4">
         <ResponsiveContainer width="100%" height="100%">

@@ -8,15 +8,7 @@ interface TrafficSourcesProps {
   utmSources: Array<{ source: string; count: number }>;
 }
 
-function SourceBar({
-  label,
-  count,
-  max,
-}: {
-  label: string;
-  count: number;
-  max: number;
-}) {
+function SourceBar({ label, count, max }: { label: string; count: number; max: number }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div className="space-y-1.5">
@@ -36,10 +28,7 @@ function SourceBar({
   );
 }
 
-export function TrafficSources({
-  topReferrers,
-  utmSources,
-}: TrafficSourcesProps) {
+export function TrafficSources({ topReferrers, utmSources }: TrafficSourcesProps) {
   const refMax = Math.max(...topReferrers.map((r) => r.count), 1);
   const utmMax = Math.max(...utmSources.map((u) => u.count), 1);
   const hasReferrers = topReferrers.length > 0;
@@ -49,12 +38,9 @@ export function TrafficSources({
     return (
       <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
         <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Traffic</p>
-        <h4 className="mt-2 cf-display text-[20px] leading-tight">
-          Traffic sources
-        </h4>
+        <h4 className="mt-2 cf-display text-[20px] leading-tight">Traffic sources</h4>
         <p className="mt-2 text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-          No referrer data yet. Attribution is collected when visitors open the
-          form via a link.
+          No referrer data yet. Attribution is collected when visitors open the form via a link.
         </p>
       </div>
     );
@@ -68,17 +54,10 @@ export function TrafficSources({
             <Globe className="size-4 text-[color:var(--cf-orange)]" />
             <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Referrers</p>
           </div>
-          <h4 className="cf-display text-[20px] leading-tight">
-            Top referrers
-          </h4>
+          <h4 className="cf-display text-[20px] leading-tight">Top referrers</h4>
           <div className="mt-5 space-y-3">
             {topReferrers.map((r, i) => (
-              <SourceBar
-                key={i}
-                label={r.referrer}
-                count={r.count}
-                max={refMax}
-              />
+              <SourceBar key={i} label={r.referrer} count={r.count} max={refMax} />
             ))}
           </div>
         </div>
@@ -93,12 +72,7 @@ export function TrafficSources({
           <h4 className="cf-display text-[20px] leading-tight">UTM sources</h4>
           <div className="mt-5 space-y-3">
             {utmSources.map((u, i) => (
-              <SourceBar
-                key={i}
-                label={u.source}
-                count={u.count}
-                max={utmMax}
-              />
+              <SourceBar key={i} label={u.source} count={u.count} max={utmMax} />
             ))}
           </div>
         </div>

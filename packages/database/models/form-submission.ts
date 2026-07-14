@@ -1,20 +1,34 @@
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
-import { sql } from 'drizzle-orm'
-import { formsTable } from './form'
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { formsTable } from "./form";
 
 export interface FormSubmissionValue {
-    formFieldId: string
-    value: any
+  formFieldId: string;
+  value: any;
 }
 
-export type FormSubmissionValueRow = FormSubmissionValue[]
+export type FormSubmissionValueRow = FormSubmissionValue[];
 
-export const formSubmissionsTable = pgTable("form_submissions", {
+export const formSubmissionsTable = pgTable(
+  "form_submissions",
+  {
     id: uuid("id").primaryKey().defaultRandom(),
 
-    formId: uuid('form_id').references(() => formsTable.id, { onDelete: "cascade" }).notNull(),
+    formId: uuid("form_id")
+      .references(() => formsTable.id, { onDelete: "cascade" })
+      .notNull(),
 
-    values: jsonb('values').$type<FormSubmissionValueRow>().notNull(),
+    values: jsonb("values").$type<FormSubmissionValueRow>().notNull(),
 
     // Idempotency key supplied by the client (UUID generated when the
     // submit form mounts). When present, the server rejects duplicate
@@ -38,19 +52,21 @@ export const formSubmissionsTable = pgTable("form_submissions", {
     utmCampaign: varchar("utm_campaign", { length: 255 }),
     timeSpentMs: integer("time_spent_ms"), // ms from page load to submit
 
-    createdAt: timestamp('created_at').defaultNow().notNull()
-}, (table) => ({
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
     formCreatedIdx: index("form_submissions_form_created_idx").on(table.formId, table.createdAt),
     // Partial unique index on (form_id, idempotency_key) so the constraint
     // only applies when an idempotency key is actually supplied.
     formIdempotencyIdx: uniqueIndex("form_submissions_form_idempotency_idx")
-        .on(table.formId, table.idempotencyKey)
-        .where(sql`${table.idempotencyKey} IS NOT NULL`),
+      .on(table.formId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} IS NOT NULL`),
     // Partial unique index on (form_id, visitor_id). Enforces the
     // "one submission per visitor" rule at the database level so two
     // racing inserts can't both squeak through the application-level
     // check. NULL visitor_ids (no localStorage available) are exempt.
     formVisitorIdx: uniqueIndex("form_submissions_form_visitor_idx")
-        .on(table.formId, table.visitorId)
-        .where(sql`${table.visitorId} IS NOT NULL`),
-}))
+      .on(table.formId, table.visitorId)
+      .where(sql`${table.visitorId} IS NOT NULL`),
+  }),
+);

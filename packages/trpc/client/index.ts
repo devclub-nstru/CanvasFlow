@@ -8,4 +8,3 @@ export type RouterInputs = inferRouterInputs<ServerRouter>;
 export type { ServerRouter } from "../server";
 
 export * from "@trpc/client";
-

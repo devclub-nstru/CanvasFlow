@@ -21,9 +21,8 @@ export function NetworkSection({ isLoggedIn }: { isLoggedIn: boolean }) {
           <span className="block">the studio stronger</span>
         </h2>
         <p className="mx-auto mt-5 sm:mt-6 max-w-xl text-[14px] sm:text-[15px] leading-relaxed text-[color:var(--cf-ink-soft)]">
-          CanvasFlow forms generate, store, and share fields locally to your
-          workspace. Together they form a studio that scales with every new
-          template and route you publish.
+          CanvasFlow forms generate, store, and share fields locally to your workspace. Together
+          they form a studio that scales with every new template and route you publish.
         </p>
         <Link
           href={isLoggedIn ? "/dashboard" : "/signUp"}
