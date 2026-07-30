@@ -18,19 +18,19 @@ const PLATFORM_GROUPS: { heading: string; items: NavLinkItem[] }[] = [
   {
     heading: 'Products',
     items: [
-      { title: 'Field library', desc: 'Twelve field types, drag to reorder, edit inline', href: '#fields' },
-      { title: 'Visual form canvas', desc: 'Build, set required fields, and publish on one surface', href: '#canvas' },
-      { title: 'Response analytics', desc: 'Live dashboards the moment answers start landing', href: '#analytics' },
-      { title: 'Response stream', desc: 'Every submission in a table you can export', href: '#responses' },
+      { title: 'Field library', desc: 'Twelve field types, drag to reorder, edit inline', href: '/#fields' },
+      { title: 'Visual form canvas', desc: 'Build, set required fields, and publish on one surface', href: '/#canvas' },
+      { title: 'Response analytics', desc: 'Live dashboards the moment answers start landing', href: '/#analytics' },
+      { title: 'Response stream', desc: 'Every submission in a table you can export', href: '/#responses' },
     ],
   },
   {
     heading: 'Capabilities',
     items: [
-      { title: 'One question at a time', desc: 'A focused flow with a progress bar and inline validation', href: '#how-it-works' },
-      { title: 'Share by link or QR', desc: 'Publish, copy the link, or hand over a QR code', href: '#responses' },
-      { title: 'CSV export', desc: 'Take every response with you whenever you want', href: '#analytics' },
-      { title: 'Access controls', desc: 'Close a form, set an expiry, or cap submissions', href: '#faq' },
+      { title: 'One question at a time', desc: 'A focused flow with a progress bar and inline validation', href: '/#how-it-works' },
+      { title: 'Share by link or QR', desc: 'Publish, copy the link, or hand over a QR code', href: '/#responses' },
+      { title: 'CSV export', desc: 'Take every response with you whenever you want', href: '/#analytics' },
+      { title: 'Access controls', desc: 'Close a form, set an expiry, or cap submissions', href: '/#faq' },
     ],
   },
 ];
@@ -38,19 +38,21 @@ const PLATFORM_GROUPS: { heading: string; items: NavLinkItem[] }[] = [
 const PLATFORM_PROMO = {
   title: 'Build together',
   desc: 'Invite teammates with per-area roles and hand over ownership',
-  href: '#collaborate',
+  href: '/#collaborate',
 };
 
 const SOLUTIONS_ITEMS: NavLinkItem[] = [
-  { title: 'For product teams', desc: 'User research and feedback loops', href: '#how-it-works' },
-  { title: 'For marketing', desc: 'Lead capture and qualification', href: '#how-it-works' },
-  { title: 'For customer success', desc: 'Satisfaction ratings and follow-ups', href: '#analytics' },
+  { title: 'For product teams', desc: 'User research and feedback loops', href: '/#how-it-works' },
+  { title: 'For marketing', desc: 'Lead capture and qualification', href: '/#how-it-works' },
+  { title: 'For customer success', desc: 'Satisfaction ratings and follow-ups', href: '/#analytics' },
 ];
 
 const RESOURCES_ITEMS: NavLinkItem[] = [
-  { title: 'Documentation', desc: 'Learn how to integrate and build', href: '#how-it-works' },
+  { title: 'Documentation', desc: 'A guide to every feature', href: '/docs' },
+  { title: 'Learn more', desc: 'Every capability, end to end', href: '/learn-more' },
+  { title: 'About', desc: 'Why CanvasFlow exists', href: '/about' },
   { title: 'Your forms', desc: 'Jump back into a draft', href: '/dashboard/sketches' },
-  { title: 'FAQ', desc: 'The short answers, fast', href: '#faq' },
+  { title: 'FAQ', desc: 'The short answers, fast', href: '/#faq' },
 ];
 
 interface NavItemProps {
@@ -280,7 +282,7 @@ const Navbar = () => {
               <SimpleDropdown items={SOLUTIONS_ITEMS} />
             </NavItem>
 
-            <Link href="#faq" className="text-[14px] font-medium transition-colors hover:text-foreground" style={{ color: 'var(--hex-ink-soft)' }}>
+            <Link href="/#faq" className="text-[14px] font-medium transition-colors hover:text-foreground" style={{ color: 'var(--hex-ink-soft)' }}>
               Enterprise
             </Link>
           </div>
@@ -353,7 +355,7 @@ const Navbar = () => {
               <MobileSection label="Resources" items={RESOURCES_ITEMS} onNavigate={closeMenu} />
 
               <Link
-                href="#faq"
+                href="/#faq"
                 onClick={closeMenu}
                 className="block border-b hex-line-soft py-4 text-[15px] font-medium text-foreground"
                 style={{ borderBottomWidth: 1 }}

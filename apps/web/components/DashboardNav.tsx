@@ -6,8 +6,8 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  ChevronRight,
   Compass,
-  LogOut,
   Menu,
   PencilRuler,
   Plus,
@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
-import { useGetLoggedInUserInfo, useSignOut } from "~/hooks/api/auth";
+import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
+import { useGetMe } from "~/hooks/api/user";
+import { avatarSeed, GlyphAvatar, resolvePreset } from "~/components/profile/GlyphAvatar";
 
 /**
  * Dashboard top navigation.
@@ -38,25 +40,20 @@ export default function DashboardNav() {
   const pathname = usePathname();
   const { openCreateFormModal } = useDashboard();
   const { userInfo } = useGetLoggedInUserInfo();
-  const { signOutAsync } = useSignOut();
+  // The avatar preset lives on the user row, which the better-auth session
+  // doesn't carry. Cached for 5 minutes and shared with the profile page
+  // through the react-query cache, so this is not a second network trip.
+  const { me } = useGetMe();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
 
-  const handleLogout = async () => {
-    await signOutAsync();
-    window.location.href = "/";
-  };
+  // `getMe` reads the user row and wins where the two disagree: the session's
+  // `name` is blank for social sign-ups, and it never reflects a rename made on
+  // the profile page until the session is refreshed.
+  const fullName = me?.name || userInfo?.fullName || "";
+  const email = me?.email || userInfo?.email || "";
 
-  const fullName = userInfo?.fullName ?? "";
-  const email = userInfo?.email ?? "";
-  const initials =
-    fullName
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "?";
+  const seed = avatarSeed(me ?? userInfo);
+  const avatarPreset = resolvePreset(me?.image, seed);
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
@@ -114,25 +111,27 @@ export default function DashboardNav() {
               New form
             </button>
 
-            <div
-              className="ml-1 flex size-8 shrink-0 items-center justify-center border text-[10px] font-semibold"
-              style={{
-                borderColor: "var(--cf-line-strong)",
-                background: "var(--cf-ink)",
-                color: "var(--cf-cream)",
-              }}
-              title={email}
-            >
-              {initials}
-            </div>
+            {/* Way into the profile, carrying the same generated mark the
+                profile page shows. Initials were the obvious thing here, but
+                the session's `name` comes back empty for social sign-ups,
+                which left this rendering a bare "?".
 
-            <button
-              onClick={() => setConfirmLogout(true)}
-              aria-label="Log out"
-              className="cf-btn-outline size-8 shrink-0"
+                The avatar draws its own edge, so the wrapper contributes only
+                the active-state ring. */}
+            <Link
+              href="/dashboard/profile"
+              aria-label="Your profile"
+              aria-current={isActive("/dashboard/profile") ? "page" : undefined}
+              className="ml-1 flex shrink-0 transition-opacity hover:opacity-80"
+              style={
+                isActive("/dashboard/profile")
+                  ? { outline: "2px solid var(--cf-orange)", outlineOffset: 1 }
+                  : undefined
+              }
+              title={email ? `Your profile — ${email}` : "Your profile"}
             >
-              <LogOut className="size-4" />
-            </button>
+              <GlyphAvatar seed={seed} preset={avatarPreset} size={32} />
+            </Link>
           </div>
 
           {/* Mobile: the primary action stays reachable, everything else folds
@@ -184,22 +183,21 @@ export default function DashboardNav() {
                 );
               })}
 
+              {/* Signing out lives on the profile page now, so this row is
+                  purely the way there — full width, no trailing action. */}
               <div
-                className="mt-4 flex items-center justify-between border-t pt-4"
+                className="mt-4 border-t pt-4"
                 style={{ borderTopColor: "var(--cf-line)" }}
               >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div
-                    className="flex size-9 shrink-0 items-center justify-center border text-[11px] font-medium"
-                    style={{
-                      borderColor: "var(--cf-line-strong)",
-                      background: "var(--cf-ink)",
-                      color: "var(--cf-cream)",
-                    }}
-                  >
-                    {initials}
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full min-w-0 items-center gap-3"
+                >
+                  <div className="shrink-0">
+                    <GlyphAvatar seed={seed} preset={avatarPreset} size={36} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium">{fullName}</p>
                     <p
                       className="truncate text-[11px]"
@@ -208,53 +206,17 @@ export default function DashboardNav() {
                       {email}
                     </p>
                   </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setConfirmLogout(true);
-                  }}
-                  aria-label="Log out"
-                  className="cf-btn-outline size-8 shrink-0"
-                >
-                  <LogOut className="size-4" />
-                </button>
+                  <ChevronRight
+                    className="size-4 shrink-0"
+                    style={{ color: "var(--cf-ink-soft)" }}
+                    aria-hidden
+                  />
+                </Link>
               </div>
             </div>
           </div>
         )}
       </nav>
-
-      {confirmLogout && (
-        <div className="cf-scrim z-[100]">
-          <div className="cf-dark cf-crop w-full max-w-md">
-            <div className="relative z-[1] p-6 sm:p-8">
-              <p className="cf-dark-meta">Session</p>
-              <h3 className="cf-display mt-3 text-[26px] leading-none uppercase sm:text-[32px]">
-                Log out
-                <span style={{ color: "var(--cf-orange)" }}>.</span>
-              </h3>
-              <p
-                className="mt-3 mb-7 text-[13.5px] leading-relaxed"
-                style={{ color: "var(--cfd-text-soft)" }}
-              >
-                You&apos;ll be signed out of CanvasFlow.
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setConfirmLogout(false)}
-                  className="cf-dark-btn-outline px-4 py-2 text-[13px]"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleLogout} className="cf-btn px-5 py-2 text-[13px]">
-                  Log out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

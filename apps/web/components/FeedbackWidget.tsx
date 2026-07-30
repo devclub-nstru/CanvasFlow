@@ -1,10 +1,11 @@
 "use client";
 
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageSquareWarning, X, Send, Bug, MessageCircle, Lightbulb, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { env } from '~/env.js';
 import { useGetLoggedInUserInfo } from '~/hooks/api/auth';
+import { useSubmitFeedback } from '~/hooks/api/feedback';
 import { cn } from '~/lib/utils';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -36,13 +37,14 @@ const typeConfig: Record<ComplaintType, { label: string; description: string; ic
 };
 
 const FeedbackWidget = () => {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState<ComplaintType>('feedback');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
   const subjectRef = useRef<HTMLInputElement>(null);
   const { userInfo: user } = useGetLoggedInUserInfo();
+  const { submitFeedbackAsync, isPending: loading } = useSubmitFeedback();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,48 +64,52 @@ const FeedbackWidget = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!subject.trim() || !message.trim()) {
-      toast.error('Please fill in all fields');
+    // Mirrors the server's minimums so the caller gets told before the round
+    // trip. The server still enforces them — this is convenience, not a check.
+    if (subject.trim().length < 3) {
+      toast.error('Please add a subject (at least 3 characters)');
+      return;
+    }
+    if (message.trim().length < 10) {
+      toast.error('Please add a little more detail (at least 10 characters)');
       return;
     }
 
-    setLoading(true);
+    // Goes over tRPC like every other write in the app. This previously POSTed
+    // to `${API}/api/complaints`, which was never implemented — so the widget
+    // has been failing silently into a toast.
+    //
+    // `userId`, `userEmail`, `status` and `priority` used to be in this body.
+    // They're gone: identity is read from the session on the server (a client
+    // could otherwise file a report as any address it liked), and status and
+    // priority are triage fields the reporter has no business setting.
     try {
-      const apiBase = (env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/trpc$/, '');
-
-      const response = await fetch(`${apiBase}/api/complaints`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user?.id ?? null,
-          userEmail: user?.email ?? 'anonymous',
-          type,
-          subject: subject.trim(),
-          message: message.trim(),
-          status: 'open',
-          priority: type === 'bug' ? 'high' : 'medium',
-        }),
+      await submitFeedbackAsync({
+        type,
+        subject: subject.trim(),
+        message: message.trim(),
+        pageUrl: typeof window !== 'undefined' ? window.location.href : null,
       });
 
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      toast.success('Submitted successfully! We\'ll get back to you.');
+      toast.success("Thanks — we've got it.");
       setSubject('');
       setMessage('');
       setType('feedback');
       setIsOpen(false);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to submit. Please try again.');
-    } finally {
-      setLoading(false);
+      // Surface the server's message where there is one: it carries the real
+      // reason (too short, over the hourly cap) instead of a generic failure.
+      toast.error(err instanceof Error && err.message ? err.message : 'Failed to submit. Please try again.');
     }
   };
 
-  const canSubmit = Boolean(subject.trim() && message.trim()) && !loading;
+  const canSubmit = subject.trim().length >= 3 && message.trim().length >= 10 && !loading;
+
+  // Hidden while someone is filling out a form. `/forms/*` is the respondent's
+  // view of a form somebody else built — they aren't a CanvasFlow user, and a
+  // floating "report a bug in CanvasFlow" button there is both confusing and a
+  // distraction from the form they came to answer.
+  if (pathname?.startsWith('/forms/')) return null;
 
   return (
     <>

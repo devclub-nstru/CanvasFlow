@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
+import FeedbackWidget from "~/components/FeedbackWidget";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -55,7 +56,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
       >
-        <GlobalProviders>{children}</GlobalProviders>
+        <GlobalProviders>
+          {children}
+          {/* Mounted once at the root so the report button is available on every
+              screen. It needs the tRPC provider above it, and it hides itself
+              on /forms/* — see the component. */}
+          <FeedbackWidget />
+        </GlobalProviders>
       </body>
     </html>
   );

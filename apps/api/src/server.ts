@@ -78,27 +78,6 @@ app.use(
 
 app.use(cookieParser());
 
-/* ─── Rate limiting ────────────────────────────────────────────────────
- * Three tiers, each tuned for its threat model:
- *
- * 1. publicWriteLimiter   — narrow, IP-based. Guards public form-side
- *    endpoints (`recordView`, `recordFieldAnswer`, `submitForm`). These
- *    have no auth, so they're the easiest to abuse — a script could spam
- *    them and burn Neon storage/compute. 60 / minute per IP is generous
- *    enough for a classroom or office on shared NAT but tight enough to
- *    stop a single attacker.
- *
- * 2. authMutationLimiter — moderate, applies to authenticated tRPC calls.
- *    A signed-in user mashing buttons should still be allowed, but a
- *    stolen session token shouldn't be able to spam form creates.
- *
- * 3. authGlobalLimiter   — wide net on every /trpc request to catch
- *    pathological clients. Backstop, not primary defense.
- *
- * Stores are in-memory — fine for a single instance. If you ever scale
- * horizontally, swap in `rate-limit-redis` to share counts across nodes.
- * ────────────────────────────────────────────────────────────────────── */
-
 const publicWriteLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   max: 60,
@@ -124,7 +103,16 @@ const authGlobalLimiter = rateLimit({
 // Apply the public write limiter to the form-side write endpoints. tRPC's
 // HTTP path includes the procedure name, so we can match on it.
 app.use(
-  ["/trpc/analytics.recordView", "/trpc/analytics.recordFieldAnswer", "/trpc/form.submitForm"],
+  [
+    "/trpc/analytics.recordView",
+    "/trpc/analytics.recordFieldAnswer",
+    "/trpc/form.submitForm",
+    // The report widget is reachable without an account, so it needs the same
+    // IP ceiling as the other unauthenticated writes. The service adds a
+    // per-account hourly cap on top, which covers the case one attacker
+    // rotating IPs would otherwise slip through.
+    "/trpc/feedback.submitFeedback",
+  ],
   publicWriteLimiter,
 );
 

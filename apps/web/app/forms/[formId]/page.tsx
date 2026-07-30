@@ -270,7 +270,7 @@ export default function PublicFormPage() {
   const formCode = form.slug.substring(0, 7).toUpperCase();
 
   return (
-    <div className="cf-landing min-h-screen w-full bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] flex flex-col items-center px-6 sm:px-10 py-6 sm:py-8 relative overflow-hidden">
+    <div className="cf-landing cf-dotgrid relative flex min-h-screen w-full flex-col items-center overflow-hidden bg-[color:var(--cf-cream)] px-4 py-6 text-[color:var(--cf-ink)] sm:px-10 sm:py-8">
       <Noise />
       <style>{`
         @keyframes cf-card-in {
@@ -310,14 +310,47 @@ export default function PublicFormPage() {
         formTitle={form.title}
       />
 
-      <main className="w-full max-w-2xl flex-1 flex flex-col items-center justify-center py-10 sm:py-14">
+      <main className="flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-8 sm:py-12">
+        {/* Title block. The reference's thick left rule, which gives the form
+            a masthead instead of opening straight onto question one. Hidden
+            once submitted so the confirmation stands alone. */}
+        {!submitted && (
+          <div className="mb-8 w-full sm:mb-10">
+            <h1
+              className="cf-display border-l-4 pl-4 text-[26px] leading-[1.05] text-[color:var(--cf-ink)] sm:border-l-[6px] sm:pl-5 sm:text-[34px]"
+              style={{ borderLeftColor: "var(--cf-ink)" }}
+            >
+              {form.title}
+            </h1>
+            {form.description && (
+              <p className="mt-3 pl-4 text-[14.5px] leading-relaxed text-[color:var(--cf-ink-soft)] sm:pl-5">
+                {form.description}
+              </p>
+            )}
+          </div>
+        )}
+
         {submitted ? (
-          <FormThankYou siteRating={siteRating} setSiteRating={setSiteRating} />
+          <FormThankYou
+            siteRating={siteRating}
+            setSiteRating={setSiteRating}
+            fields={form.fields}
+            answers={answers}
+          />
         ) : totalQuestions === 0 ? (
-          <div className="w-full max-w-md text-center space-y-3 cf-animate-card">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Empty form</p>
-            <h3 className="cf-display text-[28px] leading-tight">Nothing to fill out yet</h3>
-            <p className="text-[14px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+          <div
+            className="cf-animate-card w-full max-w-md border p-8 text-center"
+            style={{
+              borderColor: "var(--cf-line-strong)",
+              background: "var(--cf-cream-2)",
+              boxShadow: "5px 5px 0 0 rgba(26, 29, 41, 0.08)",
+            }}
+          >
+            <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-[color:var(--cf-ink-soft)] uppercase">
+              Empty form
+            </p>
+            <h3 className="cf-display mt-4 text-[26px] leading-tight">Nothing to fill out yet</h3>
+            <p className="mt-3 text-[14px] leading-relaxed text-[color:var(--cf-ink-soft)]">
               The author hasn&apos;t added any questions to this form.
             </p>
           </div>

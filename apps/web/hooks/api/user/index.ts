@@ -24,6 +24,29 @@ export const useGetMe = () => {
   };
 };
 
+/**
+ * Updates the signed-in user's display name and/or avatar preset.
+ *
+ * Both `getMe` caches are refreshed from the mutation's own return value
+ * rather than by invalidating and refetching: the procedure returns the full
+ * updated user, so a round trip would only re-fetch what we already hold.
+ */
+export const useUpdateMe = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: updateMeAsync,
+    isPending,
+    error,
+  } = trpc.user.updateMe.useMutation({
+    onSuccess: (updated) => {
+      utils.user.getMe.setData(undefined, updated);
+    },
+  });
+
+  return { updateMeAsync, isPending, error };
+};
+
 export const useSearchUsers = (query: string) => {
   const trimmedQuery = query.trim();
   const {
