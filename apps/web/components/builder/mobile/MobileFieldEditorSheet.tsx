@@ -58,18 +58,24 @@ export function MobileFieldEditorSheet({
         className="absolute inset-0 bg-[color:var(--cf-ink)]/45 backdrop-blur-sm cursor-default"
       />
 
-      <div className="relative w-full bg-[color:var(--cf-cream-2)] rounded-t-2xl ring-1 ring-[color:var(--cf-line-strong)] max-h-[90vh] flex flex-col shadow-[0_-20px_60px_-20px_rgba(22,19,17,0.3)]">
+      <div
+        className="relative flex max-h-[90vh] w-full flex-col border-t-2 bg-[color:var(--cf-cream-2)]"
+        style={{ borderTopColor: "var(--cf-line-strong)" }}
+      >
         {/* grab handle */}
         <div className="flex justify-center pt-2.5 pb-1">
           <span className="h-1 w-10 rounded-full bg-[color:var(--cf-line-strong)]" />
         </div>
 
         {/* header */}
-        <div className="px-5 pt-2 pb-3 border-b border-[color:var(--cf-line)] flex items-start justify-between gap-3">
+        <div
+          className="flex items-start justify-between gap-3 border-b px-5 pt-2 pb-3"
+          style={{ borderBottomColor: "var(--cf-line-strong)" }}
+        >
           <div className="min-w-0">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Edit field</p>
+            <p className="cf-meta">Edit field</p>
             <div className="mt-1.5 flex items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] px-2 py-0.5 rounded-full">
+              <div className="inline-flex items-center gap-1.5 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-2 py-0.5">
                 <FieldIcon className="size-3 text-[color:var(--cf-orange)]" />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)]">
                   {selectedField.type.replace("_", " ").toLowerCase()}
@@ -80,7 +86,7 @@ export function MobileFieldEditorSheet({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 -mr-1 rounded-md text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors"
+            className="-mr-1 p-2 text-[color:var(--cf-ink-soft)] transition-colors hover:text-[color:var(--cf-ink)]"
           >
             <X className="size-4" />
           </button>
@@ -92,20 +98,23 @@ export function MobileFieldEditorSheet({
         </div>
 
         {/* footer */}
-        <div className="px-5 py-3 border-t border-[color:var(--cf-line)] flex items-center gap-2 bg-[color:var(--cf-cream-2)]">
+        <div
+          className="flex items-center gap-2 border-t bg-[color:var(--cf-cream-2)] px-5 py-3"
+          style={{ borderTopColor: "var(--cf-line-strong)" }}
+        >
           <button
             onClick={() => {
               handleDeleteField();
               onClose();
             }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 h-[42px] rounded-full ring-1 ring-[#c1281d]/30 text-[#c1281d] active:bg-[#c1281d]/8 text-[13px] font-medium transition-all"
+            className="cf-btn-danger h-[42px] flex-1 text-[13px]"
           >
             <Trash2 className="size-3.5" />
             Remove
           </button>
           <button
             onClick={onClose}
-            className="flex-1 inline-flex items-center justify-center h-[42px] rounded-full bg-[color:var(--cf-ink)] active:bg-black text-white text-[13px] font-medium transition-colors"
+            className="cf-btn cf-press inline-flex h-[42px] flex-1 items-center justify-center text-[13px]"
           >
             Done
           </button>

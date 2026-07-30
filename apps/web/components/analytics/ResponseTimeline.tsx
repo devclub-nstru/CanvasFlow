@@ -10,6 +10,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { CHROME, SEMANTIC } from "./palette";
+
 interface TrendPoint {
   date: string;
   count: number;
@@ -47,20 +49,20 @@ export function ResponseTimeline({ totalResponses, trends }: ResponseTimelinePro
             <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
               <defs>
                 <linearGradient id="rt-gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f66f00" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="#f66f00" stopOpacity={0} />
+                  <stop offset="0%" stopColor={SEMANTIC.accent} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={SEMANTIC.accent} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="name"
-                stroke="#56504a"
+                stroke={CHROME.axis}
                 opacity={0.5}
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                stroke="#56504a"
+                stroke={CHROME.axis}
                 opacity={0.5}
                 tick={{ fontSize: 11 }}
                 tickLine={false}
@@ -69,19 +71,19 @@ export function ResponseTimeline({ totalResponses, trends }: ResponseTimelinePro
               />
               <ChartTooltip
                 contentStyle={{
-                  background: "var(--cf-cream)",
-                  border: "1px solid rgba(22,19,17,0.14)",
-                  borderRadius: "8px",
-                  color: "#161311",
+                  background: "#fff",
+                  border: `1px solid ${CHROME.ink}`,
+                  borderRadius: 0,
+                  color: CHROME.ink,
                   fontSize: 12,
-                  boxShadow: "0 10px 30px -12px rgba(22,19,17,0.18)",
+                  boxShadow: `4px 4px 0 0 ${CHROME.grid}`,
                 }}
-                cursor={{ stroke: "#f66f00", strokeOpacity: 0.3, strokeWidth: 1 }}
+                cursor={{ stroke: SEMANTIC.accent, strokeOpacity: 0.3, strokeWidth: 1 }}
               />
               <Area
                 type="monotone"
                 dataKey="Responses"
-                stroke="#f66f00"
+                stroke={SEMANTIC.accent}
                 strokeWidth={2.5}
                 fill="url(#rt-gradient)"
               />

@@ -2,9 +2,14 @@ import { trpc } from "~/trpc/client";
 
 /**
  * Fetches all free-tier analytics metrics for a single form.
- * Returns: totalResponses, totalViews, completionRate, deviceViews,
- *          dailyTrends (30d), hourlyDistribution, peakHour, peakDay,
- *          avgSubmissionsPerDay, avgSubmissionsPerWeek.
+ *
+ * Returns exactly: totalResponses, totalViews, completionRate, deviceViews,
+ * dailyTrends (30d), peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek.
+ *
+ * This list previously also claimed `hourlyDistribution` and `peakHour`. The
+ * service returns neither — see getFormAnalytics in packages/services/analytics.
+ * Do not build an hour-of-day chart on this hook without adding them there
+ * first.
  */
 export const useGetFormAnalytics = (formId: string) => {
   const {

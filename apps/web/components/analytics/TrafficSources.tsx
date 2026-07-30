@@ -1,80 +1,81 @@
 "use client";
 
 import React from "react";
-import { Globe, Tag } from "lucide-react";
+import { Globe } from "lucide-react";
+
+import { seriesColor } from "./palette";
 
 interface TrafficSourcesProps {
   topReferrers: Array<{ referrer: string; count: number }>;
-  utmSources: Array<{ source: string; count: number }>;
 }
 
-function SourceBar({ label, count, max }: { label: string; count: number; max: number }) {
-  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between items-center text-[12px] gap-3">
-        <span className="text-[color:var(--cf-ink)] truncate">{label}</span>
-        <span className="font-mono text-[color:var(--cf-ink-soft)] tabular-nums shrink-0">
-          {count}
-        </span>
-      </div>
-      <div className="h-1.5 bg-[color:var(--cf-cream)] rounded-full overflow-hidden ring-1 ring-[color:var(--cf-line)]">
-        <div
-          className="h-full rounded-full bg-[color:var(--cf-orange)] transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-export function TrafficSources({ topReferrers, utmSources }: TrafficSourcesProps) {
-  const refMax = Math.max(...topReferrers.map((r) => r.count), 1);
-  const utmMax = Math.max(...utmSources.map((u) => u.count), 1);
-  const hasReferrers = topReferrers.length > 0;
-  const hasUtm = utmSources.length > 0;
-
-  if (!hasReferrers && !hasUtm) {
-    return (
-      <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Traffic</p>
-        <h4 className="mt-2 cf-display text-[20px] leading-tight">Traffic sources</h4>
-        <p className="mt-2 text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-          No referrer data yet. Attribution is collected when visitors open the form via a link.
-        </p>
-      </div>
-    );
-  }
+export function TrafficSources({ topReferrers }: TrafficSourcesProps) {
+  const max = Math.max(...topReferrers.map((r) => r.count), 1);
+  const total = topReferrers.reduce((sum, r) => sum + r.count, 0);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      {hasReferrers && (
-        <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <Globe className="size-4 text-[color:var(--cf-orange)]" />
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Referrers</p>
+    <div className="cf-panel p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <Globe className="size-4" style={{ color: "var(--cf-orange)" }} />
+            <p className="cf-meta">Referrers</p>
           </div>
-          <h4 className="cf-display text-[20px] leading-tight">Top referrers</h4>
-          <div className="mt-5 space-y-3">
-            {topReferrers.map((r, i) => (
-              <SourceBar key={i} label={r.referrer} count={r.count} max={refMax} />
-            ))}
-          </div>
+          <h4 className="cf-display text-[18px] leading-tight">Where responses came from</h4>
         </div>
-      )}
+        {total > 0 && (
+          <div className="shrink-0 text-right">
+            <p className="cf-display text-[20px] leading-none tabular-nums">
+              {total.toLocaleString()}
+            </p>
+            <p className="cf-meta mt-1">attributed</p>
+          </div>
+        )}
+      </div>
 
-      {hasUtm && (
-        <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <Tag className="size-4 text-[color:var(--cf-orange)]" />
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Campaigns</p>
-          </div>
-          <h4 className="cf-display text-[20px] leading-tight">UTM sources</h4>
-          <div className="mt-5 space-y-3">
-            {utmSources.map((u, i) => (
-              <SourceBar key={i} label={u.source} count={u.count} max={utmMax} />
-            ))}
-          </div>
+      {topReferrers.length === 0 ? (
+        <p className="mt-5 text-[13px] leading-relaxed" style={{ color: "var(--cf-ink-soft)" }}>
+          No referrer data yet. Attribution is recorded when someone opens the form from a link.
+        </p>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {topReferrers.map((r, i) => {
+            const barPct = (r.count / max) * 100;
+            const sharePct = total > 0 ? (r.count / total) * 100 : 0;
+            return (
+              <div key={r.referrer} className="flex items-center gap-3">
+                <span
+                  className="cf-meta w-5 shrink-0 tabular-nums"
+                  style={{ color: "var(--cf-ink-muted)" }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-[12.5px]" title={r.referrer}>
+                      {r.referrer}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums">
+                      {r.count.toLocaleString()}
+                      <span className="ml-1.5" style={{ color: "var(--cf-ink-soft)" }}>
+                        {sharePct.toFixed(0)}%
+                      </span>
+                    </span>
+                  </div>
+                  <div
+                    className="mt-1.5 h-2 overflow-hidden"
+                    style={{ background: "var(--cf-line)" }}
+                  >
+                    <div
+                      className="h-full transition-all duration-500"
+                      style={{ width: `${barPct}%`, background: seriesColor(i) }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

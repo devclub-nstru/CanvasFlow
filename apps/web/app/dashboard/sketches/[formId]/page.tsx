@@ -29,17 +29,23 @@ import {
   useDeleteForm,
 } from "~/hooks/api/form";
 import { useDashboard } from "~/providers/dashboard-provider";
+import { indexBetween, isBetween, parseIndex, formatIndex } from "~/lib/fractional-index";
+import { VerticalScale } from "~/components/Scale";
 import { nodeTypes, getFieldOptionsArray } from "~/components/builder/FormFieldNode";
 import { FieldSidebar } from "~/components/builder/FieldSidebar";
 import { FieldInspector } from "~/components/builder/FieldInspector";
-import { BuilderHeader } from "~/components/builder/BuilderHeader";
+import { BuilderHeader, type BuilderView } from "~/components/builder/BuilderHeader";
 import { UnsavedDialog } from "~/components/builder/UnsavedDialog";
 import { DeleteFormDialog } from "~/components/builder/DeleteFormDialog";
-import { MobileFieldList } from "~/components/builder/mobile/MobileFieldList";
+import { FieldOutline } from "~/components/builder/FieldOutline";
 import { MobileAddFieldSheet } from "~/components/builder/mobile/MobileAddFieldSheet";
 import { MobileFieldEditorSheet } from "~/components/builder/mobile/MobileFieldEditorSheet";
 import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
 import { FormSettingsDialog } from "~/components/builder/FormSettingsDialog";
+
+/* Preference is stored per user, not per form: someone who prefers the list
+   surface wants it for whatever they open next, not just this one form. */
+const VIEW_STORAGE_KEY = "canvasflow:builder-view";
 
 function BuilderCanvas() {
   const params = useParams();
@@ -230,11 +236,81 @@ function BuilderCanvas() {
     setDirtyIds((prev) => new Set(prev).add(id));
   }, []);
 
+  // Highest index across every local field, including ones pending deletion.
+  // Anything strictly above this is free in the table right now, which is what
+  // makes it safe both for appending and for the renumber fallback.
+  const localFieldsRef = useRef(localFields);
+  useEffect(() => {
+    localFieldsRef.current = localFields;
+  }, [localFields]);
+
+  const maxLocalIndex = useCallback(
+    () =>
+      localFieldsRef.current.reduce((m, f) => {
+        const v = parseIndex(f.index);
+        return Number.isFinite(v) && v > m ? v : m;
+      }, 0),
+    [],
+  );
+
+  // Patch several fields in one commit. Used by the renumber fallback, which
+  // has to move every field at once — doing that with N `updateLocal` calls
+  // would queue N separate state updates over the same array.
+  const updateManyLocal = useCallback((patches: Map<string, Partial<LocalField>>) => {
+    if (patches.size === 0) return;
+    setLocalFields((prev) =>
+      prev.map((f) => {
+        const patch = patches.get(f.id);
+        return patch ? { ...f, ...patch } : f;
+      }),
+    );
+    setDirtyIds((prev) => {
+      const next = new Set(prev);
+      for (const id of patches.keys()) next.add(id);
+      return next;
+    });
+  }, []);
+
   /* ─── React Flow state ─────────────────────────────────────────────── */
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
+
+  /* ─── Editing surface ──────────────────────────────────────────────────
+   *
+   * Canvas is the default. Below `lg` the choice doesn't exist — the canvas
+   * needs pointer drag-and-drop and room for three panes — so the list is
+   * forced there by CSS rather than by this state. That means `view` only
+   * decides what a large screen shows, and both trees stay mounted so
+   * switching (or resizing) never loses draft edits.
+   */
+  const [view, setView] = useState<BuilderView>("canvas");
+
+  // Restore the preference after mount rather than in the initial state:
+  // localStorage isn't available during SSR, and seeding from it would make
+  // the server and client markup disagree.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
+      if (saved === "canvas" || saved === "outline") setView(saved);
+      // The surface was briefly called "list" before it grew into a full
+      // three-pane outline; honour the old value rather than resetting.
+      else if (saved === "list") setView("outline");
+    } catch {
+      /* Private mode / storage disabled — the default is fine. */
+    }
+  }, []);
+
+  const handleViewChange = useCallback((next: BuilderView) => {
+    setView(next);
+
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+    } catch {
+      /* Non-fatal: the switch still applies for this session. */
+    }
+  }, []);
 
   // Inspector controlled inputs
   const [label, setLabel] = useState("");
@@ -256,8 +332,13 @@ function BuilderCanvas() {
       .filter((f) => !pendingDeletes.has(f.id))
       // Sort by fractional index so the edge order (and any index-based
       // fallback positions for unsaved fields) match the current logical
-      // sequence after a drag-reorder.
-      .sort((a, b) => parseFloat(String(a.index)) - parseFloat(String(b.index)));
+      // sequence after a drag-reorder. Same tiebreak as
+      // `visibleSortedFields`, so the canvas and the mobile list can't
+      // disagree about the order of two fields sharing an index.
+      .sort((a, b) => {
+        const d = parseIndex(a.index) - parseIndex(b.index);
+        return d !== 0 ? d : a.id.localeCompare(b.id);
+      });
     setNodes((prevNodes) => {
       const prevById = new Map(prevNodes.map((n) => [n.id, n]));
       return visible.map((field, idx) => {
@@ -339,9 +420,12 @@ function BuilderCanvas() {
         y: event.clientY,
       });
       const tempId = `new-${Date.now()}`;
-      const nextIndex = (localFields.filter((f) => !pendingDeletes.has(f.id)).length + 1).toFixed(
-        2,
-      );
+      // Append past the highest index across *all* local fields, including
+      // ones pending deletion. Two reasons this isn't a count of survivors:
+      // a count lands mid-list when indices aren't contiguous (1, 5, 9 -> 4),
+      // and a row pending deletion still occupies its index in the table
+      // until the save runs, where creates and deletes go out concurrently.
+      const nextIndex = formatIndex(maxLocalIndex() + 1);
       const newField = {
         id: tempId,
         formId,
@@ -365,7 +449,9 @@ function BuilderCanvas() {
       setDirtyIds((prev) => new Set(prev).add(tempId));
       setSelectedNodeId(tempId);
     },
-    [screenToFlowPosition, localFields, pendingDeletes, formId],
+    // `maxLocalIndex` reads a ref, so this no longer depends on `localFields`
+    // and the handler stops being rebuilt on every inspector keystroke.
+    [screenToFlowPosition, formId, maxLocalIndex],
   );
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
@@ -374,44 +460,89 @@ function BuilderCanvas() {
 
   const onPaneClick = useCallback(() => setSelectedNodeId(null), []);
 
+  /**
+   * Commit a drag: persist where the node landed, and re-index it if the drop
+   * changed its place in the vertical order.
+   *
+   * The canvas is read top to bottom, so y position *is* the order. Only the
+   * dragged field's index is written — that is the point of fractional
+   * indexing, and it's what keeps the save free of unique-constraint races,
+   * since every field is saved as an independent concurrent UPDATE.
+   */
   const onNodeDragStop = useCallback(
     (_event: any, node: Node) => {
       const currentField = localFields.find((f) => f.id === node.id);
       if (!currentField) return;
+
       const currentOpts =
         typeof currentField.options === "object" && currentField.options
-          ? currentField.options
+          ? (currentField.options as Record<string, any>)
           : {};
-      const sortedNodes = [...nodes];
-      const idx = sortedNodes.findIndex((n) => n.id === node.id);
-      if (idx !== -1) sortedNodes[idx] = { ...sortedNodes[idx]!, position: node.position };
-      sortedNodes.sort((a, b) => a.position.y - b.position.y);
-      const originalOrder = localFields.filter((f) => !pendingDeletes.has(f.id)).map((f) => f.id);
-      const newOrder = sortedNodes.map((n) => n.id);
-      const orderChanged = JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
+      const positionPatch = { options: { ...currentOpts, position: node.position } };
 
-      let newIndex: string = String(currentField.index);
-      if (orderChanged) {
-        const newIdx = sortedNodes.findIndex((n) => n.id === node.id);
-        if (newIdx === 0) {
-          const below = (sortedNodes[1]?.data as any)?.field;
-          if (below) newIndex = (parseFloat(below.index) / 2).toFixed(2);
-        } else if (newIdx === sortedNodes.length - 1) {
-          const above = (sortedNodes[newIdx - 1]?.data as any)?.field;
-          if (above) newIndex = (parseFloat(above.index) + 1.0).toFixed(2);
-        } else {
-          const above = (sortedNodes[newIdx - 1]?.data as any)?.field;
-          const below = (sortedNodes[newIdx + 1]?.data as any)?.field;
-          if (above && below)
-            newIndex = ((parseFloat(above.index) + parseFloat(below.index)) / 2).toFixed(2);
-        }
-      }
-      updateLocal(node.id, {
-        index: newIndex,
-        options: { ...(currentOpts as any), position: node.position },
+      const visible = localFields.filter((f) => !pendingDeletes.has(f.id));
+
+      // Live position per field, with the dragged node's final position
+      // substituted in — React Flow hasn't committed it to `nodes` yet at
+      // dragStop. Fields with no node yet (just added) fall back to their
+      // saved position.
+      const livePos = new Map(nodes.map((n) => [n.id, n.position]));
+      livePos.set(node.id, node.position);
+      const posOf = (f: LocalField) =>
+        livePos.get(f.id) ??
+        ((f.options as any)?.position as { x: number; y: number } | undefined) ?? { x: 0, y: 0 };
+
+      const ordered = [...visible].sort((a, b) => {
+        const pa = posOf(a);
+        const pb = posOf(b);
+        if (pa.y !== pb.y) return pa.y - pb.y;
+        // Nodes sitting on the same row used to sort arbitrarily, which made
+        // the order flip between drags. Break ties on x, then on the existing
+        // index, so the result is always deterministic.
+        if (pa.x !== pb.x) return pa.x - pb.x;
+        return parseIndex(a.index) - parseIndex(b.index);
       });
+
+      const at = ordered.findIndex((f) => f.id === node.id);
+      if (at === -1) {
+        updateLocal(node.id, positionPatch);
+        return;
+      }
+
+      const before = at > 0 ? parseIndex(ordered[at - 1]!.index) : null;
+      const after = at < ordered.length - 1 ? parseIndex(ordered[at + 1]!.index) : null;
+      const current = parseIndex(currentField.index);
+
+      // Already in the right place — a nudge that didn't cross a neighbour.
+      // The old code compared `localFields` array order against y-sorted
+      // order, which are different orderings, so this looked like a reorder
+      // on every drag and burned a subdivision of the gap each time.
+      if (isBetween(current, before, after)) {
+        updateLocal(node.id, positionPatch);
+        return;
+      }
+
+      const next = indexBetween(before, after);
+      if (next !== null) {
+        updateLocal(node.id, { ...positionPatch, index: next });
+        return;
+      }
+
+      // No representable value left between the neighbours. Reaching this
+      // takes ~50 consecutive drops into the same gap, but handle it rather
+      // than silently dropping the reorder: lift the whole visible order to
+      // max+1..max+n. Every new value is above every value currently in the
+      // table, so these writes still can't collide with an un-written row,
+      // even though they go out concurrently.
+      const base = maxLocalIndex() + 1;
+      const patches = new Map<string, Partial<LocalField>>();
+      ordered.forEach((f, i) => {
+        patches.set(f.id, { index: formatIndex(base + i) });
+      });
+      patches.set(node.id, { ...patches.get(node.id), ...positionPatch });
+      updateManyLocal(patches);
     },
-    [localFields, pendingDeletes, nodes, updateLocal],
+    [localFields, pendingDeletes, nodes, updateLocal, updateManyLocal, maxLocalIndex],
   );
 
   const handleRequiredChange = useCallback(
@@ -443,8 +574,16 @@ function BuilderCanvas() {
   const visibleSortedFields = useMemo(
     () =>
       localFields
+        // `filter` already returns a fresh array, so sorting it in place is
+        // safe and doesn't touch `localFields`.
         .filter((f) => !pendingDeletes.has(f.id))
-        .sort((a, b) => parseFloat(String(a.index)) - parseFloat(String(b.index))),
+        .sort((a, b) => {
+          const d = parseIndex(a.index) - parseIndex(b.index);
+          // Duplicate indices shouldn't exist, but forms saved by the old
+          // rounding scheme can carry them. Fall back to id so the order is at
+          // least stable instead of flipping between renders.
+          return d !== 0 ? d : a.id.localeCompare(b.id);
+        }),
     [localFields, pendingDeletes],
   );
 
@@ -461,30 +600,69 @@ function BuilderCanvas() {
     setSelectedNodeId(null);
   }, []);
 
-  // Arrow-button reorder: swap index values with the adjacent visible
-  // field. Predictable and avoids touch-DnD pain on phones.
+  /**
+   * Arrow-button reorder. Avoids touch drag-and-drop, which fights vertical
+   * scrolling on phones.
+   *
+   * This used to swap the two fields' index values, which wrote two rows and
+   * left a window where both held the same index — with the save firing every
+   * field concurrently, that tripped UNIQUE(form_id, index) depending on which
+   * UPDATE landed first. Moving one field into the gap beside its neighbour
+   * writes a single row instead.
+   */
   const handleMobileMove = useCallback(
     (id: string, direction: "up" | "down") => {
-      const i = visibleSortedFields.findIndex((f) => f.id === id);
+      const list = visibleSortedFields;
+      const i = list.findIndex((f) => f.id === id);
       if (i === -1) return;
       const j = direction === "up" ? i - 1 : i + 1;
-      if (j < 0 || j >= visibleSortedFields.length) return;
-      const a = visibleSortedFields[i]!;
-      const b = visibleSortedFields[j]!;
-      updateLocal(a.id, { index: String(b.index) });
-      updateLocal(b.id, { index: String(a.index) });
+      if (j < 0 || j >= list.length) return;
+
+      // Landing slot: moving up puts the field above list[j], moving down puts
+      // it below list[j].
+      const beforeField = direction === "up" ? list[j - 1] : list[j];
+      const afterField = direction === "up" ? list[j] : list[j + 1];
+
+      const next = indexBetween(
+        beforeField ? parseIndex(beforeField.index) : null,
+        afterField ? parseIndex(afterField.index) : null,
+      );
+
+      if (next !== null) {
+        updateLocal(id, { index: next });
+        return;
+      }
+
+      // Gap exhausted — same fallback as the canvas drag: lift the reordered
+      // sequence above every existing index so the writes stay collision-free.
+      const reordered = [...list];
+      const [moved] = reordered.splice(i, 1);
+      reordered.splice(j, 0, moved!);
+
+      const base = maxLocalIndex() + 1;
+      const patches = new Map<string, Partial<LocalField>>();
+      reordered.forEach((f, k) => {
+        patches.set(f.id, { index: formatIndex(base + k) });
+      });
+      updateManyLocal(patches);
     },
-    [visibleSortedFields, updateLocal],
+    [visibleSortedFields, updateLocal, updateManyLocal, maxLocalIndex],
   );
 
-  // Add a new field via the mobile sheet. Places the new node below the
-  // last one so the desktop canvas still renders sensibly if the user
-  // opens this form on a larger screen later.
-  const handleMobileAddField = useCallback(
+  /**
+   * Append a field to the end of the sequence and select it.
+   *
+   * Shared by every add affordance that isn't a canvas drop: the outline's
+   * palette, the outline's CTA, and the phone's add sheet. A canvas position is
+   * assigned too, below the last node, so the same form still lays out
+   * sensibly if the user switches to the canvas surface afterwards.
+   */
+  const appendField = useCallback(
     (type: string) => {
       const last = visibleSortedFields[visibleSortedFields.length - 1];
-      const lastIndexNum = last ? parseFloat(String(last.index)) : 0;
-      const nextIndex = (lastIndexNum + 1).toFixed(2);
+      // Past every local index, not just the last visible one — a field
+      // pending deletion keeps its index in the table until the save lands.
+      const nextIndex = formatIndex(maxLocalIndex() + 1);
 
       const lastPos = (last?.options as any)?.position as { x: number; y: number } | undefined;
       const position = lastPos
@@ -513,18 +691,30 @@ function BuilderCanvas() {
       setLocalFields((prev) => [...prev, newField]);
       setDirtyIds((prev) => new Set(prev).add(tempId));
       setSelectedNodeId(tempId);
+    },
+    [visibleSortedFields, formId, maxLocalIndex],
+  );
+
+  // Phone add flow: pick a type in the sheet, then land straight in the
+  // editor sheet, since there's no details pane to select into.
+  const handleMobileAddField = useCallback(
+    (type: string) => {
+      appendField(type);
       setMobileAddOpen(false);
       setMobileEditorOpen(true);
     },
-    [visibleSortedFields, formId],
+    [appendField],
   );
 
   if (formLoading || fieldsLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Loading canvas...</span>
+          <div
+            className="size-8 animate-spin rounded-full border-2"
+            style={{ borderColor: "var(--cf-line)", borderTopColor: "var(--cf-orange)" }}
+          />
+          <span className="cf-meta">Loading canvas</span>
         </div>
       </div>
     );
@@ -534,11 +724,11 @@ function BuilderCanvas() {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
         <div className="text-center space-y-4 max-w-sm">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Not found</p>
-          <h3 className="cf-display text-[24px] leading-tight">We couldn&apos;t find this form</h3>
+          <p className="cf-meta">Not found</p>
+          <h3 className="cf-display text-[26px] leading-tight uppercase">Form not found</h3>
           <Link
             href="/dashboard/sketches"
-            className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[13px] font-medium transition-colors"
+            className="cf-btn cf-raised cf-press h-[40px] px-5 text-[13px]"
           >
             Back to forms
           </Link>
@@ -550,8 +740,10 @@ function BuilderCanvas() {
   if (form.role === "viewer") {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)] p-4 text-center">
-        <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)] space-y-4">
-          <p className="cf-eyebrow text-[color:var(--cf-orange)]">No edit access</p>
+        <div className="cf-panel cf-raised w-full max-w-sm space-y-4 p-7">
+          <p className="cf-meta" style={{ color: "var(--cf-orange)" }}>
+            No edit access
+          </p>
           <h3 className="cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
             You don&apos;t have access to edit this form
           </h3>
@@ -562,14 +754,11 @@ function BuilderCanvas() {
           <div className="flex flex-col gap-2 pt-2">
             <Link
               href={`/dashboard/analytics?form=${formId}`}
-              className="inline-flex items-center justify-center gap-1.5 px-5 h-[40px] rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[13px] font-medium transition-colors"
+              className="cf-btn cf-raised cf-press h-[40px] px-5 text-[13px]"
             >
-              View Analytics & Submissions
+              View analytics
             </Link>
-            <Link
-              href="/dashboard/sketches"
-              className="inline-flex items-center justify-center gap-1.5 px-5 h-[40px] rounded-full text-[13px] font-medium text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors ring-1 ring-[color:var(--cf-line-strong)]"
-            >
+            <Link href="/dashboard/sketches" className="cf-btn-outline h-[40px] px-5 text-[13px]">
               Back to studio
             </Link>
           </div>
@@ -597,89 +786,137 @@ function BuilderCanvas() {
         }}
         onShare={() => setShowShareDialog(true)}
         onSettings={() => setShowSettingsDialog(true)}
+        view={view}
+        onViewChange={handleViewChange}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Desktop canvas — drag-and-drop builder. Hidden below lg where
-            touch DnD doesn't work well; the mobile list takes over there. */}
+        {/* Desktop shell. Both surfaces share it — palette on the left,
+            details on the right, and the middle swapping between the freeform
+            canvas and the ordered outline. Hidden below lg, where there's no
+            room for three panes and the phone tree takes over. */}
         <div className="hidden lg:flex flex-1 overflow-hidden">
-          <FieldSidebar onDragStart={onDragStart} />
+          {/* Ruled page margins, matching the dashboard, landing and auth
+              surfaces. Real layout columns here rather than the absolute
+              overlays the dashboard uses, because the builder is full-bleed:
+              an overlay would sit on top of the field list. Held back to xl
+              because the two side panes already claim ~550px, and below that
+              the 80px the rails cost comes straight out of the middle. */}
+          <VerticalScale className="hidden shrink-0 xl:block" />
 
-          <main
-            ref={reactFlowWrapper}
-            className="flex-1 h-full relative bg-[color:var(--cf-cream)]"
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-          >
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              nodeTypes={nodeTypes}
-              onNodeClick={onNodeClick}
-              onPaneClick={onPaneClick}
-              onNodeDragStop={onNodeDragStop}
-              fitView
-              minZoom={0.5}
-              maxZoom={1.5}
-              nodesDraggable={!isLocked}
-              panOnDrag={!isLocked}
-              zoomOnScroll={!isLocked}
-              preventScrolling={isLocked}
-              proOptions={{ hideAttribution: true }}
+          {/* On the outline surface a drag has nowhere to land, so the palette
+              appends on click instead. */}
+          <FieldSidebar
+            onDragStart={onDragStart}
+            onPick={view === "outline" ? appendField : undefined}
+          />
+
+          {view === "outline" ? (
+            <main
+              className="relative flex h-full flex-1 flex-col border-r bg-[color:var(--cf-cream)]"
+              style={{ borderRightColor: "var(--cf-line-strong)" }}
             >
-              <Background
-                variant={BackgroundVariant.Dots}
-                color="rgba(22, 19, 17, 0.18)"
-                gap={16}
-                size={1.5}
+              <FieldOutline
+                fields={visibleSortedFields}
+                onTapField={setSelectedNodeId}
+                onMove={handleMobileMove}
+                selectedId={selectedNodeId}
               />
+            </main>
+          ) : (
+            <main
+              ref={reactFlowWrapper}
+              className="relative flex h-full flex-1 flex-col border-r bg-[color:var(--cf-cream)]"
+              style={{ borderRightColor: "var(--cf-line-strong)" }}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+            >
+              {/* Canvas chrome. Gives the middle pane a top edge so the three
+                panes read as drawn panels, and carries the lock, which was
+                previously buried in the floating zoom stack. */}
+              <div className="cf-pane-bar">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="cf-meta">Canvas</span>
+                  <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+                    {visibleSortedFields.length}{" "}
+                    {visibleSortedFields.length === 1 ? "field" : "fields"}
+                  </span>
+                </div>
 
-              <Panel
-                position="bottom-left"
-                className="bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line)] rounded-xl p-1 flex flex-col gap-0.5 shadow-[0_4px_12px_-6px_rgba(22,19,17,0.15)]"
-              >
-                <button
-                  onClick={() => zoomIn()}
-                  title="Zoom in"
-                  aria-label="Zoom in"
-                  className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <Plus className="size-3.5" />
-                </button>
-                <button
-                  onClick={() => zoomOut()}
-                  title="Zoom out"
-                  aria-label="Zoom out"
-                  className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <Minus className="size-3.5" />
-                </button>
-                <button
-                  onClick={() => fitView({ duration: 400 })}
-                  title="Fit view"
-                  aria-label="Fit view"
-                  className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <Maximize2 className="size-3.5" />
-                </button>
-                <div className="h-px bg-[color:var(--cf-line)] mx-1 my-0.5" />
                 <button
                   onClick={() => setIsLocked(!isLocked)}
+                  aria-pressed={isLocked}
                   title={isLocked ? "Unlock canvas" : "Lock canvas"}
-                  aria-label={isLocked ? "Unlock canvas" : "Lock canvas"}
-                  className={`size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                  className={`inline-flex h-[22px] shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${
                     isLocked
-                      ? "text-[color:var(--cf-orange)] bg-[color:var(--cf-orange)]/10"
-                      : "text-[color:var(--cf-ink-soft)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-ink)]"
+                      ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
+                      : "border-[color:var(--cf-line-strong)] text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
                   }`}
                 >
-                  {isLocked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
+                  {isLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+                  {isLocked ? "Locked" : "Unlocked"}
                 </button>
-              </Panel>
-            </ReactFlow>
-          </main>
+              </div>
+
+              <div className="relative min-h-0 flex-1">
+                <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  nodeTypes={nodeTypes}
+                  onNodeClick={onNodeClick}
+                  onPaneClick={onPaneClick}
+                  onNodeDragStop={onNodeDragStop}
+                  fitView
+                  minZoom={0.5}
+                  maxZoom={1.5}
+                  nodesDraggable={!isLocked}
+                  panOnDrag={!isLocked}
+                  zoomOnScroll={!isLocked}
+                  preventScrolling={isLocked}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background
+                    variant={BackgroundVariant.Dots}
+                    color="rgba(26, 29, 41, 0.20)"
+                    gap={16}
+                    size={1.5}
+                  />
+
+                  <Panel
+                    position="bottom-left"
+                    className="cf-panel cf-raised flex flex-col gap-0.5 p-1"
+                  >
+                    <button
+                      onClick={() => zoomIn()}
+                      title="Zoom in"
+                      aria-label="Zoom in"
+                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <Plus className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => zoomOut()}
+                      title="Zoom out"
+                      aria-label="Zoom out"
+                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <Minus className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => fitView({ duration: 400 })}
+                      title="Fit view"
+                      aria-label="Fit view"
+                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <Maximize2 className="size-3.5" />
+                    </button>
+                  </Panel>
+                </ReactFlow>
+              </div>
+            </main>
+          )}
 
           <FieldInspector
             selectedField={selectedField}
@@ -696,22 +933,27 @@ function BuilderCanvas() {
             updateLocal={updateLocal}
             handleDeleteField={handleDeleteField}
           />
+
+          <VerticalScale className="hidden shrink-0 xl:block" />
         </div>
 
-        {/* Mobile / tablet stacked list editor. Same state as desktop,
-            different surface — tap to edit, arrows to reorder. */}
-        <div className="lg:hidden flex-1 flex flex-col overflow-hidden bg-[color:var(--cf-cream)]">
-          <MobileFieldList
+        {/* Phone / tablet. Same state as the desktop shell, but there's no room
+            for a details pane, so a card opens a bottom sheet instead and the
+            outline carries its own add button. */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-[color:var(--cf-cream)] lg:hidden">
+          <FieldOutline
             fields={visibleSortedFields}
             onTapField={handleMobileTapField}
             onMove={handleMobileMove}
+            selectedId={selectedNodeId}
             onAdd={() => setMobileAddOpen(true)}
           />
         </div>
       </div>
 
-      {/* Mobile sheets — wrapped in lg:hidden so they never appear on
-          desktop even if their open state happens to be true. */}
+      {/* Bottom sheets are the phone's stand-in for the details pane, so they
+          stay tied to the phone breakpoint rather than to the chosen surface —
+          on a large screen the inspector does this job. */}
       <div className="lg:hidden">
         <MobileAddFieldSheet
           open={mobileAddOpen}

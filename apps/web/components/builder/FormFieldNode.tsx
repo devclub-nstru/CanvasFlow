@@ -52,26 +52,36 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
 
   return (
     <div
-      className={`w-72 bg-[color:var(--cf-cream-2)] rounded-xl transition-all select-none cursor-pointer shadow-[0_8px_24px_-12px_rgba(22,19,17,0.18)] ${
+      /* Both states carry a 2px border so selecting a node re-inks its edge
+         instead of resizing it — a width change here would shift the node's
+         contents by a pixel on every click. */
+      className={`w-72 cursor-pointer border-2 bg-white transition-shadow select-none ${
         selected
-          ? "ring-2 ring-[color:var(--cf-orange)] ring-offset-2 ring-offset-[color:var(--cf-cream)]"
-          : "ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)]"
+          ? "border-[color:var(--cf-orange)] shadow-[5px_5px_0_0_var(--cf-orange)]"
+          : "border-[color:var(--cf-line-strong)] shadow-[4px_4px_0_0_rgba(26,29,41,0.16)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.32)]"
       }`}
     >
-      <div className="p-4 space-y-3">
-        {/* header */}
-        <div className="flex justify-between items-center">
-          <div className="inline-flex items-center gap-1.5 cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            <IconComponent className="size-3 text-[color:var(--cf-orange)]" />
-            <span>{field.type.replace("_", " ")}</span>
-          </div>
-          {field.isRequired && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-1 ring-[color:var(--cf-orange)]/30">
-              Req
-            </span>
-          )}
+      {/* Titlebar. Tinted and ruled so the node reads as a drawn card
+          rather than one undivided box. */}
+      <div
+        className="flex items-center justify-between border-b px-4 py-2"
+        style={{ borderBottomColor: "var(--cf-line)", background: "var(--cf-cream)" }}
+      >
+        <div className="cf-meta inline-flex items-center gap-1.5">
+          <IconComponent className="size-3 text-[color:var(--cf-orange)]" />
+          <span>{field.type.replace("_", " ")}</span>
         </div>
+        {field.isRequired && (
+          <span
+            className="inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] tracking-wider uppercase"
+            style={{ borderColor: "var(--cf-orange)", color: "var(--cf-orange)" }}
+          >
+            Req
+          </span>
+        )}
+      </div>
 
+      <div className="space-y-3 p-4">
         {/* label + description */}
         <div className="space-y-1.5">
           <h4 className="cf-display text-[16px] leading-snug text-[color:var(--cf-ink)] line-clamp-2">
@@ -99,7 +109,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
           width: 8,
           height: 8,
           background: "var(--cf-orange)",
-          border: "2px solid var(--cf-cream-2)",
+          border: "2px solid var(--cf-ink)",
         }}
       />
       <Handle
@@ -109,7 +119,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
           width: 8,
           height: 8,
           background: "var(--cf-orange)",
-          border: "2px solid var(--cf-cream-2)",
+          border: "2px solid var(--cf-ink)",
         }}
       />
     </div>
@@ -122,7 +132,7 @@ function FieldPreview({ field }: { field: any }) {
   if (field.type === "SELECT") {
     const options = getFieldOptionsArray(field);
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md p-2 space-y-1">
+      <div className="space-y-1 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] p-2.5">
         {options.slice(0, 3).map((opt, i) => (
           <div
             key={i}
@@ -150,7 +160,7 @@ function FieldPreview({ field }: { field: any }) {
             key={i}
             className="flex items-center gap-2 text-[11px] text-[color:var(--cf-ink-soft)]"
           >
-            <div className="size-3 rounded-sm ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] shrink-0" />
+            <div className="size-3 shrink-0 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)]" />
             <span className="truncate">{opt}</span>
           </div>
         ))}
@@ -181,7 +191,7 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minDate ? `From ${o.minDate}` : ""}${o?.maxDate ? ` to ${o.maxDate}` : ""}`
         : field.placeholder || "Select a date";
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
+      <div className="flex items-center justify-between border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
         <span className="truncate pr-2">{range}</span>
         <Calendar className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
       </div>
@@ -195,7 +205,7 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minTime ? `From ${o.minTime}` : ""}${o?.maxTime ? ` to ${o.maxTime}` : ""}`
         : field.placeholder || "Select a time";
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
+      <div className="flex items-center justify-between border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
         <span className="truncate pr-2">{range}</span>
         <Clock className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
       </div>
@@ -238,7 +248,7 @@ function FieldPreview({ field }: { field: any }) {
 
   // text/textarea/email/number/phone/url
   return (
-    <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]/55">
+    <div className="border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
       {field.placeholder || "Answer here..."}
     </div>
   );

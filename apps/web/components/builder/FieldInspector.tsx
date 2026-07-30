@@ -36,23 +36,20 @@ function mergeChoices(currentOptions: any, nextChoices: string[]): Record<string
 /* ─── primitives ─────────────────────────────────────────────────────── */
 
 function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block cf-eyebrow text-[color:var(--cf-ink-soft)] mb-1.5">{children}</label>
-  );
+  return <label className="cf-meta mb-1.5 block">{children}</label>;
 }
 
-const INPUT_CLS =
-  "w-full bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none rounded-md px-3 h-[36px] text-[13px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 transition-shadow";
+const INPUT_CLS = "cf-input h-[36px] px-3 text-[13px]";
 
 function Section({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
-    <div className="space-y-3">
+    <div className="cf-section">
       {title && (
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]/70 border-b border-[color:var(--cf-line)] pb-2">
-          {title}
-        </p>
+        <div className="cf-section-bar">
+          <p className="cf-meta">{title}</p>
+        </div>
       )}
-      {children}
+      <div className="cf-section-body space-y-3">{children}</div>
     </div>
   );
 }
@@ -61,16 +58,12 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   return (
     <button
       onClick={() => onChange(!on)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none ${
-        on ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink)]/15"
-      }`}
-      aria-pressed={on}
+      type="button"
+      role="switch"
+      aria-checked={on}
+      className="cf-toggle"
     >
-      <span
-        className={`pointer-events-none inline-block size-4 mt-0.5 transform rounded-full bg-white shadow transition-transform ${
-          on ? "translate-x-4" : "translate-x-0.5"
-        }`}
-      />
+      <span />
     </button>
   );
 }
@@ -96,7 +89,7 @@ export function FieldInspectorBody({
   updateLocal,
 }: Omit<FieldInspectorProps, "handleDeleteField">) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <Section title="General">
         <div>
           <Label>Label</Label>
@@ -136,14 +129,14 @@ export function FieldInspectorBody({
             }}
             placeholder="Optional description..."
             rows={2}
-            className="w-full bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none rounded-md px-3 py-2 text-[13px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 resize-none transition-shadow"
+            className="cf-input resize-none px-3 py-2 text-[13px]"
           />
         </div>
       </Section>
 
       <Section title="Validation">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] px-2.5 py-2">
+          <div className="min-w-0">
             <p className="text-[13px] text-[color:var(--cf-ink)]">Required</p>
             <p className="text-[11px] text-[color:var(--cf-ink-soft)]">Force an answer</p>
           </div>
@@ -156,7 +149,10 @@ export function FieldInspectorBody({
           <div className="space-y-1.5">
             {optionsList.map((opt, idx) => (
               <div key={idx} className="flex items-center gap-2">
-                <div className="size-3 shrink-0 rounded-sm ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)]" />
+                <div
+                  className="size-3 shrink-0 border"
+                  style={{ borderColor: "var(--cf-line-strong)" }}
+                />
                 <input
                   type="text"
                   value={opt}
@@ -168,7 +164,7 @@ export function FieldInspectorBody({
                       options: mergeChoices(selectedField.options, next),
                     });
                   }}
-                  className="flex-1 min-w-0 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none px-2.5 h-[34px] text-[12.5px] text-[color:var(--cf-ink)] rounded-md transition-shadow"
+                  className="cf-input h-[34px] min-w-0 flex-1 px-2.5 text-[12.5px]"
                 />
                 <button
                   onClick={() => {
@@ -179,7 +175,7 @@ export function FieldInspectorBody({
                     });
                   }}
                   disabled={optionsList.length <= 1}
-                  className="shrink-0 p-1.5 text-[color:var(--cf-ink-soft)]/60 hover:text-[#c1281d] rounded-md hover:bg-[color:var(--cf-cream)] disabled:opacity-30 cursor-pointer transition-colors"
+                  className="cf-danger-ghost shrink-0 cursor-pointer p-1.5 transition-colors disabled:opacity-30"
                   aria-label="Remove option"
                 >
                   <Trash2 className="size-3" />
@@ -195,7 +191,7 @@ export function FieldInspectorBody({
                 options: mergeChoices(selectedField.options, next),
               });
             }}
-            className="w-full py-2 rounded-md ring-1 ring-dashed ring-[color:var(--cf-line-strong)] hover:ring-[color:var(--cf-orange)] text-[12px] text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-orange)] transition-all cursor-pointer"
+            className="cf-add-dashed w-full cursor-pointer border border-dashed py-2 text-[12px]"
           >
             + Add option
           </button>
@@ -216,7 +212,7 @@ export function FieldInspectorBody({
                   },
                 })
               }
-              className="w-full bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none rounded-md px-3 h-[36px] text-[13px] text-[color:var(--cf-ink)] cursor-pointer transition-shadow"
+              className="cf-input h-[36px] cursor-pointer px-3 text-[13px]"
             >
               <option value={3}>3 — Small</option>
               <option value={5}>5 — Standard</option>
@@ -367,13 +363,16 @@ export function FieldInspector(props: FieldInspectorProps) {
 
   if (!selectedField) {
     return (
-      <aside className="w-72 bg-[color:var(--cf-cream-2)] border-l border-[color:var(--cf-line)] flex flex-col items-center justify-center gap-3 select-none shrink-0 p-6">
-        <div className="size-12 rounded-full bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] flex items-center justify-center text-[color:var(--cf-ink-soft)]/55">
+      <aside className="cf-rail flex w-72 shrink-0 flex-col items-center justify-center gap-3 p-6 select-none">
+        <div
+          className="flex size-12 items-center justify-center border text-[color:var(--cf-ink-soft)]"
+          style={{ borderColor: "var(--cf-line-strong)", background: "var(--cf-cream)" }}
+        >
           <MousePointerClick className="size-5" />
         </div>
         <div className="text-center space-y-1.5">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">No field selected</p>
-          <p className="text-[12px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-[200px]">
+          <p className="cf-meta">No field selected</p>
+          <p className="max-w-[200px] text-[12px] leading-relaxed text-[color:var(--cf-ink-soft)]">
             Click a field on the canvas to inspect and configure it.
           </p>
         </div>
@@ -384,16 +383,21 @@ export function FieldInspector(props: FieldInspectorProps) {
   const FieldIcon = getFieldIcon(selectedField.type);
 
   return (
-    <aside className="w-72 bg-[color:var(--cf-cream-2)] border-l border-[color:var(--cf-line)] flex flex-col shrink-0">
+    <aside className="cf-rail flex w-72 shrink-0 flex-col">
       {/* header */}
-      <div className="px-4 py-3 border-b border-[color:var(--cf-line)] flex items-center justify-between">
+      <div className="cf-pane-bar">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="size-3.5 text-[color:var(--cf-orange)]" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink)]">Inspector</span>
+          <SlidersHorizontal className="size-3.5" style={{ color: "var(--cf-orange)" }} />
+          <span className="cf-meta" style={{ color: "var(--cf-ink)" }}>
+            Inspector
+          </span>
         </div>
-        <div className="inline-flex items-center gap-1.5 bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] px-2 py-0.5 rounded-full">
-          <FieldIcon className="size-3 text-[color:var(--cf-orange)]" />
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)]">
+        <div
+          className="inline-flex items-center gap-1.5 border px-2 py-0.5"
+          style={{ borderColor: "var(--cf-line-strong)", background: "var(--cf-cream-2)" }}
+        >
+          <FieldIcon className="size-3" style={{ color: "var(--cf-orange)" }} />
+          <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)] uppercase">
             {selectedField.type.replace("_", " ").toLowerCase()}
           </span>
         </div>
@@ -405,11 +409,11 @@ export function FieldInspector(props: FieldInspectorProps) {
       </div>
 
       {/* delete footer */}
-      <div className="px-4 py-3 border-t border-[color:var(--cf-line)]">
-        <button
-          onClick={handleDeleteField}
-          className="w-full flex items-center justify-center gap-1.5 h-[36px] rounded-full ring-1 ring-[#c1281d]/30 text-[#c1281d] hover:bg-[#c1281d]/8 text-[12.5px] font-medium transition-all cursor-pointer"
-        >
+      <div
+        className="border-t px-4 py-3"
+        style={{ borderTopColor: "var(--cf-line-strong)", background: "var(--cf-cream)" }}
+      >
+        <button onClick={handleDeleteField} className="cf-btn-danger h-[36px] w-full text-[12.5px]">
           <Trash2 className="size-3.5" />
           Remove field
         </button>

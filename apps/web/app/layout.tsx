@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Fraunces, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
 
@@ -13,15 +13,8 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-// Display serif — used for landing headlines (close to Daylight's editorial serif).
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["opsz", "SOFT"],
-});
-
-// Clean modern sans — body & UI (close to Daylight's Aeonik-style sans).
+// Clean modern sans — body & UI, and the display face for headings via
+// `.cf-display` / the landing headlines.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -60,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
       >
         <GlobalProviders>{children}</GlobalProviders>
       </body>

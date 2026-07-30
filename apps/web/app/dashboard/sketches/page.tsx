@@ -7,10 +7,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   ChevronDown,
+  Clock,
   Plus,
   Search,
   Share2,
   Trash2,
+  Users,
 } from "lucide-react";
 
 import { useListFormsByUserId, useDeleteForm } from "~/hooks/api/form";
@@ -134,87 +136,76 @@ export default function SketchesPage() {
 
   return (
     <div className="space-y-8">
-      {/* ───── hero ───── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
-        <div>
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">My forms</p>
-          <h1 className="mt-3 cf-display text-[36px] sm:text-[48px] leading-[0.95]">Your studio</h1>
-          <p className="mt-3 text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-md">
-            {forms?.length ?? 0} {forms?.length === 1 ? "form" : "forms"} in your workspace.
+      {/* ───── hero + toolbar ───── */}
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="shrink-0">
+          <h1 className="cf-display text-[32px] leading-[0.95] uppercase sm:text-[42px] md:text-[52px]">
+            Forms
+            <span style={{ color: "var(--cf-orange)" }}>.</span>
+          </h1>
+          <p className="mt-3 max-w-xs font-mono text-[13px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+            Design, publish, and decode your information workflows.
           </p>
         </div>
 
-        <button
-          onClick={openCreateFormModal}
-          className="inline-flex items-center justify-center gap-1.5 h-[44px] px-5 bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white rounded-full text-[13.5px] font-medium tracking-tight transition-colors self-start sm:self-auto"
-        >
-          <Plus className="size-4" />
-          New form
-        </button>
-      </div>
+        {/* Search and the two selects sit on one rule, squared and black-edged
+            like the rest of the chrome. */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-2xl">
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
+              style={{ color: "var(--cf-ink-soft)" }}
+            />
+            <label htmlFor="forms-search" className="sr-only">
+              Search forms
+            </label>
+            <input
+              id="forms-search"
+              type="text"
+              placeholder="Search forms..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-[44px] w-full border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream-2)] pr-3 pl-11 text-[14px] transition-shadow placeholder:text-[color:var(--cf-ink-soft)] focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
+            />
+          </div>
 
-      {/* ───── toolbar ───── */}
-      <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-3">
-        {/* search */}
-        <div className="relative w-full md:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[color:var(--cf-ink-soft)]" />
-          <input
-            type="text"
-            placeholder="Search forms..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[color:var(--cf-cream)] rounded-md ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none pl-10 pr-3 h-[40px] text-[13.5px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 transition-shadow"
+          <ToolbarSelect
+            label="Status"
+            value={filter}
+            onChange={(v) => {
+              setFilter(v);
+              setPage(1);
+            }}
+            options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
+          />
+
+          <ToolbarSelect
+            label="Sort"
+            value={sort}
+            onChange={(v) => setSort(v as "createdAt" | "title")}
+            options={[
+              { value: "createdAt", label: "Newest" },
+              { value: "title", label: "Title" },
+            ]}
           />
         </div>
+      </div>
 
-        {/* sort + filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <span className="cf-eyebrow text-[color:var(--cf-ink-soft)] shrink-0">Sort</span>
-            <div className="relative">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as "createdAt" | "title")}
-                className="appearance-none bg-[color:var(--cf-cream)] rounded-md ring-1 ring-[color:var(--cf-line)] py-2 pl-3 pr-8 text-[13px] text-[color:var(--cf-ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--cf-orange)] cursor-pointer"
-              >
-                <option value="createdAt">Date created</option>
-                <option value="title">Title</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-[color:var(--cf-ink-soft)] pointer-events-none" />
-            </div>
-          </div>
-
-          <div className="hidden sm:block h-5 w-px bg-[color:var(--cf-line-strong)]" />
-
-          <div className="inline-flex bg-[color:var(--cf-cream)] p-1 rounded-full text-[12px] font-medium select-none ring-1 ring-[color:var(--cf-line)] overflow-x-auto">
-            {FILTERS.map((f) => {
-              const isActive = filter === f.id;
-              return (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setFilter(f.id);
-                    setPage(1);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? "bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)] ring-1 ring-[color:var(--cf-line-strong)]"
-                      : "text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* ───── result count rule ───── */}
+      <div className="flex items-end justify-between gap-4 border-b border-[color:var(--cf-line-strong)] pb-3">
+        <p className="cf-meta">
+          {hasActiveFilters ? "Filtered" : "All forms"}
+        </p>
+        <p className="cf-meta">
+          {processedForms.length} {processedForms.length === 1 ? "result" : "results"}
+        </p>
       </div>
 
       {/* ───── grid ───── */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <div className="w-8 h-8 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Loading your forms...</p>
+          <div className="size-8 animate-spin rounded-full border-2 border-[color:var(--cf-line)] border-t-[color:var(--cf-orange)]" />
+          <p className="cf-meta">Loading your forms</p>
         </div>
       ) : paginatedForms.length === 0 ? (
         <EmptyState
@@ -227,7 +218,7 @@ export default function SketchesPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {paginatedForms.map((form) => (
             <FormCard
               key={form.id}
@@ -254,7 +245,7 @@ export default function SketchesPage() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="bg-[color:var(--cf-cream-2)] hover:bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] ring-1 ring-[color:var(--cf-line)] p-2 rounded-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              className="cf-btn-outline size-9 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label="Previous page"
             >
               <ArrowLeft className="size-4" />
@@ -262,7 +253,7 @@ export default function SketchesPage() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="bg-[color:var(--cf-cream-2)] hover:bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] ring-1 ring-[color:var(--cf-line)] p-2 rounded-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              className="cf-btn-outline size-9 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label="Next page"
             >
               <ArrowRight className="size-4" />
@@ -273,14 +264,16 @@ export default function SketchesPage() {
 
       {/* ───── delete confirm ───── */}
       {confirmDeleteId && confirmDeleteForm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
-          <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)]">
-            <p className="cf-eyebrow text-[color:var(--cf-orange)]">Permanent action</p>
-            <h3 className="mt-3 cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
-              Delete this form?
+        <div className="cf-scrim z-[200]">
+          <div className="cf-dark cf-crop w-full max-w-md">
+            <div className="relative z-[1] p-6 sm:p-8">
+            <p className="cf-dark-meta" style={{ color: "var(--c-red)" }}>Permanent action</p>
+            <h3 className="cf-display mt-3 text-[26px] leading-none uppercase sm:text-[32px]">
+              Delete form
+              <span style={{ color: "var(--c-red)" }}>.</span>
             </h3>
-            <p className="mt-2 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-              <span className="text-[color:var(--cf-ink)] font-medium">
+            <p className="mt-3 text-[13.5px] leading-relaxed" style={{ color: "var(--cfd-text-soft)" }}>
+              <span className="font-medium" style={{ color: "var(--cfd-text)" }}>
                 &ldquo;{confirmDeleteForm.title}&rdquo;
               </span>{" "}
               and all its fields and submissions will be permanently removed. This cannot be undone.
@@ -290,18 +283,19 @@ export default function SketchesPage() {
               <button
                 onClick={() => setConfirmDeleteId(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-[13px] font-medium rounded-full text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer disabled:opacity-50"
+                className="cf-dark-btn-outline px-4 py-2 text-[13px] disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(confirmDeleteId)}
                 disabled={isDeleting}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-[13px] font-medium rounded-full bg-[#c1281d] hover:bg-[#a92218] text-white transition-colors cursor-pointer disabled:opacity-50"
+                className="cf-btn px-5 py-2 text-[13px] disabled:opacity-50" style={{ background: "var(--c-red)" }}
               >
                 <Trash2 className="size-3.5" />
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
+            </div>
             </div>
           </div>
         </div>
@@ -316,6 +310,49 @@ export default function SketchesPage() {
           onClose={() => setShareFormId(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ─── toolbar select ─────────────────────────────────────────────────── */
+
+/**
+ * Native select behind a squared black-edged shell. Native is deliberate: it
+ * gets the platform's own picker on touch, which no custom dropdown matches
+ * for reliability, and it stays keyboard-operable for free.
+ */
+function ToolbarSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative shrink-0">
+      <label htmlFor={`toolbar-${label}`} className="sr-only">
+        {label}
+      </label>
+      <select
+        id={`toolbar-${label}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-[44px] w-full cursor-pointer appearance-none border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream-2)] pr-9 pl-3.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase transition-shadow focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none sm:w-auto"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2"
+        style={{ color: "var(--cf-ink-soft)" }}
+      />
     </div>
   );
 }
@@ -357,63 +394,63 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
     <div
       onMouseEnter={prefetchBuilder}
       onFocus={prefetchBuilder}
-      className="group bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] transition-shadow p-4 flex flex-col gap-3 sm:gap-4"
+      className="cf-panel cf-raised cf-press group relative flex flex-col gap-4 p-4 sm:p-5"
     >
+      {/* Status flag cut into the corner by the card edge, as in the
+          reference — accent for published, muted ink for a draft. The text
+          label below carries the meaning for anyone who can't see colour. */}
+      <span
+        aria-hidden
+        className="absolute top-0 right-0 z-10 size-4 border-b border-l border-[color:var(--cf-line-strong)]"
+        style={{ background: isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)" }}
+      />
+
       {/* mini form preview — hidden on mobile to keep cards short */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] hidden sm:block">
-        <div className="absolute inset-0 px-6 py-5 flex flex-col justify-center gap-3">
-          {/* fake title */}
-          <div className="h-1.5 w-1/3 rounded-full bg-[color:var(--cf-ink)]/20" />
-
-          {/* fake fields */}
-          <div className="space-y-1.5 mt-1">
-            <div className="h-2 w-full rounded-sm bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line)]" />
-            <div className="h-2 w-full rounded-sm bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line)]" />
-            <div className="h-2 w-4/5 rounded-sm bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line)]" />
+      <div className="relative hidden aspect-[16/9] w-full overflow-hidden border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] sm:block">
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: "radial-gradient(var(--cf-ink) 1px, transparent 1px)",
+            backgroundSize: "8px 8px",
+          }}
+        />
+        {/* The mock sheet lifts on hover, the way the reference's preview does. */}
+        <div className="absolute inset-0 flex flex-col justify-center gap-3 px-6 py-5 transition-transform duration-500 ease-out group-hover:-translate-y-1">
+          <div className="h-1.5 w-1/3 bg-[color:var(--cf-ink)]/25" />
+          <div className="mt-1 space-y-1.5">
+            <div className="h-2 w-full border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
+            <div className="h-2 w-full border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
+            <div className="h-2 w-4/5 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
           </div>
-
-          {/* fake submit */}
           <div className="mt-2">
             <span
-              className={`block h-3 w-16 rounded-full ${
-                isPublished ? "bg-[color:var(--cf-ink)]" : "bg-[color:var(--cf-orange)]"
-              }`}
+              className="block h-3 w-16"
+              style={{ background: isPublished ? "var(--cf-ink)" : "var(--cf-orange)" }}
             />
           </div>
         </div>
-
-        {/* status pill — inside preview on sm+ */}
-        <span
-          className={`absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ring-1 ${
-            isPublished
-              ? "bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-[color:var(--cf-orange)]/40"
-              : "bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink-soft)] ring-[color:var(--cf-line-strong)]"
-          }`}
-        >
-          {isPublished ? "Published" : "Draft"}
-        </span>
       </div>
 
       {/* title + meta */}
       <div className="flex-1 space-y-3">
-        {/* status pill — visible only on mobile, since preview is hidden */}
         <span
-          className={`sm:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ring-1 ${
-            isPublished
-              ? "bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-[color:var(--cf-orange)]/40"
-              : "bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink-soft)] ring-[color:var(--cf-line-strong)]"
-          }`}
+          className="cf-meta inline-block border px-2 py-1"
+          style={{
+            borderColor: isPublished ? "var(--cf-orange)" : "var(--cf-line-strong)",
+            color: isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)",
+          }}
         >
           {isPublished ? "Published" : "Draft"}
         </span>
 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h3 className="cf-display text-[20px] sm:text-[22px] leading-tight line-clamp-1">
+            <h3 className="cf-display line-clamp-1 text-[19px] leading-tight uppercase sm:text-[21px]">
               {form.title}
             </h3>
             {form.role && form.role !== "owner" && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] text-[10px] font-mono text-[color:var(--cf-ink-soft)] capitalize">
+              <span className="inline-flex items-center gap-1 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--cf-ink-soft)] capitalize">
                 Shared: {form.role}
               </span>
             )}
@@ -427,25 +464,30 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
               }}
               title="Delete form"
               aria-label="Delete form"
-              className="p-1.5 rounded-md text-[color:var(--cf-ink-soft)]/60 hover:text-[color:var(--cf-orange)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
+              className="shrink-0 cursor-pointer border border-transparent p-1.5 transition-colors hover:border-[color:var(--cf-line-strong)]" style={{ color: "var(--cf-ink-soft)" }}
             >
               <Trash2 className="size-3.5" />
             </button>
           )}
         </div>
 
-        <dl className="text-[12px] font-mono text-[color:var(--cf-ink-soft)] space-y-1">
-          <div className="flex justify-between">
-            <dt>{isPublished ? "Published" : "Edited"}</dt>
-            <dd className="text-[color:var(--cf-ink)]">
+        {/* Meta as an inline icon row, as in the reference. The previous
+            two-column definition list forced the eye to read down and across
+            for two short values; laid out inline it scans in one pass. */}
+        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-[color:var(--cf-ink-soft)]">
+          <div className="flex items-center gap-1.5">
+            <Users className="size-3.5 shrink-0" aria-hidden />
+            <dt className="sr-only">Responses</dt>
+            <dd className="tabular-nums text-[color:var(--cf-ink)]">{responses}</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="size-3.5 shrink-0" aria-hidden />
+            <dt className="sr-only">{isPublished ? "Published" : "Last edited"}</dt>
+            <dd>
               {isPublished
                 ? formatDate(form.publishedAt || form.createdAt)
                 : getRelativeTime(form.updatedAt)}
             </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Responses</dt>
-            <dd className="text-[color:var(--cf-ink)]">{responses}</dd>
           </div>
         </dl>
       </div>
@@ -455,7 +497,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         {isPublished ? (
           <Link
             href={`/dashboard/sketches/${form.id}`}
-            className="group/btn flex-1 inline-flex items-center justify-center gap-1.5 h-[38px] px-4 bg-[color:var(--cf-ink)] hover:bg-black text-white rounded-full text-[12.5px] font-medium tracking-tight transition-colors"
+            className="cf-btn group/btn h-[38px] flex-1 px-4 text-[12.5px]" style={{ background: "var(--cf-ink)" }}
           >
             Open
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -463,7 +505,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         ) : (
           <Link
             href={`/dashboard/sketches/${form.id}`}
-            className="group/btn flex-1 inline-flex items-center justify-center gap-1.5 h-[38px] px-4 bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white rounded-full text-[12.5px] font-medium tracking-tight transition-colors"
+            className="cf-btn group/btn h-[38px] flex-1 px-4 text-[12.5px]"
           >
             Continue editing
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -478,7 +520,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
             e.stopPropagation();
             onShare();
           }}
-          className="inline-flex items-center justify-center h-[38px] w-[38px] rounded-full ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer shrink-0"
+          className="cf-btn-outline size-[38px] shrink-0"
         >
           <Share2 className="size-3.5" />
         </button>
@@ -499,11 +541,9 @@ function EmptyState({
   onClearFilters: () => void;
 }) {
   return (
-    <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-dashed ring-[color:var(--cf-line-strong)] p-12 text-center max-w-lg mx-auto space-y-4">
-      <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">
-        {hasFilters ? "Nothing found" : "Empty studio"}
-      </p>
-      <h3 className="cf-display text-[26px] leading-tight">
+    <div className="cf-panel mx-auto max-w-2xl space-y-4 border-dashed p-10 text-center sm:p-16">
+      <p className="cf-meta">{hasFilters ? "Nothing found" : "Empty studio"}</p>
+      <h3 className="cf-display text-[30px] leading-tight sm:text-[44px]">
         {hasFilters ? "No matches" : "Start your first form"}
       </h3>
       <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-sm mx-auto">
@@ -515,14 +555,14 @@ function EmptyState({
         {hasFilters && (
           <button
             onClick={onClearFilters}
-            className="px-4 py-2 text-[13px] font-medium rounded-full text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer"
+            className="cf-btn-outline px-4 py-2 text-[13px]"
           >
             Clear filters
           </button>
         )}
         <button
           onClick={onCreate}
-          className="inline-flex items-center justify-center gap-1.5 h-[42px] px-5 bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white rounded-full text-[13px] font-medium tracking-tight transition-colors"
+          className="cf-btn cf-raised cf-press h-[42px] px-6 text-[13px]"
         >
           <Plus className="size-4" />
           New form

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Activity, Clock, Layers, TrendingUp } from "lucide-react";
 
 interface MetricsGridProps {
   totalResponses: number;
@@ -10,6 +9,15 @@ interface MetricsGridProps {
   avgPerDay: number;
 }
 
+/**
+ * KPI row, laid out like the analytics mock: a large figure, its label, and a
+ * mono supporting line.
+ *
+ * The supporting line carries a real derived number rather than a
+ * "↑ 9.7% vs last week" style delta — the free-tier analytics payload has no
+ * previous-period figures to compare against, and inventing one would be
+ * worse than omitting it.
+ */
 export function MetricsGrid({
   totalResponses,
   completionRate,
@@ -17,29 +25,46 @@ export function MetricsGrid({
   avgPerDay,
 }: MetricsGridProps) {
   const stats = [
-    { title: "Total responses", val: totalResponses, icon: Layers },
-    { title: "Completion rate", val: completionRate, icon: TrendingUp },
-    { title: "Total views", val: totalViews, icon: Clock },
-    { title: "Avg / day", val: avgPerDay.toFixed(1), icon: Activity },
+    {
+      title: "Total responses",
+      val: totalResponses.toLocaleString(),
+      sub: `${avgPerDay.toFixed(1)} per day on average`,
+    },
+    {
+      title: "Completion rate",
+      val: completionRate,
+      sub: `${totalViews.toLocaleString()} views recorded`,
+    },
+    {
+      title: "Total views",
+      val: totalViews.toLocaleString(),
+      sub: `${totalResponses.toLocaleString()} converted to responses`,
+    },
+    {
+      title: "Avg / day",
+      val: avgPerDay.toFixed(1),
+      sub: "Across the tracked window",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((stat, idx) => {
-        const Icon = stat.icon;
-        return (
-          <div
-            key={idx}
-            className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] transition-shadow p-5"
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      {stats.map((stat) => (
+        <div key={stat.title} className="cf-panel p-3 sm:p-4">
+          <p className="cf-display text-[24px] leading-none tabular-nums sm:text-[32px]">
+            {stat.val}
+          </p>
+          <p className="mt-2 text-[12px] sm:text-[13px]" style={{ color: "var(--cf-ink-soft)" }}>
+            {stat.title}
+          </p>
+          <p
+            className="mt-1.5 hidden font-mono text-[10px] leading-snug sm:block"
+            style={{ color: "var(--cf-orange)" }}
           >
-            <div className="flex items-start justify-between">
-              <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{stat.title}</p>
-              <Icon className="size-4 text-[color:var(--cf-orange)]" />
-            </div>
-            <p className="mt-5 cf-display text-[36px] leading-none tabular-nums">{stat.val}</p>
-          </div>
-        );
-      })}
+            {stat.sub}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

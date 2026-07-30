@@ -6,6 +6,8 @@ import {
   Check,
   ChevronLeft,
   Eye,
+  LayoutGrid,
+  ListOrdered,
   MoreVertical,
   Save,
   Settings,
@@ -13,6 +15,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
+/** Which editing surface the builder is showing. */
+export type BuilderView = "canvas" | "outline";
 
 interface BuilderHeaderProps {
   form:
@@ -42,6 +47,8 @@ interface BuilderHeaderProps {
   setShowUnsavedDialog: (val: boolean) => void;
   onShare: () => void;
   onSettings: () => void;
+  view: BuilderView;
+  onViewChange: (view: BuilderView) => void;
 }
 
 export function BuilderHeader({
@@ -59,6 +66,8 @@ export function BuilderHeader({
   onPublishSuccess,
   onShare,
   onSettings,
+  view,
+  onViewChange,
 }: BuilderHeaderProps) {
   const isPublished = form?.isPublished ?? false;
   const isOwner = form?.role === "owner";
@@ -84,7 +93,10 @@ export function BuilderHeader({
   }, [menuOpen]);
 
   return (
-    <header className="h-14 px-3 sm:px-4 border-b border-[color:var(--cf-line)] flex items-center justify-between bg-[color:var(--cf-cream-2)] z-20 shrink-0 gap-2">
+    <header
+      className="z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4"
+      style={{ borderBottomColor: "var(--cf-line-strong)", background: "var(--cf-cream-2)" }}
+    >
       {/* left: back + title */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Link
@@ -96,41 +108,41 @@ export function BuilderHeader({
               setShowUnsavedDialog(true);
             }
           }}
-          className="inline-flex items-center gap-1 text-[12px] font-medium text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)] transition-colors shrink-0"
+          className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-[color:var(--cf-ink-soft)] transition-colors hover:text-[color:var(--cf-ink)]"
           aria-label="Back to forms"
         >
           <ChevronLeft className="size-3.5" />
           <span className="hidden sm:inline">Forms</span>
         </Link>
 
-        <div className="hidden sm:block w-px h-4 bg-[color:var(--cf-line-strong)]" />
+        <div className="hidden h-4 w-px sm:block" style={{ background: "var(--cf-line-strong)" }} />
 
         {/* title only on sm+ — phones don't have space for it */}
         <div className="hidden sm:flex items-center gap-2 min-w-0">
-          <span className="cf-display text-[16px] leading-none truncate max-w-[200px] text-[color:var(--cf-ink)]">
+          <span className="cf-display max-w-[200px] truncate text-[16px] leading-none text-[color:var(--cf-ink)]">
             {form?.title}
           </span>
         </div>
 
         {/* status pill — always visible */}
         <span
-          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ring-1 ${
+          className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${
             isPublished
-              ? "bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-[color:var(--cf-orange)]/30"
-              : "bg-[color:var(--cf-cream)] text-[color:var(--cf-ink-soft)] ring-[color:var(--cf-line-strong)]"
+              ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
+              : "border-[color:var(--cf-line-strong)] text-[color:var(--cf-ink-soft)]"
           }`}
         >
           <span
             className={`size-1.5 rounded-full ${
-              isPublished ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink-soft)]/40"
+              isPublished ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink-soft)]"
             }`}
           />
           {isPublished ? "Live" : "Draft"}
         </span>
 
         {isDirty && (
-          <span className="hidden md:inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-[color:var(--cf-orange)] bg-[color:var(--cf-orange)]/10 ring-1 ring-[color:var(--cf-orange)]/30">
-            <span className="size-1 rounded-full bg-[color:var(--cf-orange)] animate-pulse" />
+          <span className="hidden shrink-0 items-center gap-1 border border-[color:var(--cf-orange)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--cf-orange)] md:inline-flex">
+            <span className="size-1 animate-pulse rounded-full bg-[color:var(--cf-orange)]" />
             Unsaved
           </span>
         )}
@@ -138,16 +150,54 @@ export function BuilderHeader({
 
       {/* right: actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* View switcher. Desktop only: the canvas needs pointer
+            drag-and-drop plus room for three panes, so below lg the list is
+            the only surface and offering a choice would be a dead end. */}
+        <div
+          role="group"
+          aria-label="Builder view"
+          className="hidden shrink-0 items-center border lg:inline-flex"
+          style={{ borderColor: "var(--cf-line-strong)" }}
+        >
+          {(
+            [
+              { id: "canvas", label: "Canvas", Icon: LayoutGrid },
+              { id: "outline", label: "Outline", Icon: ListOrdered },
+            ] as const
+          ).map(({ id, label, Icon }) => {
+            const active = view === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onViewChange(id)}
+                aria-pressed={active}
+                title={id === "canvas" ? "Canvas builder" : "Outline builder"}
+                className={`inline-flex h-[30px] cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                  active
+                    ? "bg-[color:var(--cf-ink)] text-[color:var(--cf-cream)]"
+                    : "text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
+                }`}
+              >
+                <Icon className="size-3.5" />
+                <span className="hidden xl:inline">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="hidden h-5 w-px lg:block" style={{ background: "var(--cf-line-strong)" }} />
+
         {/* Save — always visible, icon-only on phone */}
         <button
           onClick={handleSave}
           disabled={(!isDirty && !justSaved) || isSaving}
           title="Save changes"
           aria-label="Save"
-          className={`inline-flex items-center gap-1.5 h-[32px] px-2.5 sm:px-3 rounded-full ring-1 text-[12px] font-medium disabled:cursor-not-allowed transition-colors cursor-pointer ${
+          className={`inline-flex h-[32px] cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${
             justSaved && !isSaving
-              ? "ring-[color:var(--cf-orange)]/40 bg-[color:var(--cf-orange)]/12 text-[color:var(--cf-orange)]"
-              : "ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)] disabled:opacity-35"
+              ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
+              : "cf-btn-outline disabled:opacity-35"
           }`}
         >
           {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
@@ -161,7 +211,7 @@ export function BuilderHeader({
           href={`/forms/${formId}`}
           target="_blank"
           title="Preview form"
-          className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[12px] font-medium text-[color:var(--cf-ink)] transition-colors"
+          className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
         >
           <Eye className="size-3.5" />
           <span className="hidden md:inline">Preview</span>
@@ -170,7 +220,7 @@ export function BuilderHeader({
         <button
           onClick={onShare}
           title="Share form access"
-          className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[12px] font-medium text-[color:var(--cf-ink)] transition-colors cursor-pointer"
+          className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
         >
           <Share2 className="size-3.5" />
           <span className="hidden md:inline">Share</span>
@@ -180,7 +230,7 @@ export function BuilderHeader({
           <button
             onClick={onSettings}
             title="Form settings"
-            className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[12px] font-medium text-[color:var(--cf-ink)] transition-colors cursor-pointer"
+            className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
           >
             <Settings className="size-3.5" />
             <span className="hidden md:inline">Settings</span>
@@ -189,11 +239,14 @@ export function BuilderHeader({
 
         {canDelete && (
           <>
-            <div className="hidden sm:block w-px h-5 bg-[color:var(--cf-line-strong)] mx-0.5" />
+            <div
+              className="mx-0.5 hidden h-5 w-px sm:block"
+              style={{ background: "var(--cf-line-strong)" }}
+            />
             <button
               onClick={() => setShowDeleteConfirm(true)}
               title="Delete form"
-              className="hidden sm:inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full ring-1 ring-[#c1281d]/25 text-[#c1281d] hover:bg-[#c1281d]/8 hover:ring-[#c1281d]/40 text-[12px] font-medium transition-colors cursor-pointer"
+              className="cf-btn-danger hidden h-[32px] px-3 text-[12px] sm:inline-flex"
             >
               <Trash2 className="size-3.5" />
               <span className="hidden md:inline">Delete</span>
@@ -208,7 +261,7 @@ export function BuilderHeader({
             aria-label="More actions"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="inline-flex items-center justify-center size-[32px] rounded-full ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] cursor-pointer"
+            className="cf-btn-outline inline-flex size-[32px]"
           >
             <MoreVertical className="size-3.5" />
           </button>
@@ -216,15 +269,15 @@ export function BuilderHeader({
           {menuOpen && (
             <div
               role="menu"
-              className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)] shadow-[0_20px_40px_-20px_rgba(22,19,17,0.28)] p-1.5 z-50"
+              className="cf-panel cf-raised absolute top-full right-0 z-50 mt-1.5 w-44 p-1.5"
             >
               <Link
                 href={`/forms/${formId}`}
                 target="_blank"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors"
+                className="cf-menu-item flex items-center gap-2.5 !py-2 text-[13px]"
               >
-                <Eye className="size-3.5 text-[color:var(--cf-ink-soft)]" />
+                <Eye className="size-3.5" />
                 Preview
               </Link>
               <button
@@ -232,9 +285,9 @@ export function BuilderHeader({
                   onShare();
                   setMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors text-left cursor-pointer"
+                className="cf-menu-item flex w-full items-center gap-2.5 !py-2 text-[13px]"
               >
-                <Share2 className="size-3.5 text-[color:var(--cf-ink-soft)]" />
+                <Share2 className="size-3.5" />
                 Share form
               </button>
               {isOwner && (
@@ -243,21 +296,21 @@ export function BuilderHeader({
                     onSettings();
                     setMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors text-left cursor-pointer"
+                  className="cf-menu-item flex w-full items-center gap-2.5 !py-2 text-[13px]"
                 >
-                  <Settings className="size-3.5 text-[color:var(--cf-ink-soft)]" />
+                  <Settings className="size-3.5" />
                   Settings
                 </button>
               )}
               {canDelete && (
                 <>
-                  <div className="h-px bg-[color:var(--cf-line)] my-1" />
+                  <div className="my-1 h-px" style={{ background: "var(--cf-line)" }} />
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       setShowDeleteConfirm(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-[#c1281d] hover:bg-[#c1281d]/8 transition-colors text-left cursor-pointer"
+                    className="cf-menu-item !text-[color:var(--cf-danger)]"
                   >
                     <Trash2 className="size-3.5" />
                     Delete form
@@ -284,7 +337,7 @@ export function BuilderHeader({
             );
           }}
           disabled={publishPending || isPublished}
-          className="inline-flex items-center justify-center h-[32px] px-3.5 sm:px-4 rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[12.5px] font-medium tracking-tight disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shrink-0"
+          className="cf-btn h-[32px] shrink-0 px-3.5 text-[12.5px] tracking-tight disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
         >
           {publishPending ? "..." : isPublished ? "Published" : "Publish"}
         </button>

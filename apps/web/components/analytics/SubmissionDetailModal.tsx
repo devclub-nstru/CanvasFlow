@@ -44,7 +44,7 @@ export function SubmissionDetailModal({
 
   return (
     <div className="fixed inset-0 bg-[color:var(--cf-ink)]/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] max-w-lg w-full relative shadow-[0_40px_80px_-30px_rgba(22,19,17,0.4)] flex flex-col max-h-[90vh]">
+      <div className="cf-panel cf-raised relative flex max-h-[90vh] w-full max-w-lg flex-col">
         <div className="px-6 pt-6 pb-4 border-b border-[color:var(--cf-line)] relative">
           <button
             onClick={onClose}

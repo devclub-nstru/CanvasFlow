@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import Footer from "~/components/Footer";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
+import { HorizontalScale, VerticalScale } from "~/components/Scale";
 import {
   GeoGlyph,
   FormBuilderMock,
@@ -23,17 +24,6 @@ import { useCreateForm } from "~/hooks/api/form";
 import { cn } from "~/lib/utils";
 
 /* ── Ruler strips ──────────────────────────────────────────────────── */
-
-const HATCH =
-  "bg-[repeating-linear-gradient(315deg,_var(--pattern-hatch)_0px,_var(--pattern-hatch)_1px,_transparent_1px,_transparent_10px)] bg-[length:14px_14px]";
-
-const HorizontalScale = ({ className }: { className?: string }) => (
-  <div className={cn("h-10 w-full border-y border-[var(--pattern)]", HATCH, className)} />
-);
-
-const VerticalScale = ({ className }: { className?: string }) => (
-  <div className={cn("h-full w-10 border-x border-[var(--pattern)]", HATCH, className)} />
-);
 
 /* ── Copy ──────────────────────────────────────────────────────────── */
 
@@ -134,10 +124,9 @@ const Index = () => {
 
   return (
     <div className="hex-theme hex-paper relative min-h-screen">
-      {/* Animated film grain over the whole viewport. Refreshed every 4th
-          frame rather than every 2nd to cut the per-frame pixel work in
-          half without the grain looking static. */}
-      <Noise patternRefreshInterval={4} patternAlpha={16} />
+      {/* Animated film grain over the whole viewport. Tuning lives in the
+          component's defaults so every surface shares one texture. */}
+      <Noise />
 
       {/* Ruled page margins. These are overlays, not layout, so on narrow
           screens they would sit on top of the copy rather than beside it —

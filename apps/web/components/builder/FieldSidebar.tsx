@@ -6,6 +6,13 @@ import { AVAILABLE_FIELDS } from "./FormFieldNode";
 
 interface FieldSidebarProps {
   onDragStart: (event: React.DragEvent, type: string) => void;
+  /**
+   * Click-to-append. Supplied by the outline surface, where dragging has
+   * nowhere meaningful to land — the sequence is the layout, so a new field
+   * goes on the end and gets moved from there. When omitted the palette is
+   * drag-only, which is what the canvas wants.
+   */
+  onPick?: (type: string) => void;
 }
 
 const CATEGORIES = [
@@ -16,7 +23,7 @@ const CATEGORIES = [
   { label: "Date & time", types: ["DATE", "TIME"] },
 ];
 
-export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
+export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
   const [query, setQuery] = useState("");
 
   const filtered = query.trim()
@@ -28,18 +35,35 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
     : null;
 
   return (
-    <aside className="w-64 bg-[color:var(--cf-cream-2)] border-r border-[color:var(--cf-line)] flex flex-col shrink-0">
-      {/* header */}
-      <div className="px-4 pt-4 pb-3 border-b border-[color:var(--cf-line)] space-y-2.5">
-        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Fields</p>
+    <aside
+      className="flex w-64 shrink-0 flex-col border-r bg-[color:var(--cf-cream-2)]"
+      style={{ borderRightColor: "var(--cf-line-strong)" }}
+    >
+      {/* Chrome row. Fixed at h-10 to match the canvas and inspector rows so
+          the top rule runs unbroken across all three panes; the search gets
+          its own band below rather than growing this one out of alignment. */}
+      <div className="cf-pane-bar">
+        <p className="cf-meta">Fields</p>
+        {filtered && (
+          <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+            {filtered.length} of {AVAILABLE_FIELDS.length}
+          </span>
+        )}
+      </div>
+
+      {/* search band */}
+      <div
+        className="shrink-0 border-b px-3 py-2.5"
+        style={{ borderBottomColor: "var(--cf-line-strong)" }}
+      >
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[color:var(--cf-ink-soft)]/60 pointer-events-none" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[color:var(--cf-ink-soft)]" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            className="w-full pl-8 pr-2 h-[34px] text-[12px] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none rounded-md text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 transition-shadow"
+            placeholder="Search fields..."
+            className="cf-input h-[32px] pr-2 pl-8 text-[12px]"
           />
         </div>
       </div>
@@ -50,7 +74,7 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
           filtered.length > 0 ? (
             <div className="space-y-1">
               {filtered.map((f) => (
-                <FieldItem key={f.type} field={f} onDragStart={onDragStart} />
+                <FieldItem key={f.type} field={f} onDragStart={onDragStart} onPick={onPick} />
               ))}
             </div>
           ) : (
@@ -64,12 +88,10 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
             if (catFields.length === 0) return null;
             return (
               <div key={cat.label}>
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]/70 px-2 mb-1.5">
-                  {cat.label}
-                </p>
-                <div className="space-y-0.5">
+                <p className="cf-meta mb-1.5 px-2">{cat.label}</p>
+                <div className="space-y-1">
                   {catFields.map((f) => (
-                    <FieldItem key={f.type} field={f} onDragStart={onDragStart} />
+                    <FieldItem key={f.type} field={f} onDragStart={onDragStart} onPick={onPick} />
                   ))}
                 </div>
               </div>
@@ -79,9 +101,9 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
       </div>
 
       {/* footer hint */}
-      <div className="px-4 py-2.5 border-t border-[color:var(--cf-line)]">
+      <div className="border-t px-4 py-2.5" style={{ borderTopColor: "var(--cf-line-strong)" }}>
         <p className="text-[11px] font-mono text-[color:var(--cf-ink-soft)]/70 text-center">
-          Drag to canvas
+          {onPick ? "Click to add" : "Drag to canvas"}
         </p>
       </div>
     </aside>
@@ -91,18 +113,29 @@ export function FieldSidebar({ onDragStart }: FieldSidebarProps) {
 function FieldItem({
   field,
   onDragStart,
+  onPick,
 }: {
   field: (typeof AVAILABLE_FIELDS)[number];
   onDragStart: (e: React.DragEvent, type: string) => void;
+  onPick?: (type: string) => void;
 }) {
   const Icon = field.icon;
+
+  // A real <button> when clicking is the interaction, so the palette is
+  // keyboard reachable on the outline surface. Still draggable either way:
+  // the canvas needs the drag, and it costs nothing here.
+  const Tag = onPick ? "button" : "div";
+
   return (
-    <div
+    <Tag
+      {...(onPick ? ({ type: "button", onClick: () => onPick(field.type) } as const) : {})}
       draggable
-      onDragStart={(e) => onDragStart(e, field.type)}
-      className="flex items-center gap-3 px-2.5 py-2 rounded-md cursor-grab active:cursor-grabbing select-none group hover:bg-[color:var(--cf-cream)] hover:ring-1 hover:ring-[color:var(--cf-line-strong)] transition-all"
+      onDragStart={(e: React.DragEvent) => onDragStart(e, field.type)}
+      className={`group flex w-full items-center gap-3 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] px-2.5 py-2 text-left transition-colors select-none hover:border-[color:var(--cf-line-strong)] hover:bg-white ${
+        onPick ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
+      }`}
     >
-      <div className="shrink-0 size-7 rounded-md bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] group-hover:ring-[color:var(--cf-orange)]/40 flex items-center justify-center transition-colors">
+      <div className="flex size-7 shrink-0 items-center justify-center border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] transition-colors group-hover:border-[color:var(--cf-orange)]">
         <Icon className="size-3.5 text-[color:var(--cf-orange)]" />
       </div>
       <div className="min-w-0">
@@ -113,6 +146,6 @@ function FieldItem({
           {field.description}
         </p>
       </div>
-    </div>
+    </Tag>
   );
 }

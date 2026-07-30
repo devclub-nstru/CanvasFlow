@@ -12,6 +12,7 @@ import { FormThankYou } from "~/components/forms/FormThankYou";
 import { FormQuestion } from "~/components/forms/FormQuestion";
 import { FormHeader } from "~/components/forms/FormHeader";
 import { FormFooter } from "~/components/forms/FormFooter";
+import Noise from "~/components/Noise";
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -270,6 +271,7 @@ export default function PublicFormPage() {
 
   return (
     <div className="cf-landing min-h-screen w-full bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] flex flex-col items-center px-6 sm:px-10 py-6 sm:py-8 relative overflow-hidden">
+      <Noise />
       <style>{`
         @keyframes cf-card-in {
           from { transform: translateY(12px); opacity: 0; }

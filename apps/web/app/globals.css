@@ -69,41 +69,85 @@
 }
 
 /* ============================================================
-   CanvasFlow — Daylight-style landing theme
-   Cream paper, editorial serif headlines, clean sans body,
-   flat orange CTA, subtle full-page blueprint grid.
+   CanvasFlow — app theme (dashboard, builder, analytics, public
+   form filling)
+   ------------------------------------------------------------
+   These `--cf-*` tokens are referenced about a thousand times across
+   app/dashboard, components/builder, components/analytics and
+   components/forms. Rather than rewrite those call sites to the
+   `hex-*` names the landing and auth screens use, the tokens are
+   repointed at the same palette here. One edit re-skins the whole app
+   surface and the two themes cannot drift apart, because they now
+   resolve to the same values.
+
+   The names are kept deliberately — `--cf-orange` is no longer orange.
+   Renaming it would touch every one of those call sites for no visual
+   gain, so the misnomer is the cheaper trade. It is the accent role:
+   primary fill, accent text, and emphasis.
    ============================================================ */
 :root {
-  /* core palette */
-  --cf-cream: #fff7e9;
-  --cf-cream-2: #fbecd3;
-  --cf-ink: #161311;
-  --cf-ink-soft: #56504a;
-  --cf-line: rgba(22, 19, 17, 0.08);
-  --cf-line-strong: rgba(22, 19, 17, 0.14);
-  --cf-orange: #f66f00;
-  --cf-orange-hover: #e26300;
+  /* Paper stock. Cool grey rather than the warm cream the marketing site
+     uses: the app is a working surface, and a neutral ground keeps the blue
+     accent and the data-viz hues honest instead of pulling them yellow.
+     The token names stay `cream` — see the note above about renaming. */
+  --cf-cream: #f0f0f0;
+  --cf-cream-2: #e8e8e8;
+
+  /* Ink ramp, matching --hex-ink / --hex-ink-soft. */
+  --cf-ink: #1a1d29;
+  --cf-ink-soft: #5b6070;
+
+  /* Hairline vs structural edge. `--cf-line-strong` goes near-black for
+     the same reason the landing did: inputs, cards and buttons should
+     read as drawn boxes rather than soft panels. */
+  --cf-line: rgba(26, 29, 41, 0.16);
+  --cf-line-strong: #1a1d29;
+
+  /* Accent. The app keeps a coloured primary where the marketing site uses
+     plain ink — a dashboard of black-on-cream with no accent has nothing to
+     lead the eye.
+
+     This is the same blue the footer wordmark already used, rather than a
+     second near-identical one. Two blues a few degrees apart read as a
+     mistake; one reads as a system. */
+  --cf-orange: #2d5cf6;
+  --cf-orange-hover: #2449d0;
+
+  /* Destructive. Was hardcoded as #c1281d at every call site; named here so
+     delete buttons across the app can't drift apart. */
+  --cf-danger: #c1281d;
 }
 
-/* Warm text selection */
 .cf-landing ::selection {
   background: var(--cf-orange);
   color: #fff;
 }
 
 .cf-landing {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, sans-serif;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   background: var(--cf-cream);
   color: var(--cf-ink);
 }
 
-/* Editorial serif numerals: optical-sizing for big headlines */
+/* Headings. Was Fraunces at 400 — a serif display face. Now the same
+   tight-tracked Inter semibold the landing and auth headlines use, so a
+   heading reads the same on the dashboard as it does on the way in. */
 .cf-display {
-  font-family: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 
 .cf-eyebrow {
@@ -113,6 +157,586 @@
   text-transform: uppercase;
   font-weight: 500;
 }
+
+/* ---- Boxy app chrome ----------------------------------------------
+   The same radius reset the landing gets, applied to the app surface so
+   the two match. Squares the corner-radius utilities in one place
+   instead of rewriting ~134 `rounded-*` call sites across the
+   dashboard, builder, analytics and form-filling screens.
+
+   `rounded-full` is deliberately absent: avatars, status dots, radio
+   marks, toggle pills and spinners all rely on it, and flattening those
+   would read as a bug rather than a style.
+
+   Two class selectors outrank Tailwind's single-class utility, which is
+   what lets this win without `!important`. */
+.cf-landing .rounded,
+.cf-landing .rounded-sm,
+.cf-landing .rounded-md,
+.cf-landing .rounded-lg,
+.cf-landing .rounded-xl,
+.cf-landing .rounded-2xl,
+.cf-landing .rounded-3xl,
+.cf-landing .rounded-t-2xl,
+.cf-landing .rounded-t-xl,
+.cf-landing .rounded-b-2xl {
+  border-radius: var(--hex-radius);
+}
+
+/* ============================================================
+   App surface recipes
+   ------------------------------------------------------------
+   The dashboard chrome: drawn boxes with a hard offset shadow that
+   collapses on interaction, so a card behaves like a physical tile being
+   pressed flat rather than fading. Declared here because the pattern
+   repeats across the overview, the forms list and the empty states.
+   ============================================================ */
+@layer components {
+  /* Panel with a black edge and a hard drop. */
+  .cf-panel {
+    background: var(--cf-cream-2);
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+  }
+
+  /* Adds the offset shadow. Split from `.cf-panel` because some panels are
+     flush inside another box and must not cast one. */
+  .cf-raised {
+    box-shadow: 4px 4px 0 0 var(--cf-line-strong);
+  }
+
+  /* Interactive tile: the shadow closes as the tile slides into it, so the
+     travel and the shadow loss cancel out and nothing below reflows. */
+  .cf-press {
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease,
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-press:hover {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 0 var(--cf-line-strong);
+  }
+  .cf-press:active {
+    transform: translate(4px, 4px);
+  }
+
+  /* Primary action. */
+  .cf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: var(--cf-orange);
+    color: #fff;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cf-btn:hover {
+    background: var(--cf-orange-hover);
+  }
+
+  /* Secondary action: transparent so the paper reads through, inverting to
+     ink on hover the same way the landing's outlined buttons do. */
+  .cf-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cf-ink);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-btn-outline:hover {
+    background: var(--cf-ink);
+    color: var(--cf-cream);
+  }
+
+  /* Underlined tab, as in the analytics mock. The active rule sits on the
+     container's bottom border rather than beside it, so the strip reads as
+     one ruled line with a segment inked in. */
+  .cf-tab {
+    position: relative;
+    padding: 0 0 10px;
+    font-size: 14px;
+    color: var(--cf-ink-soft);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .cf-tab:hover {
+    color: var(--cf-ink);
+  }
+  .cf-tab[aria-selected="true"] {
+    color: var(--cf-ink);
+    font-weight: 600;
+  }
+  .cf-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--cf-ink);
+  }
+
+  /* Mono field label / count, matching the landing's eyebrow scale. */
+  .cf-meta {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cf-ink-soft);
+  }
+
+  /* ---- Builder panes -------------------------------------------------
+     The builder is a light surface, so these are the light counterparts of
+     the `.cf-dark-*` recipes. They exist because the `--cfd-*` tokens are
+     declared inside `.cf-dark` and therefore resolve to nothing out here:
+     an undefined custom property makes the declaration invalid at
+     computed-value time, so `border-color` silently becomes `currentColor`
+     and `background` becomes transparent. That is how a border goes
+     missing without anything erroring. */
+
+  /* A builder side pane. Edges are owned by its neighbours (the field
+     sidebar's border-r and the canvas's border-r) so panes never draw two
+     lines against each other. */
+  .cf-rail {
+    background: var(--cf-cream-2);
+  }
+
+  /* Chrome row at the top of a pane. Fixed height so the rule lines up
+     across the sidebar, canvas and inspector. */
+  .cf-pane-bar {
+    display: flex;
+    height: 40px;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 16px;
+    background: var(--cf-cream-2);
+    border-bottom: 1px solid var(--cf-line-strong);
+  }
+
+  /* Destructive action. Outlined until hover, then it commits to red. */
+  .cf-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--cf-danger);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cf-danger);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-btn-danger:hover {
+    background: var(--cf-danger);
+    color: #fff;
+  }
+
+  /* Row in a light popover menu. */
+  .cf-menu-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--cf-ink);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .cf-menu-item:hover {
+    background: var(--cf-cream);
+  }
+
+  /* Icon-only button that only reveals its destructive intent on hover. */
+  .cf-danger-ghost {
+    color: var(--cf-ink-soft);
+    cursor: pointer;
+  }
+  .cf-danger-ghost:hover {
+    color: var(--cf-danger);
+  }
+
+  /* Dashed "add another" row. Dashed reads as a placeholder slot rather
+     than an existing item. */
+  .cf-add-dashed {
+    border-color: var(--cf-line-strong);
+    color: var(--cf-ink-soft);
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-add-dashed:hover {
+    border-color: var(--cf-orange);
+    color: var(--cf-orange);
+  }
+
+  /* Boxed group in the inspector, so each settings group reads as its own
+     drawn card instead of free-floating labels separated by whitespace. */
+  .cf-section {
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: var(--cf-cream-2);
+  }
+  .cf-section-bar {
+    padding: 7px 10px;
+    background: var(--cf-cream);
+    border-bottom: 1px solid var(--cf-line-strong);
+  }
+  .cf-section-body {
+    padding: 12px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-press,
+  .cf-press:hover,
+  .cf-press:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Dotted paper for the app surface, matching the auth form panel. */
+.cf-dotgrid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: radial-gradient(#000 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ============================================================
+   Dark popups
+   ------------------------------------------------------------
+   Dialogs invert to near-black instead of sitting on the same paper as
+   the page. On a light working surface a light modal has to fight the
+   backdrop to read as "on top"; going dark separates it instantly and
+   lets the scrim stay light enough that the page behind is still legible
+   as context.
+
+   Tokens are local to the dark surface so the components inside can be
+   written once against `--cfd-*` and not care which ground they land on.
+   ============================================================ */
+.cf-dark {
+  --cfd-bg: #101014;
+  --cfd-bg-2: #16161c;
+  --cfd-line: rgba(255, 255, 255, 0.1);
+  --cfd-line-strong: rgba(255, 255, 255, 0.22);
+  --cfd-text: #eceef2;
+  --cfd-text-soft: #9aa0ad;
+  --cfd-text-muted: #6b7280;
+
+  position: relative;
+  background: var(--cfd-bg);
+  color: var(--cfd-text);
+  border: 1px solid var(--cfd-line-strong);
+  border-radius: var(--hex-radius);
+  overflow: hidden;
+}
+
+/* Faint grid inside the panel, the same device the dark hero panels use. */
+.cf-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image:
+    linear-gradient(to right, #fff 1px, transparent 1px),
+    linear-gradient(to bottom, #fff 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@layer components {
+  /* Mono eyebrow on a dark ground ("TEMPLATES"). */
+  .cf-dark-meta {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cfd-text-muted);
+  }
+
+  /* Side rail item. */
+  .cf-dark-rail {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--cfd-text-soft);
+    border-radius: var(--hex-radius);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-dark-rail:hover {
+    color: var(--cfd-text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .cf-dark-rail[aria-current="true"] {
+    color: var(--cfd-text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Card inside a dark popup. The crop marks are drawn with two gradient
+     pairs rather than four child elements, so a card stays a single node. */
+  .cf-dark-card {
+    position: relative;
+    background: var(--cfd-bg-2);
+    border: 1px solid var(--cfd-line);
+    border-radius: var(--hex-radius);
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+  .cf-dark-card:hover {
+    border-color: var(--cfd-line-strong);
+    background: #1b1b22;
+  }
+
+  /* Corner brackets, as in the reference's template tiles. */
+  .cf-crop::before,
+  .cf-crop::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+    border-color: var(--cfd-line-strong);
+  }
+  .cf-crop::before {
+    top: 6px;
+    left: 6px;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+  .cf-crop::after {
+    right: 6px;
+    bottom: 6px;
+    border-right: 1px solid;
+    border-bottom: 1px solid;
+  }
+
+  /* Field on a dark ground. */
+  .cf-dark-input {
+    width: 100%;
+    background: var(--cfd-bg-2);
+    border: 1px solid var(--cfd-line-strong);
+    border-radius: var(--hex-radius);
+    color: var(--cfd-text);
+    transition: box-shadow 0.15s ease;
+  }
+  .cf-dark-input::placeholder {
+    color: var(--cfd-text-muted);
+  }
+  .cf-dark-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 0 rgba(255, 255, 255, 0.18);
+  }
+
+  /* Outlined action on a dark ground. */
+  .cf-dark-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cfd-line-strong);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cfd-text);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-dark-btn-outline:hover {
+    background: var(--cfd-text);
+    color: var(--cfd-bg);
+  }
+}
+
+/* ============================================================
+   Dialogs
+   ------------------------------------------------------------
+   Light, squared and black-edged, matching the share panel in the landing
+   mock: a chrome bar naming the dialog, mono section labels, bordered
+   rows for settings, and a ruled footer for counts.
+
+   These replaced an earlier dark treatment. A dark dialog separates
+   itself from the page instantly, but it also means the app has two
+   visual languages — every control inside needs a second set of tokens,
+   and a settings row looks nothing like the same row on the page behind
+   it. Staying on the paper keeps one language and one set of controls.
+   ============================================================ */
+
+.cf-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  background: var(--cf-cream);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--hex-radius);
+  box-shadow: 6px 6px 0 0 rgba(26, 29, 41, 0.18);
+}
+
+@layer components {
+  /* Title bar. Names the dialog on the left, status on the right. */
+  .cf-dialog-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: none;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--cf-line-strong);
+    background: var(--cf-cream-2);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Scrollable middle. `min-height: 0` is what actually lets it scroll
+     inside a flex column — without it the body grows past the dialog and
+     the footer is pushed off screen instead of the content scrolling. */
+  .cf-dialog-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 16px;
+  }
+
+  /* Ruled footer for counters and secondary actions. */
+  .cf-dialog-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: none;
+    padding: 10px 16px;
+    border-top: 1px solid var(--cf-line);
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--cf-ink-soft);
+  }
+
+  /* Settings row: label on the left, value and control on the right. */
+  .cf-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--cf-cream-2);
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    font-size: 13px;
+  }
+
+  /* Field on a dialog. Same drawn-box treatment as the page inputs. */
+  .cf-input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    color: var(--cf-ink);
+    transition: box-shadow 0.15s ease;
+  }
+  .cf-input::placeholder {
+    color: var(--cf-ink-soft);
+  }
+  .cf-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 0 var(--cf-line-strong);
+  }
+}
+
+/* Toggle. Rounded on purpose — it is one of the few controls that should
+   stay a pill, because a squared switch reads as a checkbox. */
+.cf-toggle {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(26, 29, 41, 0.22);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.cf-toggle > span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 0.18s ease;
+}
+.cf-toggle[aria-checked="true"] {
+  background: var(--c-teal);
+}
+.cf-toggle[aria-checked="true"] > span {
+  transform: translateX(16px);
+}
+.cf-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-toggle,
+  .cf-toggle > span {
+    transition: none;
+  }
+}
+
+/* Scrim behind a dialog. Light enough that the page stays readable as
+   context, which is the point of a modal rather than a new screen. */
+.cf-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(16, 16, 20, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* Film grain is the shared <Noise /> canvas (components/Noise.tsx), mounted
+   once per page surface. The CSS turbulence sheet that used to live here was
+   removed so the site has exactly one grain implementation rather than two
+   that drift apart. */
 
 /* ============================================================
    CanvasFlow — "paper studio" landing system
@@ -386,7 +1010,12 @@
 
 .hex-theme {
   color: var(--hex-ink);
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

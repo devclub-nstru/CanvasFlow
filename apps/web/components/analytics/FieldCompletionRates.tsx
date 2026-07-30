@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { SEMANTIC } from "./palette";
 
 interface FieldRate {
   fieldId: string;
@@ -14,7 +15,7 @@ interface FieldCompletionRatesProps {
 
 function rateColor(rate: number): string {
   if (rate >= 80) return "#16a34a";
-  if (rate >= 50) return "#f66f00";
+  if (rate >= 50) return SEMANTIC.warn;
   return "#c1281d";
 }
 
