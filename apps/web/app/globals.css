@@ -27,19 +27,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
@@ -62,22 +49,7 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
-
-
 
 @layer base {
   * {
@@ -111,9 +83,6 @@
   --cf-line-strong: rgba(22, 19, 17, 0.14);
   --cf-orange: #f66f00;
   --cf-orange-hover: #e26300;
-
-  /* hero dark warm photo-feel */
-  --cf-hero-bg: #2a2620;
 }
 
 /* Warm text selection */
@@ -145,66 +114,554 @@
   font-weight: 500;
 }
 
-/* Full-page subtle blueprint grid (4 vertical guides + horizontal rules per section). */
-.cf-page-grid {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background-image:
-    linear-gradient(to right, var(--cf-line) 1px, transparent 1px);
-  background-size: 25% 100%;
-  background-position: 25% 0;
+/* ============================================================
+   CanvasFlow — "paper studio" landing system
+   ------------------------------------------------------------
+   Design tokens + component classes consumed by app/page.tsx and the
+   landing mockups in components/landing/. Those files reference
+   `hex-*` class names and `--hex-*` / `--c-*` custom properties, so
+   they are all declared here.
+   ============================================================ */
+
+:root {
+  /* Ink ramp */
+  --hex-ink: #1a1d29;
+  --hex-ink-soft: #5b6070;
+  --hex-ink-muted: #8f95a3;
+
+  /* Two rules, two jobs.
+
+     `--hex-line-strong` is the structural edge — the outline of a button,
+     a field, a card, a crop mark. It is near-black so those shapes read
+     as drawn boxes rather than as soft panels.
+
+     `--hex-line` is the internal hairline: row dividers, sub-panel
+     splits, the fine grid inside the mockups. It stays light on purpose.
+     Promoting it to black as well would turn every mockup into a dense
+     black lattice and bury the type inside them. */
+  --hex-line: rgba(26, 29, 41, 0.16);
+  --hex-line-strong: #1a1d29;
+
+  /* Radius for the landing chrome. Square by default — see the
+     `.hex-theme` radius reset further down. */
+  --hex-radius: 0px;
+
+  /* Paper surfaces. `--hex-paper` is the pale warm page stock and
+     `--hex-nav` the translucent band that floats on top of it.
+
+     The stock is light on purpose. Each of the page's three backgrounds
+     is an image layer painted *normally* over it, so the sheet needs
+     headroom for them to read — see .hex-hero-paper / .hex-section-paper.
+     `--hex-surface` is the near-white fill for insets inside cards.
+
+     The nav sits a shade *below* the paper rather than above it: a band
+     lighter than the sheet reads as a bright strip across the top, so
+     this is a duller greige that settles into the page instead. Alpha is
+     higher than the old near-white value to keep text contrast while the
+     tone comes down. */
+  --hex-paper: #f5f3ee;
+  --hex-nav: rgba(231, 229, 221, 0.82);
+  --hex-surface: #fdfdfb;
+
+  /* Bone: a warm off-white for outlined buttons. Kept a touch yellower
+     and lighter than the paper stock so a button reads as a panel laid on
+     the sheet, and clearly lighter than the dull nav band it sits in.
+     Pure white would be a cold hole in a page that has no pure white
+     anywhere else in its chrome. */
+  --hex-bone: #faf8f1;
+
+  /* Data-viz palette (multi-line chart, scatter, stacked bars) */
+  --c-orange: #e0834a;
+  --c-yellow: #e3b23c;
+  --c-teal: #3aa793;
+  --c-blue: #4a6bc4;
+  --c-purple: #6c5ce7;
+  --c-lavender: #a79ae4;
+  --c-red: #dd6459;
 }
 
-/* Subtle grain texture (paper feel) */
-.cf-grain {
-  background-image: radial-gradient(rgba(22, 19, 17, 0.05) 1px, transparent 1px);
-  background-size: 4px 4px;
-}
+@layer components {
+  /* ---- Surfaces -------------------------------------------------- */
+  .hex-card {
+    background: #fff;
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+    /* A hard offset rather than a blur. Once the card has a black outline
+       a diffuse shadow reads as a smudge behind a drawn edge; an opaque
+       step keeps the whole shape crisp and sits better on the textured
+       paper. */
+    box-shadow: 5px 5px 0 0 rgba(26, 29, 41, 0.08);
+  }
 
-/* Photographic-feeling dark warm hero — looks like a backlit golden-hour scene,
-   no external image needed. Three layered radial+linear gradients + grain. */
-.cf-hero-photo {
-  background-color: #1c1814;
-  background-image:
-    radial-gradient(60% 80% at 80% 90%, rgba(255, 138, 52, 0.55), transparent 65%),
-    radial-gradient(50% 60% at 15% 8%, rgba(28, 22, 18, 0.85), transparent 70%),
-    radial-gradient(35% 40% at 70% 25%, rgba(168, 110, 62, 0.45), transparent 70%),
-    linear-gradient(180deg, #2a2620 0%, #3a2d20 45%, #6a4221 100%);
-}
+  /* Border-colour helpers. These are paired with Tailwind width
+     utilities (`border`, `border-b`, `border-r`, ...) in the mockups. */
+  .hex-line-soft {
+    border-color: var(--hex-line);
+  }
+  .hex-line-strong {
+    border-color: var(--hex-line-strong);
+  }
 
-/* Vivid solid orange tile (used for the right-hand "energy panel" in hero). */
-.cf-orange-tile {
-  background-color: #f66f00;
-  background-image:
-    radial-gradient(120% 90% at 50% 42%, rgba(255, 214, 138, 0.35), transparent 60%),
-    repeating-linear-gradient(
-      108deg,
-      #ffa84a 0px,
-      #f87c14 70px,
-      #f66f00 130px,
-      #d85a00 190px,
-      #f66f00 250px,
-      #ffa84a 320px
-    );
-}
+  .hex-divider {
+    height: 1px;
+    width: 100%;
+    background: var(--hex-line);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .cf-float,
-  .cf-spin-slow {
-    animation: none !important;
+  /* ---- Type ------------------------------------------------------ */
+  .hex-mono {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* ---- Dashboard chrome ------------------------------------------ */
+  .hex-kpi {
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+    padding: 12px 14px;
+    background: var(--hex-surface);
+  }
+
+  .hex-select-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--hex-ink-muted);
+    margin-bottom: 4px;
+  }
+  .hex-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+    background: #fff;
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+  }
+
+  .hex-row-hover {
+    transition: background 0.15s ease;
+  }
+  .hex-row-hover:hover {
+    background: rgba(26, 29, 41, 0.02);
+  }
+
+  /* Fine blueprint grid used behind the builder canvas.
+     The background-size is essential: without it each gradient stretches
+     to fill the element and paints a single line down its left edge and
+     across its top instead of a repeating grid. */
+  .hex-grid-fine {
+    background-image:
+      linear-gradient(to right, var(--hex-ink) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--hex-ink) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Slim scrollbars inside the mockups so they read as real UI. */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(26, 29, 41, 0.16) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(26, 29, 41, 0.16);
+    border-radius: 999px;
   }
 }
 
-@keyframes cf-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-.cf-float { animation: cf-float 7s ease-in-out infinite; }
+/* ---- Mockup motion ---------------------------------------------- */
 
-@keyframes cf-spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Line-chart stroke draw-on. `--len` is supplied inline per path. */
+@keyframes hex-draw {
+  from {
+    stroke-dashoffset: var(--len, 600);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
-.cf-spin-slow { animation: cf-spin-slow 60s linear infinite; }
+.hex-line-path {
+  stroke-dasharray: var(--len, 600);
+  animation: hex-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Scatter dots pop in, staggered by inline animation-delay. */
+@keyframes hex-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0.78;
+  }
+}
+.hex-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hex-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Stacked bars grow from the left. */
+@keyframes hex-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.hex-bar-x {
+  transform-origin: left center;
+  animation: hex-grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Dashed connector flow in the routing graph (used via
+   `animate-[dash_20s_linear_infinite]`). */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+/* CRT scanline sweep for the dark comparison matrix. */
+@keyframes scanlines {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 100%;
+  }
+}
+.animate-scanlines {
+  animation: scanlines 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-line-path,
+  .hex-dot,
+  .hex-bar-x,
+  .animate-scanlines,
+  /* Tailwind's own looping utilities aren't covered by its reset, so the
+     live-feed indicators get listed here explicitly. */
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+  .hex-line-path {
+    stroke-dasharray: none;
+  }
+}
+
+/* Small mono figure caption ("FIG.01"). */
+.hex-fig {
+  font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--hex-ink-muted);
+}
+
+/* ============================================================
+   Landing page chrome referenced directly by app/page.tsx
+   (hex-theme / hex-paper / hex-hero-paper / hex-section-paper /
+   hex-corner / hex-vignette, the button + link recipes, and the FAQ
+   disclosure rows).
+   ============================================================ */
+
+:root {
+  /* Ruler/scale strips: border colour and the diagonal hatch stroke. */
+  --pattern: rgba(26, 29, 41, 0.18);
+  --pattern-hatch: #d4d4d4;
+}
+
+.hex-theme {
+  color: var(--hex-ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Boxy landing chrome -----------------------------------------
+   Squares off the corner-radius utilities inside the landing theme in
+   one place, instead of rewriting ~47 `rounded-*` call sites across
+   page.tsx, Navbar.tsx and the mockups — and, more importantly, so the
+   rule can't drift out of step as those files change.
+
+   `rounded-full` is deliberately absent from this list. Avatars, status
+   dots, radio marks and the toggle pills inside the mockups are meant to
+   be circular; flattening those would read as a bug, not a style.
+
+   The selectors are scoped under `.hex-theme` rather than global so the
+   dashboard, auth and form-filling screens keep their own rounding. Two
+   class selectors also outrank Tailwind's single-class utility, which is
+   what lets this win without `!important`. */
+.hex-theme .rounded,
+.hex-theme .rounded-sm,
+.hex-theme .rounded-md,
+.hex-theme .rounded-lg,
+.hex-theme .rounded-xl,
+.hex-theme .rounded-2xl,
+.hex-theme .rounded-3xl,
+.hex-theme .rounded-4xl,
+.hex-theme .rounded-\[1px\],
+.hex-theme .rounded-\[4px\] {
+  border-radius: var(--hex-radius);
+}
+
+/* ---- The page stock ----------------------------------------------
+   A pale warm sheet with a fine tooth. The tooth is two dot grids at
+   3px and 7px, offset from one another so the beat between them reads
+   as paper fibre rather than as a visible dot pattern.
+
+   Nothing here is sized to the document. This element is the page root,
+   so its height is the whole scroll length — any layer measured in `%`
+   vertically would stretch across every section at once and lay a
+   top-to-bottom tonal ramp over the page, tinting the hero one shade and
+   the footer another. The page's three backgrounds are section-scoped
+   layers instead (.hex-hero-paper, .hex-section-paper), which is what
+   keeps them independently tunable. */
+.hex-paper {
+  background-color: var(--hex-paper);
+  background-image:
+    radial-gradient(rgba(26, 29, 41, 0.025) 1px, transparent 1px),
+    radial-gradient(rgba(26, 29, 41, 0.018) 1px, transparent 1px);
+  background-size:
+    3px 3px,
+    7px 7px;
+  background-position:
+    0 0,
+    1px 2px;
+}
+
+/* ---- The three section backgrounds ------------------------------
+   The landing page runs three distinct sheets, each scoped to the
+   sections that use it rather than painted page-wide:
+
+     1 · Hero      — .hex-hero-paper, a tiled crack network
+     2 · Mid page  — nothing; the bare stock above
+     3 · Analytics — .hex-section-paper, one large plate
+
+   Both image layers paint at normal blend, *not* multiply. That is the
+   whole mechanism: the source art has a white ground, so painting it
+   normally lays down its dark structure and lifts the cream a step
+   toward white at the same time. The hero ends up the lightest of the
+   three and the bare mid-page sections the deepest, which is the tonal
+   rhythm the design is after. Multiplying would drop the white ground
+   out — white is the identity for multiply — and every section would
+   collapse back to the same tone. */
+
+/* 1 · Hero. Tiled small enough that the cells read at page scale, and
+   capped in vw so the tile doesn't dominate a narrow viewport. */
+.hex-hero-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: url("https://ik.imagekit.io/yatharth/ChatGPT%20Image%20Apr%2030,%202026,%2007_52_59%20PM.png");
+  background-size: min(420px, 45vw) auto;
+  background-repeat: repeat;
+}
+
+/* 3 · Analytics. A single plate scaled to cover, so the section reads
+   as one continuous sheet rather than a repeat. Held much fainter than
+   the hero tile because it carries far more structure. */
+.hex-section-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.1;
+  background-image: url("https://ik.imagekit.io/yatharth/BG-SECTION-.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Plain stock for anyone who has asked for less visual noise. */
+  .hex-paper {
+    background-image: none;
+  }
+  .hex-hero-paper,
+  .hex-section-paper {
+    display: none;
+  }
+}
+
+/* Crop-mark corner bracket. Callers zero out two sides inline to pick
+   which corner it represents. */
+.hex-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--hex-line-strong);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Worn-paper vignette. Two radials that shade only the top and bottom
+   edges of a section, so a long band of stock doesn't read as flat.
+   Deliberately darkening rather than tinting with the paper colour: a
+   paper-coloured wash would cover the tooth and leave a visible dead
+   ring at the section edges. */
+.hex-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 60% at 50% 0%, transparent 60%, rgba(26, 29, 41, 0.04) 100%),
+    radial-gradient(120% 60% at 50% 100%, transparent 60%, rgba(26, 29, 41, 0.04) 100%);
+}
+
+@layer components {
+  /* ---- Buttons & links ------------------------------------------- */
+  .hex-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--hex-radius);
+    background: var(--hex-ink);
+    color: #fff;
+    font-weight: 500;
+    border: 1px solid var(--hex-ink);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    cursor: pointer;
+  }
+  .hex-btn-primary:hover {
+    opacity: 0.9;
+  }
+  .hex-btn-primary:active {
+    transform: translateY(1px);
+  }
+
+  .hex-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--hex-radius);
+    background: var(--hex-bone);
+    color: var(--hex-ink);
+    font-size: 14px;
+    /* 600, not 500. On a transparent ground the animated grain sits behind
+       the glyphs as well as around them, and a medium weight loses
+       definition against it. */
+    font-weight: 600;
+    /* 1.5px reads as a drawn edge and roughly matches the stem weight of
+       the label beside it. A hairline looks incidental at this scale, and
+       a full 2px starts to feel like a frame rather than an outline. */
+    border: 1.5px solid var(--hex-line-strong);
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+    cursor: pointer;
+  }
+  .hex-btn-ghost:hover {
+    background: var(--hex-ink);
+    color: #fff;
+  }
+
+  .hex-link {
+    color: var(--hex-ink);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--hex-line-strong);
+    text-underline-offset: 5px;
+    transition: text-decoration-color 0.2s ease;
+  }
+  .hex-link:hover {
+    text-decoration-color: var(--hex-ink);
+  }
+}
+
+/* ---- FAQ disclosure rows ----------------------------------------- */
+.hex-faq-row > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Tighter on phones. A 24px gap plus 22px of vertical padding costs a
+     lot of width and height when six of these stack on a 375px screen. */
+  gap: 14px;
+  padding: 16px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .hex-faq-row > summary {
+    gap: 24px;
+    padding: 22px 4px;
+  }
+}
+/* Hide the native disclosure marker in both engines. */
+.hex-faq-row > summary::-webkit-details-marker {
+  display: none;
+}
+.hex-faq-row > summary::marker {
+  content: "";
+}
+.hex-faq-row > summary:focus-visible {
+  outline: 2px solid var(--hex-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.hex-faq-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--hex-radius);
+  border: 1px solid var(--hex-line-strong);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--hex-ink-soft);
+  transition:
+    transform 0.25s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+.hex-faq-row[open] .hex-faq-icon {
+  transform: rotate(45deg);
+  background: var(--hex-ink);
+  color: #fff;
+  border-color: var(--hex-ink);
+}
+
+.hex-faq-body {
+  padding: 0 2px 18px;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--hex-ink-soft);
+}
+
+@media (min-width: 640px) {
+  .hex-faq-body {
+    padding: 0 4px 24px;
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-faq-icon {
+    transition: none;
+  }
+}

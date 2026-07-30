@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
 
@@ -34,6 +34,16 @@ const jbMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Editorial italic accent inside the landing headlines
+// ("…for when you want to click around.", "No ceremony.").
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "CanvasFlow",
   description: "Form Builder",
@@ -50,7 +60,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${jbMono.variable}`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
       >
         <GlobalProviders>{children}</GlobalProviders>
       </body>
