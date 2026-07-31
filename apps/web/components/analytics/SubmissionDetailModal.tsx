@@ -43,22 +43,22 @@ export function SubmissionDetailModal({
   const respondent = getRespondentDetails(submission);
 
   return (
-    <div className="fixed inset-0 bg-[color:var(--cf-ink)]/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-(--cf-ink)/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="cf-panel cf-raised relative flex max-h-[90vh] w-full max-w-lg flex-col">
-        <div className="px-6 pt-6 pb-4 border-b border-[color:var(--cf-line)] relative">
+        <div className="px-6 pt-6 pb-4 border-b border-(--cf-line) relative">
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 p-1.5 text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)] rounded-md hover:bg-[color:var(--cf-cream)] cursor-pointer transition-colors"
+            className="absolute right-4 top-4 p-1.5 text-(--cf-ink-soft) hover:text-(--cf-ink) rounded-md hover:bg-(--cf-cream) cursor-pointer transition-colors"
             aria-label="Close"
           >
             <X className="size-4" />
           </button>
 
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Submission</p>
+          <p className="cf-eyebrow text-(--cf-ink-soft)">Submission</p>
           <h4 className="mt-2 cf-display text-[22px] leading-tight pr-8 truncate">
             {respondent.name}
           </h4>
-          <p className="mt-1 text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
+          <p className="mt-1 text-[12px] font-mono text-(--cf-ink-soft)">
             {new Date(submission.createdAt).toLocaleString()}
           </p>
         </div>
@@ -79,8 +79,8 @@ export function SubmissionDetailModal({
 
             return (
               <div key={field.id} className="space-y-1.5">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{field.label}</p>
-                <div className="text-[13px] text-[color:var(--cf-ink)] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2.5">
+                <p className="cf-eyebrow text-(--cf-ink-soft)">{field.label}</p>
+                <div className="text-[13px] text-(--cf-ink) bg-(--cf-cream) ring-1 ring-(--cf-line) rounded-md px-3 py-2.5">
                   {displayVal}
                 </div>
               </div>
@@ -88,10 +88,10 @@ export function SubmissionDetailModal({
           })}
         </div>
 
-        <div className="px-6 pb-6 pt-4 border-t border-[color:var(--cf-line)] flex justify-end">
+        <div className="px-6 pb-6 pt-4 border-t border-(--cf-line) flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-[13px] font-medium rounded-full bg-[color:var(--cf-ink)] hover:bg-black text-white transition-colors cursor-pointer"
+            className="px-5 py-2 text-[13px] font-medium rounded-full bg-(--cf-ink) hover:bg-black text-white transition-colors cursor-pointer"
           >
             Close
           </button>

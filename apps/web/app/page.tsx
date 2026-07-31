@@ -124,13 +124,8 @@ const Index = () => {
 
   return (
     <div className="hex-theme hex-paper relative min-h-screen">
-      {/* Animated film grain over the whole viewport. Tuning lives in the
-          component's defaults so every surface shares one texture. */}
       <Noise />
 
-      {/* Ruled page margins. These are overlays, not layout, so on narrow
-          screens they would sit on top of the copy rather than beside it —
-          the gutter that makes room for them only exists from md up. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
         <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />
@@ -139,18 +134,12 @@ const Index = () => {
       <Navbar />
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
-      {/* The bottom rule is the seam where background 1 hands off to
-          background 2. Every change of sheet on the page gets one, so the
-          switch reads as a deliberate edge rather than a gradient. */}
       <section
         className="relative overflow-hidden border-b hex-line-soft"
         style={{ borderBottomWidth: 1 }}
       >
         {/* Background 1 of 3: tiled crack network, the lightest sheet. */}
         <div className="hex-hero-paper" aria-hidden />
-        {/* Crop marks pull in on small screens so they don't collide with
-            the body text, and are hidden outright below sm where there is
-            no spare gutter for them to sit in. */}
         <div className="hex-corner top-4 left-4 hidden sm:block md:top-6 md:left-6" style={{ borderRight: 0, borderBottom: 0 }} />
         <div className="hex-corner top-4 right-4 hidden sm:block md:top-6 md:right-6" style={{ borderLeft: 0, borderBottom: 0 }} />
 
@@ -162,9 +151,6 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                {/* Four steps rather than two. The headline is the widest
-                    thing on the page, and 64px only fits from roughly
-                    640px up — below that it overflows a 375px screen. */}
                 <h1 className="text-[34px] leading-[1.06] font-semibold tracking-[-0.03em] text-foreground sm:text-[46px] sm:tracking-[-0.035em] md:text-[64px] md:tracking-[-0.04em] lg:text-[68px] xl:text-[80px]">
                   Forms, <br />
                   <span className="relative">
@@ -188,17 +174,14 @@ const Index = () => {
                 </h1>
 
                 <p
-                  className="mt-5 max-w-[480px] text-[15px] leading-relaxed sm:mt-8 sm:text-[17px]"
+                  className="mt-5 max-w-120 text-[15px] leading-relaxed sm:mt-8 sm:text-[17px]"
                   style={{ color: "var(--hex-ink-soft)" }}
                 >
                   Twelve field types, one question at a time for whoever fills it in, and real
                   numbers on the other side. Publish with a link, close it when you&rsquo;re done.
                 </p>
 
-                <div className="group relative mt-7 max-w-[540px] sm:mt-9">
-                  {/* Field and button share one drawn box: the wrapper
-                      carries the black outline and the submit sits flush
-                      inside it, so the pair reads as a single control. */}
+                <div className="group relative mt-7 max-w-135 sm:mt-9">
                   <div className="relative z-10 flex flex-col items-stretch rounded-none border hex-line-strong bg-white p-1.5 transition-shadow focus-within:shadow-[4px_4px_0_0_rgba(26,29,41,0.12)] sm:flex-row">
                     <label htmlFor="hero-title" className="sr-only">
                       Name your form
@@ -228,7 +211,7 @@ const Index = () => {
 
                   <div className="relative z-10 mt-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="hex-mono mr-2 text-[10px] font-bold tracking-[0.1em] uppercase opacity-50">
+                      <span className="hex-mono mr-2 text-[10px] font-bold tracking-widest uppercase opacity-50">
                         Start with:
                       </span>
                       {STARTERS.map((s) => (
@@ -301,8 +284,6 @@ const Index = () => {
         className="hex-vignette relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-32"
         style={{ borderBottomWidth: 1 }}
       >
-        {/* Background 3 of 3: one large plate scaled to cover, plus the
-            worn-paper vignette from `hex-vignette` on the section. */}
         <div className="hex-section-paper" aria-hidden />
         <HorizontalScale className="absolute top-0 left-0 h-6 w-full sm:h-10" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
@@ -567,10 +548,10 @@ const ShareAccessMock = () => (
           too little for the toggle rows beside it on a phone — below sm the
           two stack and the QR is capped so it doesn't blow up full-width. */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-[104px_1fr]">
-        <div className="max-w-[140px] sm:max-w-none">
+        <div className="max-w-35 sm:max-w-none">
           <div className="hex-select-label">QR code</div>
           <div
-            className="grid grid-cols-7 gap-[3px] rounded-md border hex-line-soft bg-white p-2"
+            className="grid grid-cols-7 gap-0.75 rounded-md border hex-line-soft bg-white p-2"
             aria-hidden
           >
             {/* Deterministic pattern so server and client markup match. */}
@@ -605,7 +586,7 @@ const ShareAccessMock = () => (
                 <span className="flex items-center gap-2">
                   <span className="hex-mono text-[10px] font-semibold">{row.v}</span>
                   <span
-                    className="h-3 w-6 rounded-full p-[2px]"
+                    className="h-3 w-6 rounded-full p-0.5"
                     style={{ background: row.on ? "var(--c-teal)" : "rgba(26,29,41,0.18)" }}
                   >
                     <span
@@ -664,7 +645,7 @@ const FeatureStepCard = ({
         {illustration}
       </div>
     </div>
-    <div className="relative z-20 flex flex-grow flex-col p-6 sm:p-8 lg:p-10">
+    <div className="relative z-20 flex grow flex-col p-6 sm:p-8 lg:p-10">
       <div className="mb-5 flex items-center gap-3">
         <div className="h-1 w-1 rounded-full bg-foreground opacity-20" />
         <div className="hex-mono text-[10px] font-bold tracking-[0.25em] uppercase opacity-40">
@@ -717,7 +698,7 @@ const BuildIllustration = () => (
     <div className="relative flex h-12 w-44 items-center gap-2 overflow-hidden rounded border hex-line-strong bg-white p-2 shadow-lg">
       <div className="absolute top-0 left-0 h-full w-1 bg-emerald-500" />
       <span className="hex-mono text-[10px] font-bold opacity-30">›</span>
-      <div className="flex flex-grow flex-col gap-1.5">
+      <div className="flex grow flex-col gap-1.5">
         <div className="h-1.5 w-28 rounded bg-slate-100" />
         <div className="h-1.5 w-16 rounded bg-slate-50" />
       </div>
@@ -754,10 +735,10 @@ const ShareIllustration = () => (
         <div className="h-1.5 w-3/4 rounded bg-slate-50" />
       </div>
       <div className="mt-auto flex gap-2">
-        <div className="hex-mono rounded-[4px] bg-slate-900 px-2 py-1 text-[8px] font-bold text-white">
+        <div className="hex-mono rounded-lg bg-slate-900 px-2 py-1 text-[8px] font-bold text-white">
           COPY LINK
         </div>
-        <div className="h-4 w-8 rounded-[4px] bg-slate-100" />
+        <div className="h-4 w-8 rounded-lg bg-slate-100" />
       </div>
     </div>
     <div className="absolute top-8 right-10 h-3 w-3 rounded-full border border-indigo-200 bg-indigo-100" />

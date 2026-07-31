@@ -78,11 +78,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
   };
 
-  // `cf-dotgrid` is a fixed pseudo-element, so it costs nothing in layout and
-  // stays registered to the viewport rather than scrolling with the content.
-  // The grain itself is the shared <Noise /> canvas, mounted below.
   const wrapperClass =
-    "cf-landing cf-dotgrid relative min-h-screen bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]";
+    "cf-landing cf-dotgrid relative min-h-screen bg-(--cf-cream) text-(--cf-ink)";
 
   if (isBuilderPage) {
     return (
@@ -116,20 +113,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <DashboardNav />
 
-        {/* Ruled page margins, matching the landing and auth surfaces. These
-            are overlays rather than layout, so they only appear from md up
-            where there is a gutter for them to sit in. */}
         <div className="pointer-events-none absolute inset-0 hidden md:block">
           <VerticalScale className="absolute inset-y-0 left-0" />
           <VerticalScale className="absolute inset-y-0 right-0" />
         </div>
 
-        <main className="relative z-10 mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-8 sm:py-14 lg:py-20">
+        <main className="relative z-10 mx-auto w-full max-w-350 px-4 py-10 sm:px-8 sm:py-14 lg:py-20">
           {children}
         </main>
 
-        {/* The same footer the marketing site uses. Sits above the edge rules
-            so its full-bleed wordmark isn't cut by them. */}
         <div className="relative z-10">
           <Footer />
         </div>
@@ -146,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <X className="size-4" />
               </button>
 
-              <div className="relative z-[1] p-6 sm:p-8">
+              <div className="relative z-1 p-6 sm:p-8">
               <p className="cf-dark-meta">New canvas</p>
               <h3 className="cf-display mt-3 text-[30px] leading-none uppercase sm:text-[38px]">
                 New form
@@ -168,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     placeholder="Quarterly feedback"
                     value={title}
                     onChange={handleTitleChange}
-                    className="cf-dark-input h-[42px] px-4 text-[14px]"
+                    className="cf-dark-input h-10.5 px-4 text-[14px]"
                   />
                 </FieldGroup>
 
@@ -183,7 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       placeholder="quarterly-feedback"
                       value={slug}
                       onChange={handleSlugChange}
-                      className="cf-dark-input h-[42px] pr-4 pl-7 font-mono text-[14px]"
+                      className="cf-dark-input h-10.5 pr-4 pl-7 font-mono text-[14px]"
                     />
                   </div>
                 </FieldGroup>
@@ -251,9 +243,9 @@ function FieldGroup({
 
 function CreatingOverlay() {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[color:var(--cf-cream)]">
+    <div className="fixed inset-0 z-200 flex flex-col items-center justify-center bg-(--cf-cream)">
       <div className="flex flex-col items-center gap-4">
-        <div className="size-8 animate-spin rounded-full border-2 border-[color:var(--cf-line)] border-t-[color:var(--cf-orange)]" />
+        <div className="size-8 animate-spin rounded-full border-2 border-(--cf-line) border-t-(--cf-orange)" />
         <p className="cf-meta">Drafting your form</p>
       </div>
     </div>

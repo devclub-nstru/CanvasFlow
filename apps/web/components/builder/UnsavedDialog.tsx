@@ -13,20 +13,20 @@ export function UnsavedDialog({ show, onCancel, onDiscard, onSaveAndLeave }: Uns
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
-      <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)]">
-        <p className="cf-eyebrow text-[color:var(--cf-orange)]">Unsaved changes</p>
-        <h3 className="mt-3 cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-(--cf-ink)/45 backdrop-blur-sm p-4">
+      <div className="bg-(--cf-cream-2) rounded-2xl ring-1 ring-(--cf-line-strong) p-7 max-w-sm w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)]">
+        <p className="cf-eyebrow text-(--cf-orange)">Unsaved changes</p>
+        <h3 className="mt-3 cf-display text-[22px] leading-snug text-(--cf-ink)">
           Save before leaving?
         </h3>
-        <p className="mt-2 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+        <p className="mt-2 text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
           You have unsaved changes. Save them now, or discard and leave.
         </p>
 
         <div className="flex flex-wrap justify-end gap-2 pt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-[13px] font-medium rounded-full text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer"
+            className="px-4 py-2 text-[13px] font-medium rounded-full text-(--cf-ink) hover:bg-(--cf-cream) transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -38,7 +38,7 @@ export function UnsavedDialog({ show, onCancel, onDiscard, onSaveAndLeave }: Uns
           </button>
           <button
             onClick={onSaveAndLeave}
-            className="px-5 py-2 text-[13px] font-medium rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white transition-colors cursor-pointer"
+            className="px-5 py-2 text-[13px] font-medium rounded-full bg-(--cf-orange) hover:bg-(--cf-orange-hover) text-white transition-colors cursor-pointer"
           >
             Save &amp; leave
           </button>

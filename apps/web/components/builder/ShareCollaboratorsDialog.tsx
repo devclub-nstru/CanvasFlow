@@ -151,7 +151,7 @@ export function ShareCollaboratorsDialog({
   const accessCount = 1 + (collaborators?.length ?? 0);
 
   return (
-    <div className="cf-scrim z-[300]">
+    <div className="cf-scrim z-300">
       <div className="cf-dialog max-h-[88vh] max-w-2xl">
         <div className="cf-dialog-bar">
           <span className="truncate">Share · {formTitle}</span>
@@ -225,7 +225,7 @@ export function ShareCollaboratorsDialog({
                 <span className="cf-meta">{accessCount}</span>
               </div>
 
-              <div className="custom-scrollbar max-h-[236px] space-y-2 overflow-y-auto">
+              <div className="custom-scrollbar max-h-59 space-y-2 overflow-y-auto">
                 {/* Owner */}
                 <div className="cf-row">
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -381,7 +381,7 @@ export function ShareCollaboratorsDialog({
                     />
                     {showSuggestions && suggestions.length > 0 && (
                       <div
-                        className="custom-scrollbar absolute top-full right-0 left-0 z-[350] mt-1 max-h-48 overflow-y-auto border"
+                        className="custom-scrollbar absolute top-full right-0 left-0 z-350 mt-1 max-h-48 overflow-y-auto border"
                         style={{
                           borderColor: "var(--cf-line-strong)",
                           background: "var(--cf-cream)",
@@ -396,7 +396,7 @@ export function ShareCollaboratorsDialog({
                               setEmail(u.email);
                               setShowSuggestions(false);
                             }}
-                            className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-[color:var(--cf-cream-2)]"
+                            className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-(--cf-cream-2)"
                           >
                             <span className="font-medium">{u.name}</span>
                             <span className="text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>

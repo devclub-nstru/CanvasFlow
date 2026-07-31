@@ -74,7 +74,7 @@ export default function DashboardNav() {
           background: "#fafafa",
         }}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
+        <div className="mx-auto flex max-w-350 items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
           <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
             <Image src="/logo.svg" alt="" width={24} height={24} className="object-contain" />
             <span className="cf-display text-[18px] leading-none">CanvasFlow</span>

@@ -109,7 +109,8 @@ export function FieldDropoff({ fieldCompletionRates, fields, submissions }: Fiel
           <div>
             <p className="cf-meta">Drop-off by field</p>
             <p className="mt-1 text-[12px]" style={{ color: "var(--cf-ink-soft)" }}>
-              Share of respondents who answered each field. Select one to read its answers.
+              Share of people who started the form and answered each field. Select one to read
+              its answers.
             </p>
           </div>
           <span className="cf-meta shrink-0">{rows.length} fields</span>
@@ -128,7 +129,7 @@ export function FieldDropoff({ fieldCompletionRates, fields, submissions }: Fiel
                 <button
                   type="button"
                   onClick={() => setOpenFieldId(row.fieldId)}
-                  className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--cf-cream)] sm:gap-4 sm:px-5"
+                  className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-(--cf-cream) sm:gap-4 sm:px-5"
                 >
                   <span
                     className="cf-meta w-6 shrink-0 tabular-nums"
@@ -233,7 +234,7 @@ function FieldAnswersDialog({
 
   return (
     <div
-      className="cf-scrim z-[300]"
+      className="cf-scrim z-300"
       role="dialog"
       aria-modal="true"
       aria-label={`Answers for ${label}`}
@@ -243,7 +244,7 @@ function FieldAnswersDialog({
         className="cf-dark cf-crop flex max-h-[85vh] w-full max-w-2xl flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative z-[1] flex min-h-0 flex-col">
+        <div className="relative z-1 flex min-h-0 flex-col">
           {/* header */}
           <div
             className="flex items-start justify-between gap-4 border-b p-5 sm:p-6"
@@ -346,7 +347,7 @@ function FieldAnswersDialog({
                     style={{ borderTopColor: "var(--cfd-line)" }}
                   >
                     <p
-                      className="text-[13.5px] leading-relaxed break-words"
+                      className="text-[13.5px] leading-relaxed wrap-break-word"
                       style={{ color: "var(--cfd-text)" }}
                     >
                       {a.text}

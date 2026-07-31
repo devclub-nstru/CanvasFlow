@@ -1,14 +1,11 @@
 import { db, eq, and, desc, gte, lt, count, usersTable } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
-import { formViewsTable } from "@repo/database/models/form-view";
 import {
   submitFormInput,
   type SubmitFormInputType,
   getSubmissionsInput,
   type GetSubmissionsInputType,
-  recordViewInput,
-  type RecordViewInputType,
 } from "./model";
 
 // Sentinel error message the client looks for to render the
@@ -16,9 +13,27 @@ import {
 // string stable — the public form page matches against it.
 export const ALREADY_SUBMITTED_ERROR = "ALREADY_SUBMITTED";
 
+// Same contract, for "this form can't take any more responses". Raised both
+// when the form hits its own maxSubmissions cap and when the owner's monthly
+// plan quota is exhausted: to the person filling the form in, those are the
+// same dead end, and the plan case must not report the owner's tier or quota
+// to a stranger on a public page.
+export const LIMIT_REACHED_ERROR = "LIMIT_REACHED";
+
 class FormSubmissionService {
   public async submitForm(payload: SubmitFormInputType) {
-    const { formId, values, idempotencyKey, visitorId } = await submitFormInput.parseAsync(payload);
+    const {
+      formId,
+      values,
+      idempotencyKey,
+      visitorId,
+      referrer,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      timeSpentMs,
+      deviceType,
+    } = await submitFormInput.parseAsync(payload);
 
     const formResult = await db.select().from(formsTable).where(eq(formsTable.id, formId));
     const form = formResult[0];
@@ -43,7 +58,7 @@ class FormSubmissionService {
         .where(eq(formSubmissionsTable.formId, formId));
       const totalSubmissions = Number(submissionsCountRows[0]?.value ?? 0);
       if (totalSubmissions >= form.maxSubmissions) {
-        throw new Error("Form has reached its submission limit");
+        throw new Error(LIMIT_REACHED_ERROR);
       }
     }
 
@@ -118,9 +133,11 @@ class FormSubmissionService {
 
     const monthlyCount = Number(monthCountRows[0]?.value ?? 0);
     if (monthlyCount >= submissionLimit) {
-      throw new Error(
-        `This workspace has reached the limit of ${submissionLimit} submissions per month for the ${userPlan} tier.`,
-      );
+      // Deliberately the same opaque sentinel as the per-form cap. This used
+      // to throw the tier name and the quota number, which surfaced in a
+      // toast on a public form — telling any respondent which plan the owner
+      // is on. The owner sees the real reason in their dashboard.
+      throw new Error(LIMIT_REACHED_ERROR);
     }
 
     let insertResult;
@@ -132,11 +149,12 @@ class FormSubmissionService {
           values,
           idempotencyKey: idempotencyKey ?? null,
           visitorId: visitorId ?? null,
-          referrer: (payload as any).referrer ?? null,
-          utmSource: (payload as any).utmSource ?? null,
-          utmMedium: (payload as any).utmMedium ?? null,
-          utmCampaign: (payload as any).utmCampaign ?? null,
-          timeSpentMs: (payload as any).timeSpentMs ?? null,
+          referrer: referrer ?? null,
+          utmSource: utmSource ?? null,
+          utmMedium: utmMedium ?? null,
+          utmCampaign: utmCampaign ?? null,
+          timeSpentMs: timeSpentMs ?? null,
+          deviceType: deviceType ?? null,
         })
         .returning({ id: formSubmissionsTable.id });
     } catch (err: any) {
@@ -191,19 +209,12 @@ class FormSubmissionService {
 
     // Fetch limit+1 so we know whether there's another page without a
     // second COUNT query.
-    const [pageRows, deviceRows] = await Promise.all([
-      db
-        .select()
-        .from(formSubmissionsTable)
-        .where(whereClause)
-        .orderBy(desc(formSubmissionsTable.createdAt))
-        .limit(limit + 1),
-      db
-        .select({ deviceType: formViewsTable.deviceType, value: count() })
-        .from(formViewsTable)
-        .where(eq(formViewsTable.formId, formId))
-        .groupBy(formViewsTable.deviceType),
-    ]);
+    const pageRows = await db
+      .select()
+      .from(formSubmissionsTable)
+      .where(whereClause)
+      .orderBy(desc(formSubmissionsTable.createdAt))
+      .limit(limit + 1);
 
     const hasMore = pageRows.length > limit;
     const submissions = hasMore ? pageRows.slice(0, limit) : pageRows;
@@ -211,34 +222,7 @@ class FormSubmissionService {
       ? submissions[submissions.length - 1]!.createdAt.toISOString()
       : null;
 
-    const deviceMap = { desktop: 0, mobile: 0, tablet: 0 };
-    let viewsCount = 0;
-    deviceRows.forEach((r) => {
-      const n = Number(r.value);
-      viewsCount += n;
-      const dev = r.deviceType.toLowerCase();
-      if (dev.includes("mobile")) deviceMap.mobile += n;
-      else if (dev.includes("tablet")) deviceMap.tablet += n;
-      else deviceMap.desktop += n;
-    });
-
-    const deviceViews = Object.entries(deviceMap).map(([device, cnt]) => ({
-      device,
-      count: cnt,
-    }));
-
-    return { submissions, nextCursor, viewsCount, deviceViews };
-  }
-
-  public async recordView(payload: RecordViewInputType) {
-    const { formId, deviceType } = await recordViewInput.parseAsync(payload);
-
-    await db.insert(formViewsTable).values({
-      formId,
-      deviceType,
-    });
-
-    return { success: true };
+    return { submissions, nextCursor };
   }
 }
 

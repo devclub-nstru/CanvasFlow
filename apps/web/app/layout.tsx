@@ -14,8 +14,6 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-// Clean modern sans — body & UI, and the display face for headings via
-// `.cf-display` / the landing headlines.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -28,8 +26,6 @@ const jbMono = JetBrains_Mono({
   display: "swap",
 });
 
-// Editorial italic accent inside the landing headlines
-// ("…for when you want to click around.", "No ceremony.").
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
@@ -58,9 +54,6 @@ export default function RootLayout({
       >
         <GlobalProviders>
           {children}
-          {/* Mounted once at the root so the report button is available on every
-              screen. It needs the tRPC provider above it, and it hides itself
-              on /forms/* — see the component. */}
           <FeedbackWidget />
         </GlobalProviders>
       </body>

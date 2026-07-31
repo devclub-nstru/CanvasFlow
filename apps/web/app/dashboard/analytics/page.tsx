@@ -23,8 +23,6 @@ import { StatsRow } from "~/components/analytics/StatsRow";
 import { SubmissionsTable } from "~/components/analytics/SubmissionsTable";
 import { DEVICE_COLORS } from "~/components/analytics/palette";
 
-// Lazy-load the recharts-backed widgets and the on-demand modal. Keeps the
-// initial route bundle lean — recharts alone is ~140kb gzipped.
 const ResponseTimeline = dynamic(
   () => import("~/components/analytics/ResponseTimeline").then((m) => m.ResponseTimeline),
   { ssr: false },
@@ -43,10 +41,6 @@ const TrafficSources = dynamic(
 );
 const FieldDropoff = dynamic(
   () => import("~/components/analytics/FieldDropoff").then((m) => m.FieldDropoff),
-  { ssr: false },
-);
-const ConversionFunnel = dynamic(
-  () => import("~/components/analytics/ConversionFunnel").then((m) => m.ConversionFunnel),
   { ssr: false },
 );
 const PeriodComparison = dynamic(
@@ -92,9 +86,15 @@ export function AnalyticsPage() {
 
   const selectedFormId = searchParams.get("form");
 
-  const setSelectedFormId = (id: string) => {
-    router.replace(`/dashboard/analytics?form=${id}`, { scroll: false });
-  };
+  // Memoised so the auto-select effect below can depend on it honestly. As a
+  // plain function it was reallocated every render, which is why that effect
+  // needed an exhaustive-deps suppression to avoid firing on every pass.
+  const setSelectedFormId = useCallback(
+    (id: string) => {
+      router.replace(`/dashboard/analytics?form=${id}`, { scroll: false });
+    },
+    [router],
+  );
 
   const { forms, isLoading: isLoadingForms } = useListFormsByUserId();
   const { form, isLoading: isLoadingForm } = useGetFormById(selectedFormId || "");
@@ -108,20 +108,15 @@ export function AnalyticsPage() {
   } = useGetSubmissions(selectedFormId || "");
   const { hasDetailedAnalytics } = useGetMe();
 
-  // Only request the Pro payload when the plan actually includes it. An empty
-  // id leaves the query disabled (it requires a 36-char id), so a Free viewer
-  // never fires a request the server would refuse — and the gated numbers never
-  // reach the browser at all.
   const { proAnalytics } = useGetProAnalytics(hasDetailedAnalytics ? selectedFormId || "" : "");
 
-  // Auto-select the first form when none is in the URL
+  // Auto-select the first form when none is in the URL.
   useEffect(() => {
     if (forms && forms.length > 0 && !selectedFormId) {
       const firstForm = forms[0];
       if (firstForm) setSelectedFormId(firstForm.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forms, selectedFormId]);
+  }, [forms, selectedFormId, setSelectedFormId]);
 
   const getRespondentDetails = useCallback(
     (sub: Submission) => {
@@ -200,18 +195,15 @@ export function AnalyticsPage() {
 
   // Derived metrics
   const totalResponses = analytics?.totalResponses ?? 0;
-  const totalViews = analytics?.totalViews ?? 0;
-  const completionRate =
-    (analytics?.completionRate != null ? analytics.completionRate.toFixed(1) : "0.0") + "%";
   const avgPerDay = analytics?.avgSubmissionsPerDay ?? 0;
   const avgPerWeek = analytics?.avgSubmissionsPerWeek ?? 0;
   const peakDay = analytics?.peakDay ?? null;
 
   const deviceData = useMemo(() => {
-    const deviceViews = analytics?.deviceViews ?? [];
-    const desktop = deviceViews.find((d) => d.device === "desktop")?.count ?? 0;
-    const mobile = deviceViews.find((d) => d.device === "mobile")?.count ?? 0;
-    const tablet = deviceViews.find((d) => d.device === "tablet")?.count ?? 0;
+    const deviceBreakdown = analytics?.deviceBreakdown ?? [];
+    const desktop = deviceBreakdown.find((d) => d.device === "desktop")?.count ?? 0;
+    const mobile = deviceBreakdown.find((d) => d.device === "mobile")?.count ?? 0;
+    const tablet = deviceBreakdown.find((d) => d.device === "tablet")?.count ?? 0;
 
     return [
       { name: "Desktop", value: desktop, color: DEVICE_COLORS.Desktop },
@@ -243,7 +235,7 @@ export function AnalyticsPage() {
           Analytics
           <span style={{ color: "var(--cf-orange)" }}>.</span>
         </h1>
-        <p className="mt-3 max-w-sm font-mono text-[13px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+        <p className="mt-3 max-w-sm font-mono text-[13px] leading-relaxed text-(--cf-ink-soft)">
           Read the numbers behind every form you publish.
         </p>
       </div>
@@ -259,7 +251,7 @@ export function AnalyticsPage() {
         {isLoading ? (
           <div className="cf-panel cf-raised flex h-64 items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="size-8 animate-spin rounded-full border-2 border-[color:var(--cf-line)] border-t-[color:var(--cf-orange)]" />
+              <div className="size-8 animate-spin rounded-full border-2 border-(--cf-line) border-t-(--cf-orange)" />
               <span className="cf-meta">Loading analytics</span>
             </div>
           </div>
@@ -268,17 +260,12 @@ export function AnalyticsPage() {
             <div className="max-w-xs space-y-2">
               <p className="cf-meta">No form selected</p>
               <h4 className="cf-display text-[24px] leading-tight uppercase">Pick a form</h4>
-              <p className="text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+              <p className="text-[13px] text-(--cf-ink-soft) leading-relaxed">
                 Choose a form from the sidebar to load its analytics and response history.
               </p>
             </div>
           </div>
         ) : (
-          /* One panel holding the whole report, as in the mock: a chrome bar,
-             the title, one ruled tab strip, then the KPI row and the active
-             section. Previously these were five separately-bordered blocks
-             stacked with gaps, which read as five unrelated widgets rather
-             than one instrument. */
           <div className="cf-panel cf-raised overflow-hidden">
             {/* chrome bar */}
             <div
@@ -314,11 +301,9 @@ export function AnalyticsPage() {
                 className="mt-1.5 text-[13px] leading-relaxed"
                 style={{ color: "var(--cf-ink-soft)" }}
               >
-                Live breakdown of responses across time, devices, and completion.
+                Live breakdown of responses across time, devices, and questions.
               </p>
 
-              {/* Tab strip. Scrolls rather than wraps — a wrapped tab row reads
-                  as broken chrome. */}
               <div
                 className="custom-scrollbar mt-5 flex items-center gap-5 overflow-x-auto border-b sm:gap-7"
                 style={{ borderBottomColor: "var(--cf-line-strong)" }}
@@ -338,52 +323,29 @@ export function AnalyticsPage() {
                 ))}
               </div>
 
-              {/* The KPI row stays put across tabs: these four numbers are the
-                  headline for every section, not just the summary. */}
               <div className="pt-5">
-                <MetricsGrid
-                  totalResponses={totalResponses}
-                  completionRate={completionRate}
-                  totalViews={totalViews}
-                  avgPerDay={avgPerDay}
-                />
+                <MetricsGrid totalResponses={totalResponses} avgPerDay={avgPerDay} />
               </div>
 
               <div className="pt-5">
                 {tab === "summary" && (
                   <div className="space-y-5">
-                    <StatsRow
-                      peakDay={peakDay}
-                      avgPerWeek={avgPerWeek}
-                      completionRate={analytics?.completionRate ?? 0}
-                    />
+                    <StatsRow peakDay={peakDay} avgPerWeek={avgPerWeek} />
                     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                       <ResponseTimeline totalResponses={totalResponses} trends={dailyTrends} />
-                      <DeviceBreakdown totalViews={totalViews} deviceData={deviceData} />
+                      <DeviceBreakdown deviceData={deviceData} />
                     </div>
-                    {/* The momentum panel needs the Pro trend buckets, so on a
-                        Free plan the funnel takes the full width rather than
-                        sitting next to an empty slot. */}
-                    <div
-                      className={
-                        proAnalytics
-                          ? "grid grid-cols-1 gap-5 lg:grid-cols-2"
-                          : "grid grid-cols-1 gap-5"
-                      }
-                    >
-                      <ConversionFunnel
-                        totalViews={totalViews}
-                        totalResponses={totalResponses}
-                        completionRate={analytics?.completionRate ?? 0}
-                      />
-                      {proAnalytics && (
+                    {/* Momentum needs the Pro trend buckets, so this row only
+                        renders on a paid plan. */}
+                    {proAnalytics && (
+                      <div className="grid grid-cols-1 gap-5">
                         <PeriodComparison
                           trend30d={proAnalytics.trend30d}
                           trend60d={proAnalytics.trend60d}
                           trend90d={proAnalytics.trend90d}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -456,13 +418,6 @@ export function AnalyticsPage() {
   );
 }
 
-/**
- * Labelled group inside the Segments tab.
- *
- * The tab holds three unrelated readings — engagement, acquisition and timing.
- * Stacked without headings they read as one undifferentiated wall of panels;
- * a ruled label per group tells you what question each block answers.
- */
 function SegmentGroup({
   label,
   hint,

@@ -52,9 +52,6 @@ export default function ProfilePage() {
   const totalResponses = stats?.totalResponses ?? 0;
   const responsesThisMonth = stats?.responsesThisMonth ?? 0;
 
-  /* The reference derives CREATED vs UPDATED by comparing the two timestamps.
-     Kept, but off `listFormsByUserId`, which carries both — the `recentForms`
-     on the stats payload has no `updatedAt` to compare against. */
   const activity = useMemo(() => {
     if (!forms) return [];
     return [...forms]
@@ -80,7 +77,6 @@ export default function ProfilePage() {
   ];
   const unlockedCount = milestones.filter((m) => m.unlocked).length;
 
-  // Lock background scroll while either dialog is open, as the reference does.
   const anyDialogOpen = isEditing || confirmSignOut;
   useEffect(() => {
     if (!anyDialogOpen) return;
@@ -90,11 +86,6 @@ export default function ProfilePage() {
       document.body.style.overflow = previous;
     };
   }, [anyDialogOpen]);
-
-  // Close on Escape — the create-form dialog in the layout is dismissible, and
-  // a modal that traps you until you find the X is worse. Not while the sign-out
-  // is in flight, though: the page is about to navigate and dismissing the
-  // dialog would just flash the profile back up mid-redirect.
   useEffect(() => {
     if (!anyDialogOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -109,9 +100,6 @@ export default function ProfilePage() {
 
   const openEditor = () => {
     setDraftName(me?.name ?? "");
-    // Seed with the *stored* preset only. If the column holds a provider URL,
-    // leave this null so saving the name alone doesn't silently convert that
-    // provider avatar into a glyph key.
     setDraftPreset(isAvatarPreset(me?.image) ? me.image : null);
     setIsEditing(true);
   };
@@ -148,9 +136,6 @@ export default function ProfilePage() {
     setIsSigningOut(true);
     try {
       await signOutAsync();
-      // Hard navigation rather than router.push. The session cookie has just
-      // been cleared, and a client-side push would keep the cached tRPC data
-      // and the React tree of a signed-in user alive on the way out.
       window.location.href = "/";
     } catch (err) {
       setIsSigningOut(false);
@@ -162,7 +147,7 @@ export default function ProfilePage() {
   if (meLoading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <div className="size-8 animate-spin rounded-full border-2 border-[color:var(--cf-line)] border-t-[color:var(--cf-orange)]" />
+        <div className="size-8 animate-spin rounded-full border-2 border-(--cf-line) border-t-(--cf-orange)" />
         <p className="cf-meta">Loading your profile</p>
       </div>
     );
@@ -171,7 +156,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       {/* ───── header ───── */}
-      <div className="flex flex-col gap-6 border-b border-[color:var(--cf-line-strong)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-6 border-b border-(--cf-line-strong) pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="cf-meta mb-2">Account</p>
           <h1 className="cf-display text-[32px] leading-[0.95] uppercase sm:text-[42px] md:text-[52px]">
@@ -210,31 +195,24 @@ export default function ProfilePage() {
                   className="group relative shrink-0 cursor-pointer"
                 >
                   <GlyphAvatar seed={seed} preset={activePreset} size={64} />
-                  <span className="absolute inset-0 flex items-center justify-center bg-[color:var(--cf-ink)]/70 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="font-mono text-[9px] font-bold tracking-[0.14em] text-[color:var(--cf-cream)] uppercase">
+                  <span className="absolute inset-0 flex items-center justify-center bg-(--cf-ink)/70 opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="font-mono text-[9px] font-bold tracking-[0.14em] text-(--cf-cream) uppercase">
                       Edit
                     </span>
                   </span>
                 </button>
 
                 <div className="min-w-0">
-                  <p className="cf-display text-[20px] leading-tight break-words">
+                  <p className="cf-display text-[20px] leading-tight wrap-break-word">
                     {me?.name || "Unnamed"}
                   </p>
-                  <p className="mt-1 font-mono text-[11px] break-all text-[color:var(--cf-ink-soft)]">
+                  <p className="mt-1 font-mono text-[11px] break-all text-(--cf-ink-soft)">
                     {me?.email}
                   </p>
                 </div>
               </div>
 
-              {/* Email moved up under the name — the conventional spot, and it
-                  keeps this list to the two things that actually change. */}
-              <dl className="space-y-4 border-t border-[color:var(--cf-line)] pt-4">
-                {/* Plan sits here in place of the user id. The id was a 32-char
-                    opaque string with nothing a user could do with it; the
-                    plan is the thing people actually come here to check. It
-                    replaces the badge that used to sit under the name, so the
-                    plan is stated once rather than twice. */}
+              <dl className="space-y-4 border-t border-(--cf-line) pt-4">
                 <Field label="Current plan">
                   <span
                     className="inline-block border px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase"
@@ -260,13 +238,10 @@ export default function ProfilePage() {
               <p className="cf-meta">Session</p>
             </div>
             <div className="space-y-3 p-5">
-              {/* `cf-btn-danger` rather than a flat red fill: it's the outline
-                  variant, which matches the neutral button beneath it while
-                  still marking this as the one that ends your session. */}
               <button
                 type="button"
                 onClick={() => setConfirmSignOut(true)}
-                className="cf-btn-danger h-11 w-full justify-start gap-2.5 px-4 text-[13px] hover:bg-[color:var(--cf-danger)] hover:text-white"
+                className="cf-btn-danger h-11 w-full justify-start gap-2.5 px-4 text-[13px] hover:bg-(--cf-danger) hover:text-white"
               >
                 <LogOut className="size-4" />
                 Sign out
@@ -287,7 +262,7 @@ export default function ProfilePage() {
           <section className="cf-panel overflow-hidden">
             <div className="cf-pane-bar">
               <p className="cf-meta">Milestones</p>
-              <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+              <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
                 {unlockedCount}/{milestones.length} unlocked
               </span>
             </div>
@@ -315,7 +290,7 @@ export default function ProfilePage() {
                   <p className="font-mono text-[10.5px] font-bold tracking-wide uppercase">
                     {m.label}
                   </p>
-                  <p className="mt-0.5 font-mono text-[9.5px] text-[color:var(--cf-ink-soft)]">
+                  <p className="mt-0.5 font-mono text-[9.5px] text-(--cf-ink-soft)">
                     {m.desc}
                   </p>
                   <span className="sr-only">{m.unlocked ? "Unlocked" : "Locked"}</span>
@@ -334,7 +309,7 @@ export default function ProfilePage() {
           <section className="cf-panel overflow-hidden">
             <div className="cf-pane-bar">
               <p className="cf-meta">Activity</p>
-              <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+              <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
                 Last {activity.length || 5}
               </span>
             </div>
@@ -344,24 +319,24 @@ export default function ProfilePage() {
                 {activity.map((item, i) => (
                   <li
                     key={item.id}
-                    className="group flex items-center gap-4 border-b border-[color:var(--cf-line)] px-5 py-4 transition-colors last:border-b-0 hover:bg-[color:var(--cf-ink)]/[0.02]"
+                    className="group flex items-center gap-4 border-b border-(--cf-line) px-5 py-4 transition-colors last:border-b-0 hover:bg-(--cf-ink)/2"
                   >
-                    <span className="flex size-6 shrink-0 items-center justify-center border border-[color:var(--cf-line-strong)] font-mono text-[10px] font-bold transition-colors group-hover:bg-[color:var(--cf-ink)] group-hover:text-[color:var(--cf-cream)]">
+                    <span className="flex size-6 shrink-0 items-center justify-center border border-(--cf-line-strong) font-mono text-[10px] font-bold transition-colors group-hover:bg-(--cf-ink) group-hover:text-(--cf-cream)">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px]">
-                        <span className="font-mono text-[11px] font-bold tracking-wider uppercase text-[color:var(--cf-ink-soft)]">
+                        <span className="font-mono text-[11px] font-bold tracking-wider uppercase text-(--cf-ink-soft)">
                           {item.action}
                         </span>{" "}
                         <Link
                           href={`/dashboard/sketches/${item.id}`}
-                          className="font-medium underline decoration-[color:var(--cf-line)] underline-offset-4 hover:decoration-[color:var(--cf-ink)]"
+                          className="font-medium underline decoration-(--cf-line) underline-offset-4 hover:decoration-(--cf-ink)"
                         >
                           {item.target}
                         </Link>
                       </p>
-                      <p className="mt-0.5 font-mono text-[10.5px] text-[color:var(--cf-ink-soft)]">
+                      <p className="mt-0.5 font-mono text-[10.5px] text-(--cf-ink-soft)">
                         {new Date(item.timestamp).toLocaleString()}
                       </p>
                     </div>
@@ -371,7 +346,7 @@ export default function ProfilePage() {
             ) : (
               <div className="px-5 py-14 text-center">
                 <p className="cf-meta">No activity yet</p>
-                <p className="mt-2 text-[13px] text-[color:var(--cf-ink-soft)]">
+                <p className="mt-2 text-[13px] text-(--cf-ink-soft)">
                   Your forms will show up here as you build them.
                 </p>
               </div>
@@ -379,13 +354,6 @@ export default function ProfilePage() {
           </section>
         </div>
       </div>
-
-      {/* ───── sign-out confirm ───── */}
-      {/* Same `cf-dark cf-crop` panel as the delete-form and create-form
-          dialogs, so confirmations look like one thing across the app. The
-          backdrop is <ModalOverlay> rather than `.cf-scrim`, which cannot cover
-          the nav from inside this page — see that component for why. This
-          dialog used to live in DashboardNav; it moved here with the button. */}
       {confirmSignOut && (
         <ModalOverlay onDismiss={isSigningOut ? undefined : () => setConfirmSignOut(false)}>
           <div
@@ -394,7 +362,7 @@ export default function ProfilePage() {
             aria-labelledby="signout-title"
             className="cf-dark cf-crop w-full max-w-md"
           >
-            <div className="relative z-[1] p-6 sm:p-8">
+            <div className="relative z-1 p-6 sm:p-8">
               <p className="cf-dark-meta">Session</p>
               <h2
                 id="signout-title"
@@ -471,7 +439,7 @@ export default function ProfilePage() {
               <X className="size-4" />
             </button>
 
-            <div className="relative z-[1] p-6 sm:p-8">
+            <div className="relative z-1 p-6 sm:p-8">
               <p className="cf-dark-meta">Identity</p>
               <h2 className="cf-display mt-3 text-[28px] leading-none uppercase sm:text-[34px]">
                 Edit profile
@@ -490,7 +458,7 @@ export default function ProfilePage() {
                     maxLength={80}
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
-                    className="cf-dark-input h-[42px] px-4 text-[14px]"
+                    className="cf-dark-input h-10.5 px-4 text-[14px]"
                   />
                 </div>
 

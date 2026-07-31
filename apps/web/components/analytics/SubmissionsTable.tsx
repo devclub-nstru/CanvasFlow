@@ -97,13 +97,13 @@ export function SubmissionsTable({
 
   return (
     <>
-      <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5">
+      <div className="bg-(--cf-cream-2) rounded-xl ring-1 ring-(--cf-line) p-5">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Latest</p>
+            <p className="cf-eyebrow text-(--cf-ink-soft)">Latest</p>
             <h4 className="mt-2 cf-display text-[20px] leading-tight">Responses</h4>
             {filteredSubmissions.length > 0 && (
-              <p className="mt-1 text-[11px] font-mono text-[color:var(--cf-ink-soft)]">
+              <p className="mt-1 text-[11px] font-mono text-(--cf-ink-soft)">
                 {filteredSubmissions.length} {filteredSubmissions.length === 1 ? "row" : "rows"} ·
                 virtualised
                 {hasNextPage ? " · more available" : ""}
@@ -116,34 +116,34 @@ export function SubmissionsTable({
               placeholder="Search responses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[color:var(--cf-cream)] rounded-md ring-1 ring-[color:var(--cf-line)] focus:ring-2 focus:ring-[color:var(--cf-orange)] focus:outline-none pl-9 pr-3 h-[38px] text-[13px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 transition-shadow"
+              className="w-full bg-(--cf-cream) rounded-md ring-1 ring-(--cf-line) focus:ring-2 focus:ring-(--cf-orange) focus:outline-none pl-9 pr-3 h-9.5 text-[13px] text-(--cf-ink) placeholder:text-(--cf-ink-soft)/55 transition-shadow"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-[color:var(--cf-ink-soft)]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-(--cf-ink-soft)" />
           </div>
         </div>
 
         <div className="mt-5">
           {filteredSubmissions.length === 0 ? (
-            <div className="py-12 text-center text-[13px] text-[color:var(--cf-ink-soft)] bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-dashed ring-[color:var(--cf-line-strong)]">
+            <div className="py-12 text-center text-[13px] text-(--cf-ink-soft) bg-(--cf-cream) rounded-lg border border-dashed border-(--cf-line-strong)">
               No submissions found.
             </div>
           ) : (
             <div className="overflow-x-auto">
               {/* min-width keeps the header + virtualized rows aligned even
                   when the viewport is narrow; horizontal scroll on phones */}
-              <div className="min-w-[640px]">
+              <div className="min-w-160">
                 {/* Header — outside the virtualized scroll area, always visible */}
-                <div className={`${GRID_COLS} px-1 pb-3 border-b border-[color:var(--cf-line)]`}>
-                  <div className="font-mono text-[11px] uppercase tracking-wider text-[color:var(--cf-ink-soft)] font-medium">
+                <div className={`${GRID_COLS} px-1 pb-3 border-b border-(--cf-line)`}>
+                  <div className="font-mono text-[11px] uppercase tracking-wider text-(--cf-ink-soft) font-medium">
                     Respondent
                   </div>
-                  <div className="font-mono text-[11px] uppercase tracking-wider text-[color:var(--cf-ink-soft)] font-medium">
+                  <div className="font-mono text-[11px] uppercase tracking-wider text-(--cf-ink-soft) font-medium">
                     Status
                   </div>
-                  <div className="font-mono text-[11px] uppercase tracking-wider text-[color:var(--cf-ink-soft)] font-medium">
+                  <div className="font-mono text-[11px] uppercase tracking-wider text-(--cf-ink-soft) font-medium">
                     Date
                   </div>
-                  <div className="font-mono text-[11px] uppercase tracking-wider text-[color:var(--cf-ink-soft)] font-medium text-right">
+                  <div className="font-mono text-[11px] uppercase tracking-wider text-(--cf-ink-soft) font-medium text-right">
                     Action
                   </div>
                 </div>
@@ -180,32 +180,32 @@ export function SubmissionsTable({
                             height: vi.size,
                             transform: `translateY(${vi.start}px)`,
                           }}
-                          className={`${GRID_COLS} px-1 border-b border-[color:var(--cf-line)] hover:bg-[color:var(--cf-cream)]/60 transition-colors text-[13px]`}
+                          className={`${GRID_COLS} px-1 border-b border-(--cf-line) hover:bg-(--cf-cream)/60 transition-colors text-[13px]`}
                           role="row"
                         >
                           {/* Respondent */}
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-[color:var(--cf-ink)] text-white flex items-center justify-center text-[11px] font-medium shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-(--cf-ink) text-white flex items-center justify-center text-[11px] font-medium shrink-0">
                               {initials || "?"}
                             </div>
                             <div className="overflow-hidden">
-                              <div className="font-medium text-[color:var(--cf-ink)] truncate">
+                              <div className="font-medium text-(--cf-ink) truncate">
                                 {details.name}
                               </div>
-                              <div className="text-[11px] text-[color:var(--cf-ink-soft)] truncate font-mono">
+                              <div className="text-[11px] text-(--cf-ink-soft) truncate font-mono">
                                 {details.email}
                               </div>
                             </div>
                           </div>
 
                           {/* Status */}
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[color:var(--cf-ink-soft)]">
-                            <span className="size-1.5 rounded-full bg-[color:var(--cf-orange)]" />
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-(--cf-ink-soft)">
+                            <span className="size-1.5 rounded-full bg-(--cf-orange)" />
                             Completed
                           </span>
 
                           {/* Date */}
-                          <div className="text-[12px] font-mono text-[color:var(--cf-ink-soft)] truncate">
+                          <div className="text-[12px] font-mono text-(--cf-ink-soft) truncate">
                             {new Date(sub.createdAt).toLocaleString()}
                           </div>
 
@@ -213,7 +213,7 @@ export function SubmissionsTable({
                           <div className="text-right">
                             <button
                               onClick={() => setViewingSubmission(sub)}
-                              className="p-2 rounded-md ring-1 ring-[color:var(--cf-line-strong)] hover:bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] transition-colors cursor-pointer"
+                              className="p-2 rounded-md ring-1 ring-(--cf-line-strong) hover:bg-(--cf-cream) text-(--cf-ink) transition-colors cursor-pointer"
                               title="View details"
                               aria-label="View submission details"
                             >
@@ -229,17 +229,17 @@ export function SubmissionsTable({
                 {/* Pagination footer — manual fallback for the auto-trigger
                     above. Surfaces loading state when more rows are coming. */}
                 {(hasNextPage || isFetchingNextPage) && (
-                  <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-[color:var(--cf-line)]">
+                  <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-(--cf-line)">
                     {isFetchingNextPage ? (
-                      <span className="inline-flex items-center gap-2 text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
-                        <span className="size-3 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
+                      <span className="inline-flex items-center gap-2 text-[12px] font-mono text-(--cf-ink-soft)">
+                        <span className="size-3 border-2 border-(--cf-line-strong) border-t-(--cf-orange) rounded-full animate-spin" />
                         Loading older submissions...
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => fetchNextPage?.()}
-                        className="text-[12px] font-medium text-[color:var(--cf-ink)] hover:text-[color:var(--cf-orange)] ring-1 ring-[color:var(--cf-line-strong)] hover:ring-[color:var(--cf-orange)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] px-4 h-[32px] rounded-full transition-colors cursor-pointer"
+                        className="text-[12px] font-medium text-(--cf-ink) hover:text-(--cf-orange) ring-1 ring-(--cf-line-strong) hover:ring-(--cf-orange) bg-(--cf-cream) hover:bg-(--cf-cream-2) px-4 h-8 rounded-full transition-colors cursor-pointer"
                       >
                         Load older submissions
                       </button>

@@ -34,7 +34,7 @@ export const FieldLabel = ({
    focus state is a hard offset shadow rather than a glow ring for the same
    reason the cards use one. */
 const INPUT_CLASS =
-  "w-full rounded-none border hex-line-strong bg-white px-4 py-3 text-[15px] outline-none transition-shadow placeholder:text-[color:var(--hex-ink-muted)] focus:shadow-[3px_3px_0_0_rgba(26,29,41,0.14)]";
+  "w-full rounded-none border hex-line-strong bg-white px-4 py-3 text-[15px] outline-none transition-shadow placeholder:text-(--hex-ink-muted) focus:shadow-[3px_3px_0_0_rgba(26,29,41,0.14)]";
 
 export const Field = ({
   id,

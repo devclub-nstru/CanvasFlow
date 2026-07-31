@@ -36,7 +36,7 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
 
   return (
     <aside
-      className="flex w-64 shrink-0 flex-col border-r bg-[color:var(--cf-cream-2)]"
+      className="flex w-64 shrink-0 flex-col border-r bg-(--cf-cream-2)"
       style={{ borderRightColor: "var(--cf-line-strong)" }}
     >
       {/* Chrome row. Fixed at h-10 to match the canvas and inspector rows so
@@ -45,7 +45,7 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
       <div className="cf-pane-bar">
         <p className="cf-meta">Fields</p>
         {filtered && (
-          <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+          <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
             {filtered.length} of {AVAILABLE_FIELDS.length}
           </span>
         )}
@@ -57,13 +57,13 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
         style={{ borderBottomColor: "var(--cf-line-strong)" }}
       >
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[color:var(--cf-ink-soft)]" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-(--cf-ink-soft)" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search fields..."
-            className="cf-input h-[32px] pr-2 pl-8 text-[12px]"
+            className="cf-input h-8 pr-2 pl-8 text-[12px]"
           />
         </div>
       </div>
@@ -78,7 +78,7 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
               ))}
             </div>
           ) : (
-            <p className="text-[12px] text-[color:var(--cf-ink-soft)] text-center py-6">
+            <p className="text-[12px] text-(--cf-ink-soft) text-center py-6">
               No fields match &ldquo;{query}&rdquo;
             </p>
           )
@@ -102,7 +102,7 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
 
       {/* footer hint */}
       <div className="border-t px-4 py-2.5" style={{ borderTopColor: "var(--cf-line-strong)" }}>
-        <p className="text-[11px] font-mono text-[color:var(--cf-ink-soft)]/70 text-center">
+        <p className="text-[11px] font-mono text-(--cf-ink-soft)/70 text-center">
           {onPick ? "Click to add" : "Drag to canvas"}
         </p>
       </div>
@@ -131,18 +131,18 @@ function FieldItem({
       {...(onPick ? ({ type: "button", onClick: () => onPick(field.type) } as const) : {})}
       draggable
       onDragStart={(e: React.DragEvent) => onDragStart(e, field.type)}
-      className={`group flex w-full items-center gap-3 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] px-2.5 py-2 text-left transition-colors select-none hover:border-[color:var(--cf-line-strong)] hover:bg-white ${
+      className={`group flex w-full items-center gap-3 border border-(--cf-line) bg-(--cf-cream) px-2.5 py-2 text-left transition-colors select-none hover:border-(--cf-line-strong) hover:bg-white ${
         onPick ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
       }`}
     >
-      <div className="flex size-7 shrink-0 items-center justify-center border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] transition-colors group-hover:border-[color:var(--cf-orange)]">
-        <Icon className="size-3.5 text-[color:var(--cf-orange)]" />
+      <div className="flex size-7 shrink-0 items-center justify-center border border-(--cf-line) bg-(--cf-cream) transition-colors group-hover:border-(--cf-orange)">
+        <Icon className="size-3.5 text-(--cf-orange)" />
       </div>
       <div className="min-w-0">
-        <p className="text-[12.5px] font-medium text-[color:var(--cf-ink)] leading-tight truncate">
+        <p className="text-[12.5px] font-medium text-(--cf-ink) leading-tight truncate">
           {field.label}
         </p>
-        <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate mt-0.5">
+        <p className="text-[11px] text-(--cf-ink-soft) truncate mt-0.5">
           {field.description}
         </p>
       </div>

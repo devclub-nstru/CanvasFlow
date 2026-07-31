@@ -55,7 +55,7 @@ const FIELD_BOX_STYLE: React.CSSProperties = { borderColor: "var(--cf-line-stron
 
 /** Text-ish inputs. Square, drawn, and focus-ringed with the accent. */
 const INPUT_CLS =
-  "w-full border bg-white px-4 h-[52px] text-[16px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 focus:outline-none focus:shadow-[3px_3px_0_0_var(--cf-line-strong)]";
+  "w-full border bg-white px-4 h-13 text-[16px] text-(--cf-ink) placeholder:text-(--cf-ink-soft)/55 focus:outline-none focus:shadow-[3px_3px_0_0_var(--cf-line-strong)]";
 
 const CHOICE_BASE =
   "w-full flex items-center gap-3 border px-4 py-3.5 text-[15px] text-left transition-colors cursor-pointer";
@@ -107,7 +107,7 @@ export function FormQuestion({
           className="flex items-center justify-between border-b px-4 py-2"
           style={{ borderBottomColor: "var(--cf-line)", background: "var(--cf-cream)" }}
         >
-          <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-[color:var(--cf-ink-soft)] uppercase">
+          <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-(--cf-ink-soft) uppercase">
             Q{String(currentQuestionIndex + 1).padStart(2, "0")} / {String(totalQuestions).padStart(2, "0")}
           </span>
           {currentField.isRequired && (
@@ -125,12 +125,12 @@ export function FormQuestion({
           <div className="space-y-2">
             <label
               htmlFor={inputId}
-              className="cf-display block text-[24px] leading-[1.15] text-[color:var(--cf-ink)] sm:text-[30px]"
+              className="cf-display block text-[24px] leading-[1.15] text-(--cf-ink) sm:text-[30px]"
             >
               {currentField.label}
             </label>
             {currentField.description && (
-              <p className="text-[14px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+              <p className="text-[14px] leading-relaxed text-(--cf-ink-soft)">
                 {currentField.description}
               </p>
             )}
@@ -157,7 +157,7 @@ export function FormQuestion({
                 value={value || ""}
                 onChange={(e) => handleFieldChange(currentField.id, e.target.value)}
                 rows={5}
-                className="w-full resize-none border bg-white px-4 py-3.5 text-[16px] text-[color:var(--cf-ink)] placeholder:text-[color:var(--cf-ink-soft)]/55 focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
+                className="w-full resize-none border bg-white px-4 py-3.5 text-[16px] text-(--cf-ink) placeholder:text-(--cf-ink-soft)/55 focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
                 style={FIELD_BOX_STYLE}
               />
             )}
@@ -301,8 +301,8 @@ export function FormQuestion({
                       <Star
                         className={`size-9 ${
                           on
-                            ? "fill-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
-                            : "fill-current text-[color:var(--cf-ink)]/15"
+                            ? "fill-(--cf-orange) text-(--cf-orange)"
+                            : "fill-current text-(--cf-ink)/15"
                         }`}
                       />
                     </button>
@@ -324,7 +324,7 @@ export function FormQuestion({
                   style={FIELD_BOX_STYLE}
                 />
                 <Calendar
-                  className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-[color:var(--cf-ink-soft)]"
+                  className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-(--cf-ink-soft)"
                   aria-hidden
                 />
               </div>
@@ -343,7 +343,7 @@ export function FormQuestion({
                   style={FIELD_BOX_STYLE}
                 />
                 <Clock
-                  className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-[color:var(--cf-ink-soft)]"
+                  className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-(--cf-ink-soft)"
                   aria-hidden
                 />
               </div>
@@ -387,7 +387,7 @@ export function FormQuestion({
           <button
             type="button"
             onClick={handleBack}
-            className="inline-flex h-[50px] cursor-pointer items-center gap-1.5 border px-4 text-[13.5px] font-medium transition-colors hover:bg-[color:var(--cf-cream-2)]"
+            className="inline-flex h-12.5 cursor-pointer items-center gap-1.5 border px-4 text-[13.5px] font-medium transition-colors hover:bg-(--cf-cream-2)"
             style={{ borderColor: "var(--cf-line-strong)", color: "var(--cf-ink)" }}
           >
             <ArrowLeft className="size-3.5" />
@@ -398,7 +398,7 @@ export function FormQuestion({
           type="button"
           onClick={handleNext}
           disabled={isPending}
-          className="group inline-flex h-[50px] flex-1 cursor-pointer items-center justify-center gap-2 border text-[15px] font-semibold text-white transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="group inline-flex h-12.5 flex-1 cursor-pointer items-center justify-center gap-2 border text-[15px] font-semibold text-white transition-all hover:translate-x-px hover:translate-y-px hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60"
           style={{
             background: "var(--cf-orange)",
             borderColor: "var(--cf-line-strong)",
@@ -410,7 +410,7 @@ export function FormQuestion({
         </button>
       </div>
 
-      <p className="text-center font-mono text-[10.5px] tracking-[0.1em] text-[color:var(--cf-ink-soft)]/70 uppercase">
+      <p className="text-center font-mono text-[10.5px] tracking-widest text-(--cf-ink-soft)/70 uppercase">
         {isLast ? "Press Submit to send your response" : "Press Next to continue"}
       </p>
     </div>

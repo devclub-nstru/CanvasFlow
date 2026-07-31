@@ -57,8 +57,8 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
          contents by a pixel on every click. */
       className={`w-72 cursor-pointer border-2 bg-white transition-shadow select-none ${
         selected
-          ? "border-[color:var(--cf-orange)] shadow-[5px_5px_0_0_var(--cf-orange)]"
-          : "border-[color:var(--cf-line-strong)] shadow-[4px_4px_0_0_rgba(26,29,41,0.16)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.32)]"
+          ? "border-(--cf-orange) shadow-[5px_5px_0_0_var(--cf-orange)]"
+          : "border-(--cf-line-strong) shadow-[4px_4px_0_0_rgba(26,29,41,0.16)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.32)]"
       }`}
     >
       {/* Titlebar. Tinted and ruled so the node reads as a drawn card
@@ -68,7 +68,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
         style={{ borderBottomColor: "var(--cf-line)", background: "var(--cf-cream)" }}
       >
         <div className="cf-meta inline-flex items-center gap-1.5">
-          <IconComponent className="size-3 text-[color:var(--cf-orange)]" />
+          <IconComponent className="size-3 text-(--cf-orange)" />
           <span>{field.type.replace("_", " ")}</span>
         </div>
         {field.isRequired && (
@@ -84,12 +84,12 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
       <div className="space-y-3 p-4">
         {/* label + description */}
         <div className="space-y-1.5">
-          <h4 className="cf-display text-[16px] leading-snug text-[color:var(--cf-ink)] line-clamp-2">
+          <h4 className="cf-display text-[16px] leading-snug text-(--cf-ink) line-clamp-2">
             {field.label || `Untitled ${field.type.replace("_", " ").toLowerCase()}`}
           </h4>
 
           {field.description && (
-            <p className="text-[11px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+            <p className="text-[11px] text-(--cf-ink-soft) leading-relaxed">
               {field.description}
             </p>
           )}
@@ -132,18 +132,18 @@ function FieldPreview({ field }: { field: any }) {
   if (field.type === "SELECT") {
     const options = getFieldOptionsArray(field);
     return (
-      <div className="space-y-1 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] p-2.5">
+      <div className="space-y-1 border border-(--cf-line-strong) bg-(--cf-cream) p-2.5">
         {options.slice(0, 3).map((opt, i) => (
           <div
             key={i}
-            className="flex items-center justify-between text-[11px] text-[color:var(--cf-ink-soft)]"
+            className="flex items-center justify-between text-[11px] text-(--cf-ink-soft)"
           >
             <span className="truncate pr-2">{opt}</span>
-            <span className="text-[9px] text-[color:var(--cf-ink-soft)]/50">▼</span>
+            <span className="text-[9px] text-(--cf-ink-soft)/50">▼</span>
           </div>
         ))}
         {options.length > 3 && (
-          <p className="text-[10px] font-mono text-[color:var(--cf-ink-soft)]/50 text-center pt-0.5">
+          <p className="text-[10px] font-mono text-(--cf-ink-soft)/50 text-center pt-0.5">
             + {options.length - 3} more
           </p>
         )}
@@ -158,14 +158,14 @@ function FieldPreview({ field }: { field: any }) {
         {options.slice(0, 3).map((opt, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 text-[11px] text-[color:var(--cf-ink-soft)]"
+            className="flex items-center gap-2 text-[11px] text-(--cf-ink-soft)"
           >
-            <div className="size-3 shrink-0 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)]" />
+            <div className="size-3 shrink-0 border border-(--cf-line-strong) bg-(--cf-cream)" />
             <span className="truncate">{opt}</span>
           </div>
         ))}
         {options.length > 3 && (
-          <p className="text-[10px] font-mono text-[color:var(--cf-ink-soft)]/50 pl-5">
+          <p className="text-[10px] font-mono text-(--cf-ink-soft)/50 pl-5">
             + {options.length - 3} more
           </p>
         )}
@@ -178,7 +178,7 @@ function FieldPreview({ field }: { field: any }) {
     return (
       <div className="flex items-center gap-1">
         {Array.from({ length: max }).map((_, i) => (
-          <Star key={i} className="size-3.5 text-[color:var(--cf-ink)]/15 fill-current" />
+          <Star key={i} className="size-3.5 text-(--cf-ink)/15 fill-current" />
         ))}
       </div>
     );
@@ -191,9 +191,9 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minDate ? `From ${o.minDate}` : ""}${o?.maxDate ? ` to ${o.maxDate}` : ""}`
         : field.placeholder || "Select a date";
     return (
-      <div className="flex items-center justify-between border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
+      <div className="flex items-center justify-between border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
         <span className="truncate pr-2">{range}</span>
-        <Calendar className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
+        <Calendar className="size-3.5 text-(--cf-ink-soft)/55 shrink-0" />
       </div>
     );
   }
@@ -205,9 +205,9 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minTime ? `From ${o.minTime}` : ""}${o?.maxTime ? ` to ${o.maxTime}` : ""}`
         : field.placeholder || "Select a time";
     return (
-      <div className="flex items-center justify-between border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
+      <div className="flex items-center justify-between border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
         <span className="truncate pr-2">{range}</span>
-        <Clock className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
+        <Clock className="size-3.5 text-(--cf-ink-soft)/55 shrink-0" />
       </div>
     );
   }
@@ -219,14 +219,14 @@ function FieldPreview({ field }: { field: any }) {
       <div className="flex items-center justify-between gap-3">
         <span
           className={`text-[11px] ${
-            !on ? "font-medium text-[color:var(--cf-ink)]" : "text-[color:var(--cf-ink-soft)]/55"
+            !on ? "font-medium text-(--cf-ink)" : "text-(--cf-ink-soft)/55"
           }`}
         >
           {o?.inactiveLabel || "No"}
         </span>
         <div
           className={`relative inline-flex h-4 w-8 shrink-0 rounded-full transition-colors ${
-            on ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink)]/15"
+            on ? "bg-(--cf-orange)" : "bg-(--cf-ink)/15"
           }`}
         >
           <span
@@ -237,7 +237,7 @@ function FieldPreview({ field }: { field: any }) {
         </div>
         <span
           className={`text-[11px] ${
-            on ? "font-medium text-[color:var(--cf-orange)]" : "text-[color:var(--cf-ink-soft)]/55"
+            on ? "font-medium text-(--cf-orange)" : "text-(--cf-ink-soft)/55"
           }`}
         >
           {o?.activeLabel || "Yes"}
@@ -248,7 +248,7 @@ function FieldPreview({ field }: { field: any }) {
 
   // text/textarea/email/number/phone/url
   return (
-    <div className="border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]">
+    <div className="border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
       {field.placeholder || "Answer here..."}
     </div>
   );

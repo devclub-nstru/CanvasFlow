@@ -52,6 +52,12 @@ export const formSubmissionsTable = pgTable(
     utmCampaign: varchar("utm_campaign", { length: 255 }),
     timeSpentMs: integer("time_spent_ms"), // ms from page load to submit
 
+    // Device the submission came from ("desktop" | "mobile" | "tablet"),
+    // sniffed from the user agent by the public form page. Nullable: rows
+    // written before this column existed carry no device information, and
+    // the analytics device breakdown skips them rather than guessing.
+    deviceType: varchar("device_type", { length: 50 }),
+
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({

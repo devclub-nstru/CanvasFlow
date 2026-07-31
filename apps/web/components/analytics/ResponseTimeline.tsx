@@ -26,25 +26,25 @@ export function ResponseTimeline({ totalResponses, trends }: ResponseTimelinePro
   const chartData = trends.map((t) => ({ name: t.date, Responses: t.count }));
 
   return (
-    <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 lg:col-span-2 min-h-[300px] flex flex-col">
+    <div className="bg-(--cf-cream-2) rounded-xl ring-1 ring-(--cf-line) p-5 lg:col-span-2 min-h-75 flex flex-col">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Timeline</p>
+          <p className="cf-eyebrow text-(--cf-ink-soft)">Timeline</p>
           <h4 className="mt-2 cf-display text-[20px] leading-tight">Response timeline</h4>
-          <p className="mt-1 text-[12px] text-[color:var(--cf-ink-soft)]">Last 30 days</p>
+          <p className="mt-1 text-[12px] text-(--cf-ink-soft)">Last 30 days</p>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-mono text-[color:var(--cf-ink-soft)]">
-          <span className="size-1.5 rounded-full bg-[color:var(--cf-orange)]" />
+        <div className="flex items-center gap-1.5 text-[11px] font-mono text-(--cf-ink-soft)">
+          <span className="size-1.5 rounded-full bg-(--cf-orange)" />
           Responses
         </div>
       </div>
 
       {totalResponses === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-[13px] text-[color:var(--cf-ink-soft)]">
+        <div className="flex-1 flex items-center justify-center text-[13px] text-(--cf-ink-soft)">
           No responses recorded.
         </div>
       ) : (
-        <div className="flex-1 w-full min-h-[200px]">
+        <div className="flex-1 w-full min-h-50">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
               <defs>

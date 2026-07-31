@@ -124,14 +124,14 @@ export default function PricingPage() {
     <div className="space-y-12">
       {/* ───── hero ───── */}
       <div className="text-center space-y-5 max-w-2xl mx-auto">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)]">
-          <Sparkles className="size-3 text-[color:var(--cf-orange)]" />
-          <span className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Plans</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-(--cf-cream-2) ring-1 ring-(--cf-line-strong)">
+          <Sparkles className="size-3 text-(--cf-orange)" />
+          <span className="cf-eyebrow text-(--cf-ink-soft)">Plans</span>
         </div>
         <h1 className="cf-display text-[40px] sm:text-[52px] leading-[0.95]">
           Simple, transparent pricing
         </h1>
-        <p className="text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+        <p className="text-[14.5px] text-(--cf-ink-soft) leading-relaxed">
           Start free. Upgrade when you outgrow it. Every plan includes durable data keys, real-time
           analytics, and unlimited respondents — only your monthly submissions and form count scale.
         </p>
@@ -147,14 +147,14 @@ export default function PricingPage() {
           return (
             <div
               key={plan.name}
-              className={`relative flex flex-col bg-[color:var(--cf-cream-2)] rounded-2xl p-6 transition-all ${
+              className={`relative flex flex-col bg-(--cf-cream-2) rounded-2xl p-6 transition-all ${
                 plan.popular
-                  ? "ring-2 ring-[color:var(--cf-orange)] shadow-[0_30px_60px_-30px_rgba(246,111,0,0.45)]"
-                  : "ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)]"
+                  ? "ring-2 ring-(--cf-orange) shadow-[0_30px_60px_-30px_rgba(246,111,0,0.45)]"
+                  : "ring-1 ring-(--cf-line) hover:ring-(--cf-line-strong)"
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[color:var(--cf-orange)] text-white text-[10px] font-mono uppercase tracking-wider">
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-(--cf-orange) text-white text-[10px] font-mono uppercase tracking-wider">
                   Most popular
                 </div>
               )}
@@ -163,16 +163,16 @@ export default function PricingPage() {
                 {/* header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="size-9 rounded-md bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] flex items-center justify-center">
-                      <Icon className="size-4 text-[color:var(--cf-orange)]" />
+                    <div className="size-9 rounded-md bg-(--cf-cream) ring-1 ring-(--cf-line) flex items-center justify-center">
+                      <Icon className="size-4 text-(--cf-orange)" />
                     </div>
-                    <span className="cf-display text-[18px] leading-none text-[color:var(--cf-ink)]">
+                    <span className="cf-display text-[18px] leading-none text-(--cf-ink)">
                       {plan.name}
                     </span>
                   </div>
                   {isCurrent && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-1 ring-[color:var(--cf-orange)]/30 text-[10px] font-mono uppercase tracking-wider">
-                      <span className="size-1 rounded-full bg-[color:var(--cf-orange)]" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-(--cf-orange)/15 text-(--cf-orange) ring-1 ring-(--cf-orange)/30 text-[10px] font-mono uppercase tracking-wider">
+                      <span className="size-1 rounded-full bg-(--cf-orange)" />
                       Active
                     </span>
                   )}
@@ -181,35 +181,35 @@ export default function PricingPage() {
                 {/* price */}
                 <div className="space-y-1">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="cf-display text-[36px] leading-none tabular-nums text-[color:var(--cf-ink)]">
+                    <span className="cf-display text-[36px] leading-none tabular-nums text-(--cf-ink)">
                       {plan.price}
                     </span>
-                    <span className="text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
+                    <span className="text-[12px] font-mono text-(--cf-ink-soft)">
                       / {plan.period}
                     </span>
                   </div>
-                  <p className="text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
+                  <p className="text-[12px] font-mono text-(--cf-ink-soft)">
                     {plan.submissions}
                   </p>
                 </div>
 
                 {/* description */}
-                <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed min-h-[42px]">
+                <p className="text-[13.5px] text-(--cf-ink-soft) leading-relaxed min-h-[42px]">
                   {plan.description}
                 </p>
 
                 {/* divider */}
-                <div className="h-px bg-[color:var(--cf-line)]" />
+                <div className="h-px bg-(--cf-line)" />
 
                 {/* features */}
                 <ul className="space-y-2.5">
                   {plan.features.map((feature, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-2.5 text-[13px] text-[color:var(--cf-ink)]"
+                      className="flex items-start gap-2.5 text-[13px] text-(--cf-ink)"
                     >
-                      <span className="size-4 rounded-full bg-[color:var(--cf-orange)]/12 ring-1 ring-[color:var(--cf-orange)]/25 flex items-center justify-center shrink-0 mt-0.5">
-                        <Check className="size-2.5 text-[color:var(--cf-orange)]" />
+                      <span className="size-4 rounded-full bg-(--cf-orange)/12 ring-1 ring-(--cf-orange)/25 flex items-center justify-center shrink-0 mt-0.5">
+                        <Check className="size-2.5 text-(--cf-orange)" />
                       </span>
                       <span className="leading-snug">{feature}</span>
                     </li>
@@ -224,12 +224,12 @@ export default function PricingPage() {
                   onClick={() => isFree && handleSelectPlan(plan.name)}
                   className={`group w-full inline-flex items-center justify-center gap-1.5 h-[42px] rounded-full text-[13px] font-medium tracking-tight transition-colors cursor-pointer disabled:cursor-not-allowed ${
                     isCurrent
-                      ? "bg-[color:var(--cf-ink)] text-white"
+                      ? "bg-(--cf-ink) text-white"
                       : isFree
                         ? plan.popular
-                          ? "bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white"
-                          : "ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)]"
-                        : "ring-1 ring-[color:var(--cf-line)] bg-transparent text-[color:var(--cf-ink-soft)]"
+                          ? "bg-(--cf-orange) hover:bg-(--cf-orange-hover) text-white"
+                          : "ring-1 ring-(--cf-line-strong) bg-(--cf-cream) hover:bg-(--cf-cream-2) text-(--cf-ink)"
+                        : "ring-1 ring-(--cf-line) bg-transparent text-(--cf-ink-soft)"
                   }`}
                 >
                   {isCurrent ? "Current plan" : isFree ? "Select plan" : "Coming soon"}
@@ -244,14 +244,14 @@ export default function PricingPage() {
       </div>
 
       {/* ───── compare strip ───── */}
-      <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-(--cf-cream-2) rounded-xl ring-1 ring-(--cf-line) p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1.5">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Built into every plan</p>
+          <p className="cf-eyebrow text-(--cf-ink-soft)">Built into every plan</p>
           <h3 className="cf-display text-[20px] leading-tight">
             The same canvas, the same data layer
           </h3>
         </div>
-        <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-mono text-[color:var(--cf-ink-soft)]">
+        <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-mono text-(--cf-ink-soft)">
           {[
             "Drag-and-drop builder",
             "All field types",
@@ -260,7 +260,7 @@ export default function PricingPage() {
             "CSV export",
           ].map((item) => (
             <li key={item} className="inline-flex items-center gap-1.5">
-              <Check className="size-3 text-[color:var(--cf-orange)]" />
+              <Check className="size-3 text-(--cf-orange)" />
               {item}
             </li>
           ))}
@@ -270,19 +270,19 @@ export default function PricingPage() {
       {/* ───── FAQ ───── */}
       <div className="space-y-5">
         <div className="text-center space-y-2 max-w-md mx-auto">
-          <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">FAQ</p>
+          <p className="cf-eyebrow text-(--cf-ink-soft)">FAQ</p>
           <h2 className="cf-display text-[28px] leading-tight">Common questions</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {FAQ.map((item, i) => (
             <div
               key={i}
-              className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] p-5 space-y-2"
+              className="bg-(--cf-cream-2) rounded-xl ring-1 ring-(--cf-line) p-5 space-y-2"
             >
-              <h3 className="cf-display text-[16px] leading-tight text-[color:var(--cf-ink)]">
+              <h3 className="cf-display text-[16px] leading-tight text-(--cf-ink)">
                 {item.q}
               </h3>
-              <p className="text-[13px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+              <p className="text-[13px] text-(--cf-ink-soft) leading-relaxed">
                 {item.a}
               </p>
             </div>

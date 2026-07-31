@@ -68,10 +68,10 @@ function Row({
   return (
     <div className="cf-row">
       <div className="flex min-w-0 items-start gap-2">
-        {Icon && <Icon className="mt-0.5 size-3.5 shrink-0 text-[color:var(--cf-ink-soft)]" />}
+        {Icon && <Icon className="mt-0.5 size-3.5 shrink-0 text-(--cf-ink-soft)" />}
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-[color:var(--cf-ink)]">{title}</p>
-          <p className="text-[11px] leading-relaxed text-[color:var(--cf-ink-soft)]">{hint}</p>
+          <p className="text-[13px] font-medium text-(--cf-ink)">{title}</p>
+          <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">{hint}</p>
         </div>
       </div>
       {children}
@@ -136,7 +136,7 @@ export function FormSettingsDialog({ show, form, onClose }: FormSettingsDialogPr
   ].join(" · ");
 
   return (
-    <div className="cf-scrim z-[300]">
+    <div className="cf-scrim z-300">
       <div className="cf-dialog max-h-[88vh] max-w-lg">
         <div className="cf-dialog-bar">
           <span className="min-w-0 truncate">Settings · {form.title}</span>
@@ -263,14 +263,14 @@ export function FormSettingsDialog({ show, form, onClose }: FormSettingsDialogPr
               <button
                 type="button"
                 onClick={onClose}
-                className="cf-btn-outline h-[32px] px-3 text-[12px]"
+                className="cf-btn-outline h-8 px-3 text-[12px]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="cf-btn h-[32px] px-4 text-[12px] disabled:cursor-not-allowed disabled:opacity-50"
+                className="cf-btn h-8 px-4 text-[12px] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPending ? "Saving..." : "Save settings"}
               </button>

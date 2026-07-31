@@ -104,7 +104,7 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={busy}
-          className="hex-btn-primary mt-2 h-[54px] w-full text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
+          className="hex-btn-primary mt-2 h-13.5 w-full text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? (
             <span

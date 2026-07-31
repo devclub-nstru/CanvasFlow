@@ -108,7 +108,7 @@ export function BuilderHeader({
               setShowUnsavedDialog(true);
             }
           }}
-          className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-[color:var(--cf-ink-soft)] transition-colors hover:text-[color:var(--cf-ink)]"
+          className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-(--cf-ink-soft) transition-colors hover:text-(--cf-ink)"
           aria-label="Back to forms"
         >
           <ChevronLeft className="size-3.5" />
@@ -119,7 +119,7 @@ export function BuilderHeader({
 
         {/* title only on sm+ — phones don't have space for it */}
         <div className="hidden sm:flex items-center gap-2 min-w-0">
-          <span className="cf-display max-w-[200px] truncate text-[16px] leading-none text-[color:var(--cf-ink)]">
+          <span className="cf-display max-w-50 truncate text-[16px] leading-none text-(--cf-ink)">
             {form?.title}
           </span>
         </div>
@@ -128,21 +128,21 @@ export function BuilderHeader({
         <span
           className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${
             isPublished
-              ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
-              : "border-[color:var(--cf-line-strong)] text-[color:var(--cf-ink-soft)]"
+              ? "border-(--cf-orange) text-(--cf-orange)"
+              : "border-(--cf-line-strong) text-(--cf-ink-soft)"
           }`}
         >
           <span
             className={`size-1.5 rounded-full ${
-              isPublished ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink-soft)]"
+              isPublished ? "bg-(--cf-orange)" : "bg-(--cf-ink-soft)"
             }`}
           />
           {isPublished ? "Live" : "Draft"}
         </span>
 
         {isDirty && (
-          <span className="hidden shrink-0 items-center gap-1 border border-[color:var(--cf-orange)] px-2 py-0.5 font-mono text-[10px] text-[color:var(--cf-orange)] md:inline-flex">
-            <span className="size-1 animate-pulse rounded-full bg-[color:var(--cf-orange)]" />
+          <span className="hidden shrink-0 items-center gap-1 border border-(--cf-orange) px-2 py-0.5 font-mono text-[10px] text-(--cf-orange) md:inline-flex">
+            <span className="size-1 animate-pulse rounded-full bg-(--cf-orange)" />
             Unsaved
           </span>
         )}
@@ -173,10 +173,10 @@ export function BuilderHeader({
                 onClick={() => onViewChange(id)}
                 aria-pressed={active}
                 title={id === "canvas" ? "Canvas builder" : "Outline builder"}
-                className={`inline-flex h-[30px] cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                className={`inline-flex h-7.5 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${
                   active
-                    ? "bg-[color:var(--cf-ink)] text-[color:var(--cf-cream)]"
-                    : "text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
+                    ? "bg-(--cf-ink) text-(--cf-cream)"
+                    : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
                 }`}
               >
                 <Icon className="size-3.5" />
@@ -194,9 +194,9 @@ export function BuilderHeader({
           disabled={(!isDirty && !justSaved) || isSaving}
           title="Save changes"
           aria-label="Save"
-          className={`inline-flex h-[32px] cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${
+          className={`inline-flex h-8 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${
             justSaved && !isSaving
-              ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
+              ? "border-(--cf-orange) text-(--cf-orange)"
               : "cf-btn-outline disabled:opacity-35"
           }`}
         >
@@ -211,7 +211,7 @@ export function BuilderHeader({
           href={`/forms/${formId}`}
           target="_blank"
           title="Preview form"
-          className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
+          className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
         >
           <Eye className="size-3.5" />
           <span className="hidden md:inline">Preview</span>
@@ -220,7 +220,7 @@ export function BuilderHeader({
         <button
           onClick={onShare}
           title="Share form access"
-          className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
+          className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
         >
           <Share2 className="size-3.5" />
           <span className="hidden md:inline">Share</span>
@@ -230,7 +230,7 @@ export function BuilderHeader({
           <button
             onClick={onSettings}
             title="Form settings"
-            className="cf-btn-outline hidden h-[32px] px-3 text-[12px] sm:inline-flex"
+            className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
           >
             <Settings className="size-3.5" />
             <span className="hidden md:inline">Settings</span>
@@ -246,7 +246,7 @@ export function BuilderHeader({
             <button
               onClick={() => setShowDeleteConfirm(true)}
               title="Delete form"
-              className="cf-btn-danger hidden h-[32px] px-3 text-[12px] sm:inline-flex"
+              className="cf-btn-danger hidden h-8 px-3 text-[12px] sm:inline-flex"
             >
               <Trash2 className="size-3.5" />
               <span className="hidden md:inline">Delete</span>
@@ -261,7 +261,7 @@ export function BuilderHeader({
             aria-label="More actions"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="cf-btn-outline inline-flex size-[32px]"
+            className="cf-btn-outline inline-flex size-8"
           >
             <MoreVertical className="size-3.5" />
           </button>
@@ -275,7 +275,7 @@ export function BuilderHeader({
                 href={`/forms/${formId}`}
                 target="_blank"
                 onClick={() => setMenuOpen(false)}
-                className="cf-menu-item flex items-center gap-2.5 !py-2 text-[13px]"
+                className="cf-menu-item flex items-center gap-2.5 py-2! text-[13px]"
               >
                 <Eye className="size-3.5" />
                 Preview
@@ -285,7 +285,7 @@ export function BuilderHeader({
                   onShare();
                   setMenuOpen(false);
                 }}
-                className="cf-menu-item flex w-full items-center gap-2.5 !py-2 text-[13px]"
+                className="cf-menu-item flex w-full items-center gap-2.5 py-2! text-[13px]"
               >
                 <Share2 className="size-3.5" />
                 Share form
@@ -296,7 +296,7 @@ export function BuilderHeader({
                     onSettings();
                     setMenuOpen(false);
                   }}
-                  className="cf-menu-item flex w-full items-center gap-2.5 !py-2 text-[13px]"
+                  className="cf-menu-item flex w-full items-center gap-2.5 py-2! text-[13px]"
                 >
                   <Settings className="size-3.5" />
                   Settings
@@ -310,7 +310,7 @@ export function BuilderHeader({
                       setMenuOpen(false);
                       setShowDeleteConfirm(true);
                     }}
-                    className="cf-menu-item !text-[color:var(--cf-danger)]"
+                    className="cf-menu-item text-(--cf-danger)!"
                   >
                     <Trash2 className="size-3.5" />
                     Delete form
@@ -337,7 +337,7 @@ export function BuilderHeader({
             );
           }}
           disabled={publishPending || isPublished}
-          className="cf-btn h-[32px] shrink-0 px-3.5 text-[12.5px] tracking-tight disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+          className="cf-btn h-8 shrink-0 px-3.5 text-[12.5px] tracking-tight disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
         >
           {publishPending ? "..." : isPublished ? "Published" : "Publish"}
         </button>

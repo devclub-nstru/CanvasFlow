@@ -180,7 +180,7 @@ function DefList({ rows }: { rows: [string, string][] }) {
 function Note({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="border-l bg-[color:var(--hex-surface)] px-5 py-4"
+      className="border-l bg-(--hex-surface) px-5 py-4"
       style={{ borderLeftWidth: 2, borderLeftColor: "var(--hex-line-strong)" }}
     >
       <span
@@ -271,12 +271,6 @@ export default function DocsPage() {
 
         <div className="relative mx-auto max-w-7xl px-4 pt-14 sm:px-6 sm:pt-20">
           <div className="grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-16">
-            {/* Sticky index, highlighting whichever section is being read.
-                The tracking lives in a client component so this page stays a
-                server component with its metadata; the links are real anchors,
-                so they still work if the JS never arrives. The global
-                `section[id] { scroll-margin-top }` rule in globals.css keeps
-                the sticky navbar off the target heading. */}
             <DocsSectionNav sections={SECTIONS} />
 
             <div className="min-w-0 space-y-12 pb-16 sm:space-y-16 sm:pb-24">

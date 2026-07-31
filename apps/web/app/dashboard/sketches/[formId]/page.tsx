@@ -43,8 +43,6 @@ import { MobileFieldEditorSheet } from "~/components/builder/mobile/MobileFieldE
 import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
 import { FormSettingsDialog } from "~/components/builder/FormSettingsDialog";
 
-/* Preference is stored per user, not per form: someone who prefers the list
-   surface wants it for whatever they open next, not just this one form. */
 const VIEW_STORAGE_KEY = "canvasflow:builder-view";
 
 function BuilderCanvas() {
@@ -112,12 +110,7 @@ function BuilderCanvas() {
     if (!isDirty || isSaving) return;
     setIsSaving(true);
     try {
-      // capture server-assigned ids for newly-created fields so we can swap
-      // local temp ids (`new-…`) → real UUIDs after the round-trip
       const tempIdToRealId = new Map<string, string>();
-      // capture the new optimistic-lock version per updated field so the
-      // local state stays in sync with what the server now considers
-      // authoritative (next update reads from here)
       const updatedVersionById = new Map<string, number>();
 
       const createOps = localFields
@@ -149,10 +142,6 @@ function BuilderCanvas() {
             isRequired: f.isRequired,
             options: f.options ?? undefined,
             index: f.index ? String(f.index) : undefined,
-            // Optimistic-lock token. The server compare-and-sets against
-            // this; if another writer (e.g. the same form open in a
-            // second tab) raced us, the server throws and we surface the
-            // conflict below instead of silently overwriting their work.
             expectedVersion: typeof (f as any).version === "number" ? (f as any).version : 0,
           }).then((data) => {
             updatedVersionById.set(f.id, data.version);
@@ -165,8 +154,6 @@ function BuilderCanvas() {
 
       await Promise.all([...createOps, ...updateOps, ...deleteOps]);
 
-      // Apply server ids + new versions to local state, drop pending
-      // deletes, clear _isNew.
       setLocalFields((prev) =>
         prev
           .filter((f) => !pendingDeletes.has(f.id))
@@ -179,22 +166,15 @@ function BuilderCanvas() {
             return next;
           }),
       );
-      // Remap a selected temp id to its real id if it was just created
       setSelectedNodeId((prev) =>
         prev && tempIdToRealId.has(prev) ? (tempIdToRealId.get(prev) as string) : prev,
       );
       setDirtyIds(new Set());
       setPendingDeletes(new Set());
-
-      // Brief "Saved" confirmation in the header button
       setJustSaved(true);
       window.setTimeout(() => setJustSaved(false), 1800);
       toast.success("Saved");
     } catch (err) {
-      // Detect optimistic-lock conflicts and surface them clearly.
-      // The server throws with these recognisable phrases (see form-field
-      // service). On conflict we refetch authoritative state and discard
-      // local in-flight edits — heavy-handed but predictable.
       const message = err instanceof Error ? err.message : String(err);
       const isLockConflict =
         message.includes("modified by someone else") ||
@@ -202,10 +182,6 @@ function BuilderCanvas() {
 
       if (isLockConflict) {
         toast.error("This form was edited from another session — reloading your view");
-        // Pull authoritative state from the server. Local dirty edits are
-        // lost intentionally so we don't silently overwrite the other
-        // session. (Better collaborative resolution would need a real
-        // merge step — out of scope here.)
         const refreshed = await refetchFields();
         if (refreshed.data) {
           setLocalFields(refreshed.data as any);
@@ -236,9 +212,6 @@ function BuilderCanvas() {
     setDirtyIds((prev) => new Set(prev).add(id));
   }, []);
 
-  // Highest index across every local field, including ones pending deletion.
-  // Anything strictly above this is free in the table right now, which is what
-  // makes it safe both for appending and for the renumber fallback.
   const localFieldsRef = useRef(localFields);
   useEffect(() => {
     localFieldsRef.current = localFields;
@@ -253,9 +226,6 @@ function BuilderCanvas() {
     [],
   );
 
-  // Patch several fields in one commit. Used by the renumber fallback, which
-  // has to move every field at once — doing that with N `updateLocal` calls
-  // would queue N separate state updates over the same array.
   const updateManyLocal = useCallback((patches: Map<string, Partial<LocalField>>) => {
     if (patches.size === 0) return;
     setLocalFields((prev) =>
@@ -277,25 +247,12 @@ function BuilderCanvas() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
-  /* ─── Editing surface ──────────────────────────────────────────────────
-   *
-   * Canvas is the default. Below `lg` the choice doesn't exist — the canvas
-   * needs pointer drag-and-drop and room for three panes — so the list is
-   * forced there by CSS rather than by this state. That means `view` only
-   * decides what a large screen shows, and both trees stay mounted so
-   * switching (or resizing) never loses draft edits.
-   */
   const [view, setView] = useState<BuilderView>("canvas");
 
-  // Restore the preference after mount rather than in the initial state:
-  // localStorage isn't available during SSR, and seeding from it would make
-  // the server and client markup disagree.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
       if (saved === "canvas" || saved === "outline") setView(saved);
-      // The surface was briefly called "list" before it grew into a full
-      // three-pane outline; honour the old value rather than resetting.
       else if (saved === "list") setView("outline");
     } catch {
       /* Private mode / storage disabled — the default is fine. */
@@ -321,20 +278,9 @@ function BuilderCanvas() {
 
   const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
 
-  // Sync localFields → React Flow nodes/edges.
-  // We intentionally *merge* instead of replacing the whole nodes array.
-  // Replacing would clobber React Flow's per-node internal state (the
-  // in-progress drag position, selection, hover) on every keystroke in
-  // the inspector — that was breaking drag-reorder because each
-  // `updateLocal` for a label edit would rebuild every node mid-frame.
   useEffect(() => {
     const visible = localFields
       .filter((f) => !pendingDeletes.has(f.id))
-      // Sort by fractional index so the edge order (and any index-based
-      // fallback positions for unsaved fields) match the current logical
-      // sequence after a drag-reorder. Same tiebreak as
-      // `visibleSortedFields`, so the canvas and the mobile list can't
-      // disagree about the order of two fields sharing an index.
       .sort((a, b) => {
         const d = parseIndex(a.index) - parseIndex(b.index);
         return d !== 0 ? d : a.id.localeCompare(b.id);
@@ -344,13 +290,8 @@ function BuilderCanvas() {
       return visible.map((field, idx) => {
         const existing = prevById.get(field.id);
         if (existing) {
-          // Existing node — preserve React Flow's live position, selection,
-          // dimensions, etc. Only refresh the field reference so the node's
-          // visual (label, options, required pill) reflects the latest edit.
           return { ...existing, data: { field } };
         }
-        // Brand new node — use the field's saved position or fall back to
-        // a stacked layout below existing nodes.
         const p = (typeof field.options === "object" && field.options ? (field.options as any) : {})
           .position || { x: 300, y: idx * 200 + 80 };
         return {
@@ -420,11 +361,6 @@ function BuilderCanvas() {
         y: event.clientY,
       });
       const tempId = `new-${Date.now()}`;
-      // Append past the highest index across *all* local fields, including
-      // ones pending deletion. Two reasons this isn't a count of survivors:
-      // a count lands mid-list when indices aren't contiguous (1, 5, 9 -> 4),
-      // and a row pending deletion still occupies its index in the table
-      // until the save runs, where creates and deletes go out concurrently.
       const nextIndex = formatIndex(maxLocalIndex() + 1);
       const newField = {
         id: tempId,
@@ -437,9 +373,6 @@ function BuilderCanvas() {
         type: type as any,
         options: { position },
         description: null,
-        // Optimistic-lock version. Brand-new local rows haven't been
-        // sent to the server yet, so 0 is the baseline — the first
-        // successful create will replace this with the server's value.
         version: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -449,8 +382,6 @@ function BuilderCanvas() {
       setDirtyIds((prev) => new Set(prev).add(tempId));
       setSelectedNodeId(tempId);
     },
-    // `maxLocalIndex` reads a ref, so this no longer depends on `localFields`
-    // and the handler stops being rebuilt on every inspector keystroke.
     [screenToFlowPosition, formId, maxLocalIndex],
   );
 
@@ -460,15 +391,6 @@ function BuilderCanvas() {
 
   const onPaneClick = useCallback(() => setSelectedNodeId(null), []);
 
-  /**
-   * Commit a drag: persist where the node landed, and re-index it if the drop
-   * changed its place in the vertical order.
-   *
-   * The canvas is read top to bottom, so y position *is* the order. Only the
-   * dragged field's index is written — that is the point of fractional
-   * indexing, and it's what keeps the save free of unique-constraint races,
-   * since every field is saved as an independent concurrent UPDATE.
-   */
   const onNodeDragStop = useCallback(
     (_event: any, node: Node) => {
       const currentField = localFields.find((f) => f.id === node.id);
@@ -482,10 +404,6 @@ function BuilderCanvas() {
 
       const visible = localFields.filter((f) => !pendingDeletes.has(f.id));
 
-      // Live position per field, with the dragged node's final position
-      // substituted in — React Flow hasn't committed it to `nodes` yet at
-      // dragStop. Fields with no node yet (just added) fall back to their
-      // saved position.
       const livePos = new Map(nodes.map((n) => [n.id, n.position]));
       livePos.set(node.id, node.position);
       const posOf = (f: LocalField) =>
@@ -496,9 +414,6 @@ function BuilderCanvas() {
         const pa = posOf(a);
         const pb = posOf(b);
         if (pa.y !== pb.y) return pa.y - pb.y;
-        // Nodes sitting on the same row used to sort arbitrarily, which made
-        // the order flip between drags. Break ties on x, then on the existing
-        // index, so the result is always deterministic.
         if (pa.x !== pb.x) return pa.x - pb.x;
         return parseIndex(a.index) - parseIndex(b.index);
       });
@@ -513,10 +428,6 @@ function BuilderCanvas() {
       const after = at < ordered.length - 1 ? parseIndex(ordered[at + 1]!.index) : null;
       const current = parseIndex(currentField.index);
 
-      // Already in the right place — a nudge that didn't cross a neighbour.
-      // The old code compared `localFields` array order against y-sorted
-      // order, which are different orderings, so this looked like a reorder
-      // on every drag and burned a subdivision of the gap each time.
       if (isBetween(current, before, after)) {
         updateLocal(node.id, positionPatch);
         return;
@@ -528,12 +439,6 @@ function BuilderCanvas() {
         return;
       }
 
-      // No representable value left between the neighbours. Reaching this
-      // takes ~50 consecutive drops into the same gap, but handle it rather
-      // than silently dropping the reorder: lift the whole visible order to
-      // max+1..max+n. Every new value is above every value currently in the
-      // table, so these writes still can't collide with an un-written row,
-      // even though they go out concurrently.
       const base = maxLocalIndex() + 1;
       const patches = new Map<string, Partial<LocalField>>();
       ordered.forEach((f, i) => {
@@ -562,54 +467,30 @@ function BuilderCanvas() {
     toast("Field removed — save to confirm", { duration: 2000 });
   }, [selectedNodeId]);
 
-  /* ─── Mobile editor state & helpers ─────────────────────────────────
-   * The mobile UI shares all underlying state (localFields, dirtyIds,
-   * pendingDeletes, selectedNodeId) with the desktop canvas. These two
-   * flags just control which bottom sheet is visible on phones/tablets.
-   */
   const [mobileAddOpen, setMobileAddOpen] = useState(false);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
 
-  // Visible fields sorted by current index — what the mobile list renders.
   const visibleSortedFields = useMemo(
     () =>
       localFields
-        // `filter` already returns a fresh array, so sorting it in place is
-        // safe and doesn't touch `localFields`.
         .filter((f) => !pendingDeletes.has(f.id))
         .sort((a, b) => {
           const d = parseIndex(a.index) - parseIndex(b.index);
-          // Duplicate indices shouldn't exist, but forms saved by the old
-          // rounding scheme can carry them. Fall back to id so the order is at
-          // least stable instead of flipping between renders.
           return d !== 0 ? d : a.id.localeCompare(b.id);
         }),
     [localFields, pendingDeletes],
   );
 
-  // Tap a field card → select + open editor sheet.
   const handleMobileTapField = useCallback((id: string) => {
     setSelectedNodeId(id);
     setMobileEditorOpen(true);
   }, []);
 
-  // Close the editor sheet and clear selection so the desktop highlight
-  // doesn't carry over if the user resizes.
   const handleCloseMobileEditor = useCallback(() => {
     setMobileEditorOpen(false);
     setSelectedNodeId(null);
   }, []);
 
-  /**
-   * Arrow-button reorder. Avoids touch drag-and-drop, which fights vertical
-   * scrolling on phones.
-   *
-   * This used to swap the two fields' index values, which wrote two rows and
-   * left a window where both held the same index — with the save firing every
-   * field concurrently, that tripped UNIQUE(form_id, index) depending on which
-   * UPDATE landed first. Moving one field into the gap beside its neighbour
-   * writes a single row instead.
-   */
   const handleMobileMove = useCallback(
     (id: string, direction: "up" | "down") => {
       const list = visibleSortedFields;
@@ -618,8 +499,6 @@ function BuilderCanvas() {
       const j = direction === "up" ? i - 1 : i + 1;
       if (j < 0 || j >= list.length) return;
 
-      // Landing slot: moving up puts the field above list[j], moving down puts
-      // it below list[j].
       const beforeField = direction === "up" ? list[j - 1] : list[j];
       const afterField = direction === "up" ? list[j] : list[j + 1];
 
@@ -633,8 +512,6 @@ function BuilderCanvas() {
         return;
       }
 
-      // Gap exhausted — same fallback as the canvas drag: lift the reordered
-      // sequence above every existing index so the writes stay collision-free.
       const reordered = [...list];
       const [moved] = reordered.splice(i, 1);
       reordered.splice(j, 0, moved!);
@@ -649,19 +526,9 @@ function BuilderCanvas() {
     [visibleSortedFields, updateLocal, updateManyLocal, maxLocalIndex],
   );
 
-  /**
-   * Append a field to the end of the sequence and select it.
-   *
-   * Shared by every add affordance that isn't a canvas drop: the outline's
-   * palette, the outline's CTA, and the phone's add sheet. A canvas position is
-   * assigned too, below the last node, so the same form still lays out
-   * sensibly if the user switches to the canvas surface afterwards.
-   */
   const appendField = useCallback(
     (type: string) => {
       const last = visibleSortedFields[visibleSortedFields.length - 1];
-      // Past every local index, not just the last visible one — a field
-      // pending deletion keeps its index in the table until the save lands.
       const nextIndex = formatIndex(maxLocalIndex() + 1);
 
       const lastPos = (last?.options as any)?.position as { x: number; y: number } | undefined;
@@ -681,8 +548,6 @@ function BuilderCanvas() {
         type: type as any,
         options: { position } as any,
         description: null,
-        // Optimistic-lock baseline for a not-yet-persisted field —
-        // the server will assign the real version on first create.
         version: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -695,8 +560,6 @@ function BuilderCanvas() {
     [visibleSortedFields, formId, maxLocalIndex],
   );
 
-  // Phone add flow: pick a type in the sheet, then land straight in the
-  // editor sheet, since there's no details pane to select into.
   const handleMobileAddField = useCallback(
     (type: string) => {
       appendField(type);
@@ -708,7 +571,7 @@ function BuilderCanvas() {
 
   if (formLoading || fieldsLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
+      <div className="h-screen w-full flex items-center justify-center bg-(--cf-cream)">
         <div className="flex flex-col items-center gap-3">
           <div
             className="size-8 animate-spin rounded-full border-2"
@@ -722,13 +585,13 @@ function BuilderCanvas() {
 
   if (!form) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)]">
+      <div className="h-screen w-full flex items-center justify-center bg-(--cf-cream)">
         <div className="text-center space-y-4 max-w-sm">
           <p className="cf-meta">Not found</p>
           <h3 className="cf-display text-[26px] leading-tight uppercase">Form not found</h3>
           <Link
             href="/dashboard/sketches"
-            className="cf-btn cf-raised cf-press h-[40px] px-5 text-[13px]"
+            className="cf-btn cf-raised cf-press h-10 px-5 text-[13px]"
           >
             Back to forms
           </Link>
@@ -739,26 +602,26 @@ function BuilderCanvas() {
 
   if (form.role === "viewer") {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)] p-4 text-center">
+      <div className="h-screen w-full flex items-center justify-center bg-(--cf-cream) p-4 text-center">
         <div className="cf-panel cf-raised w-full max-w-sm space-y-4 p-7">
           <p className="cf-meta" style={{ color: "var(--cf-orange)" }}>
             No edit access
           </p>
-          <h3 className="cf-display text-[22px] leading-snug text-[color:var(--cf-ink)]">
+          <h3 className="cf-display text-[22px] leading-snug text-(--cf-ink)">
             You don&apos;t have access to edit this form
           </h3>
-          <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+          <p className="text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
             You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions
             and analytics, but you cannot make changes to the fields.
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <Link
               href={`/dashboard/analytics?form=${formId}`}
-              className="cf-btn cf-raised cf-press h-[40px] px-5 text-[13px]"
+              className="cf-btn cf-raised cf-press h-10 px-5 text-[13px]"
             >
               View analytics
             </Link>
-            <Link href="/dashboard/sketches" className="cf-btn-outline h-[40px] px-5 text-[13px]">
+            <Link href="/dashboard/sketches" className="cf-btn-outline h-10 px-5 text-[13px]">
               Back to studio
             </Link>
           </div>
@@ -768,7 +631,7 @@ function BuilderCanvas() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)]">
+    <div className="fixed inset-0 flex flex-col bg-(--cf-cream) text-(--cf-ink)">
       <BuilderHeader
         form={form}
         formId={formId}
@@ -791,21 +654,11 @@ function BuilderCanvas() {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Desktop shell. Both surfaces share it — palette on the left,
-            details on the right, and the middle swapping between the freeform
-            canvas and the ordered outline. Hidden below lg, where there's no
-            room for three panes and the phone tree takes over. */}
+
         <div className="hidden lg:flex flex-1 overflow-hidden">
-          {/* Ruled page margins, matching the dashboard, landing and auth
-              surfaces. Real layout columns here rather than the absolute
-              overlays the dashboard uses, because the builder is full-bleed:
-              an overlay would sit on top of the field list. Held back to xl
-              because the two side panes already claim ~550px, and below that
-              the 80px the rails cost comes straight out of the middle. */}
+
           <VerticalScale className="hidden shrink-0 xl:block" />
 
-          {/* On the outline surface a drag has nowhere to land, so the palette
-              appends on click instead. */}
           <FieldSidebar
             onDragStart={onDragStart}
             onPick={view === "outline" ? appendField : undefined}
@@ -813,7 +666,7 @@ function BuilderCanvas() {
 
           {view === "outline" ? (
             <main
-              className="relative flex h-full flex-1 flex-col border-r bg-[color:var(--cf-cream)]"
+              className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
               style={{ borderRightColor: "var(--cf-line-strong)" }}
             >
               <FieldOutline
@@ -826,18 +679,16 @@ function BuilderCanvas() {
           ) : (
             <main
               ref={reactFlowWrapper}
-              className="relative flex h-full flex-1 flex-col border-r bg-[color:var(--cf-cream)]"
+              className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
               style={{ borderRightColor: "var(--cf-line-strong)" }}
               onDragOver={onDragOver}
               onDrop={onDrop}
             >
-              {/* Canvas chrome. Gives the middle pane a top edge so the three
-                panes read as drawn panels, and carries the lock, which was
-                previously buried in the floating zoom stack. */}
+
               <div className="cf-pane-bar">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="cf-meta">Canvas</span>
-                  <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)]">
+                  <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
                     {visibleSortedFields.length}{" "}
                     {visibleSortedFields.length === 1 ? "field" : "fields"}
                   </span>
@@ -847,10 +698,10 @@ function BuilderCanvas() {
                   onClick={() => setIsLocked(!isLocked)}
                   aria-pressed={isLocked}
                   title={isLocked ? "Unlock canvas" : "Lock canvas"}
-                  className={`inline-flex h-[22px] shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                  className={`inline-flex h-5.5 shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${
                     isLocked
-                      ? "border-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
-                      : "border-[color:var(--cf-line-strong)] text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
+                      ? "border-(--cf-orange) text-(--cf-orange)"
+                      : "border-(--cf-line-strong) text-(--cf-ink-soft) hover:text-(--cf-ink)"
                   }`}
                 >
                   {isLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
@@ -892,7 +743,7 @@ function BuilderCanvas() {
                       onClick={() => zoomIn()}
                       title="Zoom in"
                       aria-label="Zoom in"
-                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Plus className="size-3.5" />
                     </button>
@@ -900,7 +751,7 @@ function BuilderCanvas() {
                       onClick={() => zoomOut()}
                       title="Zoom out"
                       aria-label="Zoom out"
-                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Minus className="size-3.5" />
                     </button>
@@ -908,7 +759,7 @@ function BuilderCanvas() {
                       onClick={() => fitView({ duration: 400 })}
                       title="Fit view"
                       aria-label="Fit view"
-                      className="size-7 rounded-md text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream)] hover:text-[color:var(--cf-orange)] flex items-center justify-center transition-colors cursor-pointer"
+                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Maximize2 className="size-3.5" />
                     </button>
@@ -937,10 +788,7 @@ function BuilderCanvas() {
           <VerticalScale className="hidden shrink-0 xl:block" />
         </div>
 
-        {/* Phone / tablet. Same state as the desktop shell, but there's no room
-            for a details pane, so a card opens a bottom sheet instead and the
-            outline carries its own add button. */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-[color:var(--cf-cream)] lg:hidden">
+        <div className="flex-1 flex flex-col overflow-hidden bg-(--cf-cream) lg:hidden">
           <FieldOutline
             fields={visibleSortedFields}
             onTapField={handleMobileTapField}
@@ -951,9 +799,6 @@ function BuilderCanvas() {
         </div>
       </div>
 
-      {/* Bottom sheets are the phone's stand-in for the details pane, so they
-          stay tied to the phone breakpoint rather than to the chosen surface —
-          on a large screen the inspector does this job. */}
       <div className="lg:hidden">
         <MobileAddFieldSheet
           open={mobileAddOpen}

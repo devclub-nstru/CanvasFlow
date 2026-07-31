@@ -12,8 +12,6 @@ import {
   getSubmissionsListOutputModel,
   getProAnalyticsInput as getProAnalyticsInputModel,
   getProAnalyticsOutput as getProAnalyticsOutputModel,
-  recordViewInputModel,
-  recordViewOutputModel,
   recordFieldAnswerInputModel,
   recordFieldAnswerOutputModel,
 } from "./model";
@@ -26,11 +24,10 @@ export const analyticsRouter = router({
   /**
    * GET /analytics/getFormAnalytics/{formId}
    * Returns all free-tier analytics metrics for a form in a single call:
-   *   - totalResponses, totalViews, completionRate
-   *   - deviceViews (desktop / mobile / tablet from view records)
+   *   - totalResponses
+   *   - deviceBreakdown (desktop / mobile / tablet from submission records)
    *   - dailyTrends (last 30 days, zero-filled)
-   *   - hourlyDistribution (0–23 buckets)
-   *   - peakHour, peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek
+   *   - peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek
    */
   getFormAnalytics: authenticatedProcedure
     .meta({
@@ -73,26 +70,6 @@ export const analyticsRouter = router({
         cursor: input.cursor ?? null,
         limit: input.limit,
       });
-    }),
-
-  /**
-   * POST /analytics/recordView
-   * Records a view for a public form. Called by the public form page.
-   * Public — no auth required.
-   */
-  recordView: publicProcedure
-    .meta({
-      openapi: {
-        method: "POST",
-        path: getPath("/recordView"),
-        tags: TAGS,
-        protect: false,
-      },
-    })
-    .input(recordViewInputModel)
-    .output(recordViewOutputModel)
-    .mutation(async ({ input }) => {
-      return analyticsService.recordView(input);
     }),
 
   /**

@@ -135,10 +135,10 @@ export function FieldInspectorBody({
       </Section>
 
       <Section title="Validation">
-        <div className="flex items-center justify-between gap-3 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream)] px-2.5 py-2">
+        <div className="flex items-center justify-between gap-3 border border-(--cf-line) bg-(--cf-cream) px-2.5 py-2">
           <div className="min-w-0">
-            <p className="text-[13px] text-[color:var(--cf-ink)]">Required</p>
-            <p className="text-[11px] text-[color:var(--cf-ink-soft)]">Force an answer</p>
+            <p className="text-[13px] text-(--cf-ink)">Required</p>
+            <p className="text-[11px] text-(--cf-ink-soft)">Force an answer</p>
           </div>
           <Toggle on={isRequired} onChange={handleRequiredChange} />
         </div>
@@ -164,7 +164,7 @@ export function FieldInspectorBody({
                       options: mergeChoices(selectedField.options, next),
                     });
                   }}
-                  className="cf-input h-[34px] min-w-0 flex-1 px-2.5 text-[12.5px]"
+                  className="cf-input h-8.5 min-w-0 flex-1 px-2.5 text-[12.5px]"
                 />
                 <button
                   onClick={() => {
@@ -212,7 +212,7 @@ export function FieldInspectorBody({
                   },
                 })
               }
-              className="cf-input h-[36px] cursor-pointer px-3 text-[13px]"
+              className="cf-input h-9 cursor-pointer px-3 text-[13px]"
             >
               <option value={3}>3 — Small</option>
               <option value={5}>5 — Standard</option>
@@ -303,7 +303,7 @@ export function FieldInspectorBody({
       {selectedField.type === "TOGGLE" && (
         <Section title="Toggle">
           <div className="flex items-center justify-between">
-            <p className="text-[13px] text-[color:var(--cf-ink)]">Default on</p>
+            <p className="text-[13px] text-(--cf-ink)">Default on</p>
             <Toggle
               on={!!(selectedField.options as any)?.defaultValue}
               onChange={(v) =>
@@ -365,14 +365,14 @@ export function FieldInspector(props: FieldInspectorProps) {
     return (
       <aside className="cf-rail flex w-72 shrink-0 flex-col items-center justify-center gap-3 p-6 select-none">
         <div
-          className="flex size-12 items-center justify-center border text-[color:var(--cf-ink-soft)]"
+          className="flex size-12 items-center justify-center border text-(--cf-ink-soft)"
           style={{ borderColor: "var(--cf-line-strong)", background: "var(--cf-cream)" }}
         >
           <MousePointerClick className="size-5" />
         </div>
         <div className="text-center space-y-1.5">
           <p className="cf-meta">No field selected</p>
-          <p className="max-w-[200px] text-[12px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+          <p className="max-w-50 text-[12px] leading-relaxed text-(--cf-ink-soft)">
             Click a field on the canvas to inspect and configure it.
           </p>
         </div>
@@ -397,7 +397,7 @@ export function FieldInspector(props: FieldInspectorProps) {
           style={{ borderColor: "var(--cf-line-strong)", background: "var(--cf-cream-2)" }}
         >
           <FieldIcon className="size-3" style={{ color: "var(--cf-orange)" }} />
-          <span className="font-mono text-[10px] tracking-wider text-[color:var(--cf-ink-soft)] uppercase">
+          <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft) uppercase">
             {selectedField.type.replace("_", " ").toLowerCase()}
           </span>
         </div>
@@ -413,7 +413,7 @@ export function FieldInspector(props: FieldInspectorProps) {
         className="border-t px-4 py-3"
         style={{ borderTopColor: "var(--cf-line-strong)", background: "var(--cf-cream)" }}
       >
-        <button onClick={handleDeleteField} className="cf-btn-danger h-[36px] w-full text-[12.5px]">
+        <button onClick={handleDeleteField} className="cf-btn-danger h-9 w-full text-[12.5px]">
           <Trash2 className="size-3.5" />
           Remove field
         </button>

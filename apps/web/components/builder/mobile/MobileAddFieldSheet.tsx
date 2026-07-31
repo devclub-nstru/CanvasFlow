@@ -52,15 +52,15 @@ export function MobileAddFieldSheet({ open, onClose, onSelect }: MobileAddFieldS
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-[color:var(--cf-ink)]/45 backdrop-blur-sm cursor-default"
+        className="absolute inset-0 bg-(--cf-ink)/45 backdrop-blur-sm cursor-default"
       />
       <div
-        className="relative flex max-h-[85vh] w-full flex-col border-t-2 bg-[color:var(--cf-cream-2)]"
+        className="relative flex max-h-[85vh] w-full flex-col border-t-2 bg-(--cf-cream-2)"
         style={{ borderTopColor: "var(--cf-line-strong)" }}
       >
         {/* grab handle */}
         <div className="flex justify-center pt-2.5 pb-1">
-          <span className="h-1 w-10 rounded-full bg-[color:var(--cf-line-strong)]" />
+          <span className="h-1 w-10 rounded-full bg-(--cf-line-strong)" />
         </div>
 
         <div
@@ -74,7 +74,7 @@ export function MobileAddFieldSheet({ open, onClose, onSelect }: MobileAddFieldS
           <button
             onClick={onClose}
             aria-label="Close"
-            className="-mr-1 p-2 text-[color:var(--cf-ink-soft)] transition-colors hover:text-[color:var(--cf-ink)]"
+            className="-mr-1 p-2 text-(--cf-ink-soft) transition-colors hover:text-(--cf-ink)"
           >
             <X className="size-4" />
           </button>
@@ -94,16 +94,16 @@ export function MobileAddFieldSheet({ open, onClose, onSelect }: MobileAddFieldS
                       <button
                         key={f.type}
                         onClick={() => onSelect(f.type)}
-                        className="flex min-h-[88px] flex-col items-start gap-2 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] p-3 text-left transition-colors active:bg-[color:var(--cf-cream-2)]"
+                        className="flex min-h-[88px] flex-col items-start gap-2 border border-(--cf-line-strong) bg-(--cf-cream) p-3 text-left transition-colors active:bg-(--cf-cream-2)"
                       >
-                        <div className="flex size-8 items-center justify-center border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]">
-                          <Icon className="size-4 text-[color:var(--cf-orange)]" />
+                        <div className="flex size-8 items-center justify-center border border-(--cf-line) bg-(--cf-cream-2)">
+                          <Icon className="size-4 text-(--cf-orange)" />
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-[13px] font-medium text-[color:var(--cf-ink)] leading-tight">
+                          <p className="text-[13px] font-medium text-(--cf-ink) leading-tight">
                             {f.label}
                           </p>
-                          <p className="text-[11px] text-[color:var(--cf-ink-soft)] leading-snug line-clamp-1">
+                          <p className="text-[11px] text-(--cf-ink-soft) leading-snug line-clamp-1">
                             {f.description}
                           </p>
                         </div>

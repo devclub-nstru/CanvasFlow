@@ -119,7 +119,7 @@ const FeedbackWidget = () => {
         variant="default"
         size="icon"
         className={cn(
-          "fixed bottom-5 right-5 z-50 h-12 w-12 border border-foreground/15 bg-foreground text-background shadow-brutal-sm hover:bg-foreground/90 focus-visible:ring-accent md:bottom-6 md:right-6",
+          "fixed bottom-5 right-5 z-50 h-12 w-12 border border-foreground/15 bg-foreground text-background shadow-[3px_3px_0_0_var(--foreground)] hover:bg-foreground/90 focus-visible:ring-accent md:bottom-6 md:right-6",
           isOpen && "hidden"
         )}
         title="Report Issue / Feedback"
@@ -130,7 +130,7 @@ const FeedbackWidget = () => {
 
       {isOpen && (
         <div
-          className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-h-[calc(100vh-1.5rem)] w-auto max-w-105 flex-col overflow-hidden border border-foreground/15 bg-background shadow-brutal-sm animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-200 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-97.5"
+          className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-h-[calc(100vh-1.5rem)] w-auto max-w-105 flex-col overflow-hidden border border-foreground/15 bg-background shadow-[3px_3px_0_0_var(--foreground)] animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-200 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-97.5"
           role="dialog"
           aria-modal="true"
           aria-labelledby="feedback-widget-title"

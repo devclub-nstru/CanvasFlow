@@ -23,6 +23,13 @@ export const submitFormInput = z.object({
   utmMedium: z.string().trim().max(255).optional().nullable(),
   utmCampaign: z.string().trim().max(255).optional().nullable(),
   timeSpentMs: z.number().int().optional().nullable(),
+  // Device the submission came from, sniffed from the user agent by the
+  // public form page. Drives the analytics device breakdown.
+  deviceType: z
+    .enum(["desktop", "mobile", "tablet"])
+    .optional()
+    .nullable()
+    .describe("Device type: desktop | mobile | tablet"),
 });
 export type SubmitFormInputType = z.infer<typeof submitFormInput>;
 
@@ -73,23 +80,5 @@ export const getSubmissionsOutput = z.object({
   // Cursor for the next page (ISO timestamp of the last row, or null if
   // this was the final page).
   nextCursor: z.string().nullable(),
-  viewsCount: z.number(),
-  deviceViews: z.array(
-    z.object({
-      device: z.string(),
-      count: z.number(),
-    }),
-  ),
 });
 export type GetSubmissionsOutputType = z.infer<typeof getSubmissionsOutput>;
-
-export const recordViewInput = z.object({
-  formId: z.string().uuid().describe("Form ID"),
-  deviceType: z.string().describe("Device type (mobile, tablet, desktop)"),
-});
-export type RecordViewInputType = z.infer<typeof recordViewInput>;
-
-export const recordViewOutput = z.object({
-  success: z.boolean(),
-});
-export type RecordViewOutputType = z.infer<typeof recordViewOutput>;

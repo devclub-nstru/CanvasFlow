@@ -151,7 +151,7 @@ export function NotFoundPanel() {
             </div>
 
             <div
-              className="border-l bg-[color:var(--hex-surface)] px-5 py-4"
+              className="border-l bg-(--hex-surface) px-5 py-4"
               style={{ borderLeftWidth: 2, borderLeftColor: "var(--hex-line-strong)" }}
             >
               <span

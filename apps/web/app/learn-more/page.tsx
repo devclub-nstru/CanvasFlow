@@ -136,8 +136,6 @@ export default function LearnMorePage() {
     <div className="hex-theme hex-paper relative min-h-screen">
       <Noise />
 
-      {/* Ruled page margins, md and up only — below that there's no gutter
-          for them to sit in and they'd land on the copy. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0" />
         <VerticalScale className="absolute inset-y-0 right-0" />
@@ -166,8 +164,6 @@ export default function LearnMorePage() {
               <span className="hex-fig">LEARN MORE</span>
             </div>
 
-            {/* Four type steps, same reason as the landing headline: the
-                largest size only fits from roughly 640px up. */}
             <h1 className="max-w-4xl text-[34px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground sm:text-[48px] sm:tracking-[-0.035em] md:text-[64px] md:tracking-[-0.04em] lg:text-[76px]">
               Everything the form does{" "}
               <em
@@ -203,13 +199,13 @@ export default function LearnMorePage() {
           </ScrollReveal>
 
           <div
-            className="mt-8 border hex-line-strong bg-[color:var(--hex-surface)] sm:mt-10"
+            className="mt-8 border hex-line-strong bg-(--hex-surface) sm:mt-10"
             style={{ borderWidth: 1 }}
           >
             {RULES.map((line, i) => (
               <ScrollReveal key={line} direction="left" delay={i * 60}>
                 <div
-                  className="group flex items-baseline gap-5 border-b hex-line-soft px-5 py-5 transition-colors last:border-b-0 hover:bg-[color:var(--hex-ink)] hover:text-white sm:gap-7 sm:px-8 sm:py-6"
+                  className="group flex items-baseline gap-5 border-b hex-line-soft px-5 py-5 transition-colors last:border-b-0 hover:bg-(--hex-ink) hover:text-white sm:gap-7 sm:px-8 sm:py-6"
                   style={{ borderBottomWidth: 1 }}
                 >
                   <span
@@ -235,8 +231,6 @@ export default function LearnMorePage() {
       >
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid border hex-line-strong md:grid-cols-2" style={{ borderWidth: 1 }}>
-            {/* Left cell carries the section's only flooded panel, which is
-                what the reference used its accent fill for. */}
             <div
               className="border-b hex-line-strong p-8 sm:p-12 md:border-r md:border-b-0"
               style={{ borderBottomWidth: 1, borderRightWidth: 1, background: "var(--hex-bone)" }}
@@ -287,7 +281,7 @@ export default function LearnMorePage() {
                   ].map(([term, gloss]) => (
                     <li key={term} className="flex gap-4">
                       <span
-                        className="mt-[7px] size-2 shrink-0 rotate-45"
+                        className="mt-1.75 size-2 shrink-0 rotate-45"
                         style={{ background: "var(--hex-ink)" }}
                         aria-hidden
                       />
@@ -336,10 +330,6 @@ export default function LearnMorePage() {
             </div>
           </ScrollReveal>
 
-          {/* Hairline-divided grid rather than gapped cards, per the
-              reference. The negative right/bottom margin trick is avoided:
-              cells draw their own top and left rules and the container
-              closes the remaining two sides. */}
           <div
             className="grid border-t border-l hex-line-strong sm:grid-cols-2 lg:grid-cols-4"
             style={{ borderTopWidth: 1, borderLeftWidth: 1 }}
@@ -349,7 +339,7 @@ export default function LearnMorePage() {
               return (
                 <ScrollReveal key={c.title} direction="up" delay={(i % 4) * 60} className="h-full">
                   <div
-                    className="group h-full border-r border-b hex-line-strong bg-white/60 p-6 transition-colors hover:bg-[color:var(--hex-ink)] hover:text-white sm:p-7"
+                    className="group h-full border-r border-b hex-line-strong bg-white/60 p-6 transition-colors hover:bg-(--hex-ink) hover:text-white sm:p-7"
                     style={{ borderRightWidth: 1, borderBottomWidth: 1 }}
                   >
                     <Icon className="mb-5 size-8" strokeWidth={1.5} aria-hidden />
@@ -408,7 +398,7 @@ export default function LearnMorePage() {
             {STEPS.map((s, i) => (
               <ScrollReveal key={s.num} direction="up" delay={i * 100} className="h-full">
                 <div
-                  className="group h-full border-r border-b border-white/15 p-7 transition-colors hover:bg-white/[0.04] sm:p-9"
+                  className="group h-full border-r border-b border-white/15 p-7 transition-colors hover:bg-white/4 sm:p-9"
                   style={{ borderRightWidth: 1, borderBottomWidth: 1 }}
                 >
                   <span className="hex-mono mb-5 block text-[52px] leading-none font-bold text-white/15 transition-colors group-hover:text-white/40 sm:text-[64px]">

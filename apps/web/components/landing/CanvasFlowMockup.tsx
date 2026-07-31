@@ -75,15 +75,35 @@ const SCATTER_GROUPS = [
   { color: 'var(--c-yellow)',   n: 40, cx: 0.78, cy: 0.62, spread: 0.14 },
 ];
 
+/**
+ * Deterministic seeded value in [0, 1) — a mulberry32 finaliser.
+ *
+ * This deliberately uses only 32-bit integer operations (`Math.imul`, `^`,
+ * `>>>`, `| 0`), all of which ECMAScript specifies exactly. The obvious
+ * shorthand, `Math.sin(seed) * 10000 % 1`, cannot be used here: the spec
+ * lets each engine approximate `Math.sin`, so Node and the browser disagree
+ * in the final bits. Scaling by 10000 and taking the fractional part
+ * amplifies that into a visible difference, which React then reports as a
+ * hydration mismatch on every dot in the scatter plot.
+ */
+const rng = (seed: number) => {
+  let t = (seed + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), 1 | t);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+/** Fixed-precision rounding, so SSR and client emit the same string. */
+const round = (n: number, dp: number) => {
+  const f = 10 ** dp;
+  return Math.round(n * f) / f;
+};
+
 const ScatterChart = ({ w = 480, h = 220 }: { w?: number; h?: number }) => {
   const padL = 28, padR = 8, padT = 8, padB = 22;
   const innerW = w - padL - padR;
   const innerH = h - padT - padB;
   const yTicks = [0, 5, 10, 15, 20, 25];
-  const rng = (seed: number) => {
-    const x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-  };
   const dots: { x: number; y: number; c: string; d: number }[] = [];
   let seed = 1;
   SCATTER_GROUPS.forEach((g) => {
@@ -91,10 +111,13 @@ const ScatterChart = ({ w = 480, h = 220 }: { w?: number; h?: number }) => {
       const dx = (rng(seed++) - 0.5) * 2 * g.spread;
       const dy = (rng(seed++) - 0.5) * 2 * g.spread;
       dots.push({
-        x: padL + (g.cx + dx) * innerW,
-        y: padT + (g.cy + dy) * innerH,
+        // Rounded so the server and the client serialise byte-identical
+        // numbers, and so 118 dots don't each carry a 17-digit coordinate
+        // into the HTML. Sub-pixel precision is invisible on an r=2.6 dot.
+        x: round(padL + (g.cx + dx) * innerW, 2),
+        y: round(padT + (g.cy + dy) * innerH, 2),
         c: g.color,
-        d: rng(seed++) * 0.6,
+        d: round(rng(seed++) * 0.6, 3),
       });
     }
   });
@@ -388,7 +411,7 @@ export const ResponseFeedMock = () => (
         >
           {i === 0 && (
             <span
-              className="absolute inset-y-0 left-0 w-[2px]"
+              className="absolute inset-y-0 left-0 w-0.5"
               style={{ background: 'var(--c-teal)' }}
               aria-hidden
             />

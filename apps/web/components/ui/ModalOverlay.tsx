@@ -34,7 +34,7 @@ export function ModalOverlay({
 }) {
   return createPortal(
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      className="fixed inset-0 z-300 flex items-center justify-center p-4"
       style={{
         // Heavier than `.cf-scrim`'s 2px: the page behind should read as
         // out of reach, not merely tinted.

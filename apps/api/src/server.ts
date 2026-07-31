@@ -104,7 +104,6 @@ const authGlobalLimiter = rateLimit({
 // HTTP path includes the procedure name, so we can match on it.
 app.use(
   [
-    "/trpc/analytics.recordView",
     "/trpc/analytics.recordFieldAnswer",
     "/trpc/form.submitForm",
     // The report widget is reachable without an account, so it needs the same

@@ -48,8 +48,6 @@ export default function SignUpPage() {
     }
   };
 
-  // Outcome comes from the callbacks, not from the awaited promise — see the
-  // note in the sign-in page.
   const onSubmit = (data: SignUpValues) =>
     createUserWithEmailAndPassword(data, {
       onSuccess: () => {
@@ -115,7 +113,7 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={busy}
-          className="hex-btn-primary mt-2 h-[54px] w-full text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
+          className="hex-btn-primary mt-2 h-13.5 w-full text-[15px] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? (
             <span

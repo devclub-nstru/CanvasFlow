@@ -84,7 +84,7 @@ function RatingStars({ avg }: { avg: number }) {
           const filled = i < full ? 1 : i === full && frac > 0 ? frac : 0;
           return (
             <div key={i} className="relative size-4">
-              <Star className="absolute inset-0 size-4 fill-current text-[color:var(--cf-ink)]/15" />
+              <Star className="absolute inset-0 size-4 fill-current text-(--cf-ink)/15" />
               <div className="absolute inset-0 overflow-hidden" style={{ width: `${filled * 100}%` }}>
                 <Star className="size-4" style={{ fill: SEMANTIC.warn, color: SEMANTIC.warn }} />
               </div>
@@ -313,7 +313,7 @@ export function QuestionDistribution({ questionDistribution }: QuestionDistribut
                   aria-expanded={isOpen}
                   aria-controls={`qd-${q.fieldId}`}
                   onClick={() => setOpenId(isOpen ? null : q.fieldId)}
-                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--cf-cream)] sm:px-5"
+                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-(--cf-cream) sm:px-5"
                 >
                   <span
                     className="cf-meta w-6 shrink-0 tabular-nums"

@@ -3,13 +3,13 @@ import { trpc } from "~/trpc/client";
 /**
  * Fetches all free-tier analytics metrics for a single form.
  *
- * Returns exactly: totalResponses, totalViews, completionRate, deviceViews,
- * dailyTrends (30d), peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek.
+ * Returns exactly: totalResponses, deviceBreakdown, dailyTrends (30d),
+ * peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek.
  *
- * This list previously also claimed `hourlyDistribution` and `peakHour`. The
- * service returns neither — see getFormAnalytics in packages/services/analytics.
- * Do not build an hour-of-day chart on this hook without adding them there
- * first.
+ * `deviceBreakdown` counts submissions by device, not page views — form view
+ * tracking was removed, so there is no viewer-side denominator here. Don't
+ * reintroduce a completion rate on this hook without a new source for
+ * "people who started but didn't submit".
  */
 export const useGetFormAnalytics = (formId: string) => {
   const {
@@ -101,21 +101,6 @@ export const useRecordFieldAnswer = () => {
 };
 
 /**
- * Records a view for a public form page.
- */
-export const useRecordView = () => {
-  const {
-    mutateAsync: recordViewAsync,
-    mutate: recordView,
-    error,
-    isPending,
-    isSuccess,
-  } = trpc.analytics.recordView.useMutation();
-
-  return { recordViewAsync, recordView, error, isPending, isSuccess };
-};
-
-/**
  * Pro-tier: per-question distribution, day-of-week breakdown,
  * 30/60/90d trend totals, response velocity.
  * Only call this when you've already confirmed the user has Pro+/Business plan
@@ -136,14 +121,13 @@ export const useGetProAnalytics = (formId: string) => {
   return { proAnalytics, error, isLoading, isError, refetch };
 };
 
-/**
- * Returns the current user's plan from the session (via the form list endpoint
- * which already fetches forms per-user). We derive plan from the auth session
- * on the server; here we just check if the Pro analytics query returns FORBIDDEN.
+/*
+ * `useUserPlan` used to live here. It was a placeholder that always returned
+ * `hasPro: false` while firing a full form-list query for nothing, so any
+ * caller would have silently gated Pro features off for everyone.
+ *
+ * Use `useGetMe` from `~/hooks/api/user` instead — it exposes the real `plan`
+ * and a derived `hasDetailedAnalytics`, which is what the analytics dashboard
+ * already gates on. The server re-checks the plan in `proAuthenticatedProcedure`
+ * regardless, so the client gate is a UX affordance, not the enforcement.
  */
-export const useUserPlan = () => {
-  const { data } = trpc.form.listFormsByUserId.useQuery();
-  // plan is not directly exposed — use isForbidden from useGetProAnalytics instead
-  // This hook is a placeholder for when plan is exposed on the context.
-  return { hasPro: false, hasData: !!data };
-};

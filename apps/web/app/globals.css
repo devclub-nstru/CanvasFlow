@@ -832,6 +832,36 @@
     background: var(--hex-line);
   }
 
+  /* Tab in the landing mockups' ruled tab strip. Mirrors `.cf-tab` (the
+     real dashboard control) but keys off `.active`, because the mockups
+     are non-interactive chrome and set a class rather than the
+     `aria-selected` a real tablist carries. Without this the mockup tabs
+     rendered as undifferentiated plain text with no selected state. */
+  .hex-tab {
+    position: relative;
+    padding: 0 0 10px;
+    font-size: 13px;
+    color: var(--hex-ink-soft);
+    white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+  .hex-tab:hover {
+    color: var(--hex-ink);
+  }
+  .hex-tab.active {
+    color: var(--hex-ink);
+    font-weight: 600;
+  }
+  .hex-tab.active::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--hex-ink);
+  }
+
   /* ---- Type ------------------------------------------------------ */
   .hex-mono {
     font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;

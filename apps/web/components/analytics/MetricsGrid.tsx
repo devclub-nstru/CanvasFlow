@@ -4,8 +4,6 @@ import React from "react";
 
 interface MetricsGridProps {
   totalResponses: number;
-  completionRate: string;
-  totalViews: number;
   avgPerDay: number;
 }
 
@@ -17,13 +15,12 @@ interface MetricsGridProps {
  * "↑ 9.7% vs last week" style delta — the free-tier analytics payload has no
  * previous-period figures to compare against, and inventing one would be
  * worse than omitting it.
+ *
+ * This row used to also show total views and a completion rate. Both were
+ * derived from page-view tracking, which no longer exists — peak day and
+ * weekly average live in StatsRow, so they're not repeated here.
  */
-export function MetricsGrid({
-  totalResponses,
-  completionRate,
-  totalViews,
-  avgPerDay,
-}: MetricsGridProps) {
+export function MetricsGrid({ totalResponses, avgPerDay }: MetricsGridProps) {
   const stats = [
     {
       title: "Total responses",
@@ -31,24 +28,14 @@ export function MetricsGrid({
       sub: `${avgPerDay.toFixed(1)} per day on average`,
     },
     {
-      title: "Completion rate",
-      val: completionRate,
-      sub: `${totalViews.toLocaleString()} views recorded`,
-    },
-    {
-      title: "Total views",
-      val: totalViews.toLocaleString(),
-      sub: `${totalResponses.toLocaleString()} converted to responses`,
-    },
-    {
       title: "Avg / day",
       val: avgPerDay.toFixed(1),
-      sub: "Across the tracked window",
+      sub: "Across the last 30 days",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
       {stats.map((stat) => (
         <div key={stat.title} className="cf-panel p-3 sm:p-4">
           <p className="cf-display text-[24px] leading-none tabular-nums sm:text-[32px]">

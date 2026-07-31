@@ -64,13 +64,7 @@ const DIFFERENCES = [
 export default function AboutPage() {
   return (
     <div className="hex-theme hex-paper relative min-h-screen">
-      {/* Same animated grain as every other surface — one texture, tuned in
-          the component rather than per page. */}
       <Noise />
-
-      {/* Ruled page margins. Overlays rather than layout, so they only appear
-          from md up where there is a gutter for them to sit in; below that
-          they would land on top of the copy. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
         <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />

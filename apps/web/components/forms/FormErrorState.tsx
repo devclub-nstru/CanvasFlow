@@ -81,15 +81,15 @@ export function FormErrorState({ type }: FormErrorStateProps) {
         >
           {config.eyebrow}
         </p>
-        <h1 className="cf-display mt-5 text-[26px] leading-tight text-[color:var(--cf-ink)]">
+        <h1 className="cf-display mt-5 text-[26px] leading-tight text-(--cf-ink)">
           {config.title}
         </h1>
-        <p className="mt-3 text-[13.5px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+        <p className="mt-3 text-[13.5px] leading-relaxed text-(--cf-ink-soft)">
           {config.body}
         </p>
         <Link
           href="/"
-          className="group mt-7 inline-flex h-[44px] items-center gap-2 border px-5 text-[13.5px] font-semibold text-white transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+          className="group mt-7 inline-flex h-11 items-center gap-2 border px-5 text-[13.5px] font-semibold text-white transition-all hover:translate-x-px hover:translate-y-px hover:shadow-none"
           style={{
             background: "var(--cf-orange)",
             borderColor: "var(--cf-line-strong)",

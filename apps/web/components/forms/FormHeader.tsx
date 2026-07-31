@@ -36,17 +36,17 @@ export function FormHeader({ progressPercent, submitted, formCode, formTitle }: 
             height={20}
             className="shrink-0 object-contain"
           />
-          <span className="cf-display truncate text-[16px] leading-none text-[color:var(--cf-ink)]">
+          <span className="cf-display truncate text-[16px] leading-none text-(--cf-ink)">
             {formTitle || "CanvasFlow"}
           </span>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <span className="font-mono text-[11px] font-bold tracking-[0.14em] tabular-nums text-[color:var(--cf-ink-soft)]">
+          <span className="font-mono text-[11px] font-bold tracking-[0.14em] tabular-nums text-(--cf-ink-soft)">
             {pct}%
           </span>
           <span
-            className="border px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.16em] text-[color:var(--cf-ink-soft)]"
+            className="border px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.16em] text-(--cf-ink-soft)"
             style={{ borderColor: "var(--cf-line-strong)" }}
           >
             {formCode}
@@ -62,7 +62,7 @@ export function FormHeader({ progressPercent, submitted, formCode, formTitle }: 
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Form progress"
-        className="h-3.5 w-full overflow-hidden border bg-[color:var(--cf-ink)]/[0.04]"
+        className="h-3.5 w-full overflow-hidden border bg-(--cf-ink)/4"
         style={{ borderColor: "var(--cf-line-strong)" }}
       >
         <div

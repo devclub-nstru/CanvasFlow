@@ -27,20 +27,6 @@ export const getSubmissionsListInput = z.object({
 });
 export type GetSubmissionsListInputType = z.infer<typeof getSubmissionsListInput>;
 
-export const recordViewInput = z.object({
-  formId: z.string().uuid().describe("Form ID"),
-  // Per-form visitor UUID generated client-side and stored in localStorage.
-  // When present the server dedups views in a 30-minute window so reloads
-  // don't inflate the count.
-  visitorId: z.string().max(64).optional().nullable(),
-  deviceType: z.string().describe("Device type: desktop | mobile | tablet"),
-  referrer: z.string().max(2048).optional().nullable(),
-  utmSource: z.string().max(255).optional().nullable(),
-  utmMedium: z.string().max(255).optional().nullable(),
-  utmCampaign: z.string().max(255).optional().nullable(),
-});
-export type RecordViewInputType = z.infer<typeof recordViewInput>;
-
 // ─── Shared sub-shapes ────────────────────────────────────────────────────────
 
 export const submissionValueOutput = z.object({
@@ -60,11 +46,11 @@ export const submissionOutput = z.object({
 export const getFormAnalyticsOutput = z.object({
   // Core counts
   totalResponses: z.number(),
-  totalViews: z.number(),
-  completionRate: z.number(), // 0–100 (percent)
 
-  // Device breakdown from views
-  deviceViews: z.array(
+  // Device split of submissions (form_submissions.device_type). Rows with no
+  // recorded device are excluded, so these counts can total less than
+  // totalResponses.
+  deviceBreakdown: z.array(
     z.object({
       device: z.string(),
       count: z.number(),
@@ -94,13 +80,6 @@ export const getSubmissionsListOutput = z.object({
   nextCursor: z.string().nullable(),
 });
 export type GetSubmissionsListOutputType = z.infer<typeof getSubmissionsListOutput>;
-
-// ─── Record view ──────────────────────────────────────────────────────────────
-
-export const recordViewOutput = z.object({
-  success: z.boolean(),
-});
-export type RecordViewOutputType = z.infer<typeof recordViewOutput>;
 
 // ─── Record field answer ──────────────────────────────────────────────────────
 
@@ -175,9 +154,10 @@ export const getProAnalyticsOutput = z.object({
   ),
   // Avg time to complete (ms), from timeSpentMs column
   avgTimeSpentMs: z.number().nullable(),
-  // Top referrers (domain → count)
+  // Top referrers (domain → count), from form_submissions.referrer — so this
+  // is attribution for people who submitted, not everyone who arrived.
   topReferrers: z.array(z.object({ referrer: z.string(), count: z.number() })),
-  // UTM source breakdown
+  // UTM source breakdown, also from form_submissions
   utmSources: z.array(z.object({ source: z.string(), count: z.number() })),
 });
 export type GetProAnalyticsOutputType = z.infer<typeof getProAnalyticsOutput>;

@@ -75,14 +75,8 @@ export default function SketchesPage() {
   const [shareOwnerEmail, setShareOwnerEmail] = useState<string | null | undefined>(undefined);
   const [shareRole, setShareRole] = useState<"owner" | "editor" | "viewer">("viewer");
 
-  // Debounce the search input — the filter pass runs over every form on
-  // every keystroke; debouncing keeps typing snappy and avoids resetting
-  // pagination mid-type. 200ms is below the perceptual threshold so the
-  // result still feels live.
   const debouncedSearch = useDebounce(search, 200);
 
-  // Reset to page 1 whenever the *debounced* query changes so pagination
-  // matches the visible result set.
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
@@ -143,7 +137,7 @@ export default function SketchesPage() {
             Forms
             <span style={{ color: "var(--cf-orange)" }}>.</span>
           </h1>
-          <p className="mt-3 max-w-xs font-mono text-[13px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+          <p className="mt-3 max-w-xs font-mono text-[13px] leading-relaxed text-(--cf-ink-soft)">
             Design, publish, and decode your information workflows.
           </p>
         </div>
@@ -165,7 +159,7 @@ export default function SketchesPage() {
               placeholder="Search forms..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-[44px] w-full border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream-2)] pr-3 pl-11 text-[14px] transition-shadow placeholder:text-[color:var(--cf-ink-soft)] focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
+              className="h-11 w-full border border-(--cf-line-strong) bg-(--cf-cream-2) pr-3 pl-11 text-[14px] transition-shadow placeholder:text-(--cf-ink-soft) focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
             />
           </div>
 
@@ -192,7 +186,7 @@ export default function SketchesPage() {
       </div>
 
       {/* ───── result count rule ───── */}
-      <div className="flex items-end justify-between gap-4 border-b border-[color:var(--cf-line-strong)] pb-3">
+      <div className="flex items-end justify-between gap-4 border-b border-(--cf-line-strong) pb-3">
         <p className="cf-meta">
           {hasActiveFilters ? "Filtered" : "All forms"}
         </p>
@@ -204,7 +198,7 @@ export default function SketchesPage() {
       {/* ───── grid ───── */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <div className="size-8 animate-spin rounded-full border-2 border-[color:var(--cf-line)] border-t-[color:var(--cf-orange)]" />
+          <div className="size-8 animate-spin rounded-full border-2 border-(--cf-line) border-t-(--cf-orange)" />
           <p className="cf-meta">Loading your forms</p>
         </div>
       ) : paginatedForms.length === 0 ? (
@@ -237,9 +231,9 @@ export default function SketchesPage() {
 
       {/* ───── pagination ───── */}
       {!isLoading && processedForms.length > ITEMS_PER_PAGE && (
-        <div className="flex flex-col sm:flex-row justify-between items-center border-t border-[color:var(--cf-line)] pt-6 gap-3">
-          <p className="text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
-            Page <span className="text-[color:var(--cf-ink)]">{page}</span> of {totalPages}
+        <div className="flex flex-col sm:flex-row justify-between items-center border-t border-(--cf-line) pt-6 gap-3">
+          <p className="text-[12px] font-mono text-(--cf-ink-soft)">
+            Page <span className="text-(--cf-ink)">{page}</span> of {totalPages}
           </p>
           <div className="flex gap-2">
             <button
@@ -264,9 +258,9 @@ export default function SketchesPage() {
 
       {/* ───── delete confirm ───── */}
       {confirmDeleteId && confirmDeleteForm && (
-        <div className="cf-scrim z-[200]">
+        <div className="cf-scrim z-200">
           <div className="cf-dark cf-crop w-full max-w-md">
-            <div className="relative z-[1] p-6 sm:p-8">
+            <div className="relative z-1 p-6 sm:p-8">
             <p className="cf-dark-meta" style={{ color: "var(--c-red)" }}>Permanent action</p>
             <h3 className="cf-display mt-3 text-[26px] leading-none uppercase sm:text-[32px]">
               Delete form
@@ -314,13 +308,6 @@ export default function SketchesPage() {
   );
 }
 
-/* ─── toolbar select ─────────────────────────────────────────────────── */
-
-/**
- * Native select behind a squared black-edged shell. Native is deliberate: it
- * gets the platform's own picker on touch, which no custom dropdown matches
- * for reliability, and it stays keyboard-operable for free.
- */
 function ToolbarSelect({
   label,
   value,
@@ -341,7 +328,7 @@ function ToolbarSelect({
         id={`toolbar-${label}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-[44px] w-full cursor-pointer appearance-none border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream-2)] pr-9 pl-3.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase transition-shadow focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none sm:w-auto"
+        className="h-11 w-full cursor-pointer appearance-none border border-(--cf-line-strong) bg-(--cf-cream-2) pr-9 pl-3.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase transition-shadow focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none sm:w-auto"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -381,9 +368,6 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
   const responses = form.submissionsCount ?? 0;
   const canDelete = form.permissions?.settings?.canDelete ?? form.role === "owner";
 
-  // Hover/focus prefetch — warm the builder's tRPC caches so clicking the
-  // Open / Continue editing link feels instant. Cheap to call multiple
-  // times: tRPC dedups in-flight + already-cached prefetches.
   const utils = trpc.useUtils();
   const prefetchBuilder = () => {
     void utils.form.getForm.prefetch({ id: form.id });
@@ -396,17 +380,13 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
       onFocus={prefetchBuilder}
       className="cf-panel cf-raised cf-press group relative flex flex-col gap-4 p-4 sm:p-5"
     >
-      {/* Status flag cut into the corner by the card edge, as in the
-          reference — accent for published, muted ink for a draft. The text
-          label below carries the meaning for anyone who can't see colour. */}
       <span
         aria-hidden
-        className="absolute top-0 right-0 z-10 size-4 border-b border-l border-[color:var(--cf-line-strong)]"
+        className="absolute top-0 right-0 z-10 size-4 border-b border-l border-(--cf-line-strong)"
         style={{ background: isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)" }}
       />
 
-      {/* mini form preview — hidden on mobile to keep cards short */}
-      <div className="relative hidden aspect-[16/9] w-full overflow-hidden border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] sm:block">
+      <div className="relative hidden aspect-video w-full overflow-hidden border border-(--cf-line-strong) bg-(--cf-cream) sm:block">
         <div
           aria-hidden
           className="absolute inset-0 opacity-[0.06]"
@@ -415,13 +395,12 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
             backgroundSize: "8px 8px",
           }}
         />
-        {/* The mock sheet lifts on hover, the way the reference's preview does. */}
         <div className="absolute inset-0 flex flex-col justify-center gap-3 px-6 py-5 transition-transform duration-500 ease-out group-hover:-translate-y-1">
-          <div className="h-1.5 w-1/3 bg-[color:var(--cf-ink)]/25" />
+          <div className="h-1.5 w-1/3 bg-(--cf-ink)/25" />
           <div className="mt-1 space-y-1.5">
-            <div className="h-2 w-full border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
-            <div className="h-2 w-full border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
-            <div className="h-2 w-4/5 border border-[color:var(--cf-line)] bg-[color:var(--cf-cream-2)]" />
+            <div className="h-2 w-full border border-(--cf-line) bg-(--cf-cream-2)" />
+            <div className="h-2 w-full border border-(--cf-line) bg-(--cf-cream-2)" />
+            <div className="h-2 w-4/5 border border-(--cf-line) bg-(--cf-cream-2)" />
           </div>
           <div className="mt-2">
             <span
@@ -450,7 +429,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
               {form.title}
             </h3>
             {form.role && form.role !== "owner" && (
-              <span className="inline-flex items-center gap-1 border border-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--cf-ink-soft)] capitalize">
+              <span className="inline-flex items-center gap-1 border border-(--cf-line-strong) bg-(--cf-cream) px-1.5 py-0.5 font-mono text-[10px] text-(--cf-ink-soft) capitalize">
                 Shared: {form.role}
               </span>
             )}
@@ -464,21 +443,18 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
               }}
               title="Delete form"
               aria-label="Delete form"
-              className="shrink-0 cursor-pointer border border-transparent p-1.5 transition-colors hover:border-[color:var(--cf-line-strong)]" style={{ color: "var(--cf-ink-soft)" }}
+              className="shrink-0 cursor-pointer border border-transparent p-1.5 transition-colors hover:border-(--cf-line-strong)" style={{ color: "var(--cf-ink-soft)" }}
             >
               <Trash2 className="size-3.5" />
             </button>
           )}
         </div>
 
-        {/* Meta as an inline icon row, as in the reference. The previous
-            two-column definition list forced the eye to read down and across
-            for two short values; laid out inline it scans in one pass. */}
-        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-[color:var(--cf-ink-soft)]">
+        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-(--cf-ink-soft)">
           <div className="flex items-center gap-1.5">
             <Users className="size-3.5 shrink-0" aria-hidden />
             <dt className="sr-only">Responses</dt>
-            <dd className="tabular-nums text-[color:var(--cf-ink)]">{responses}</dd>
+            <dd className="tabular-nums text-(--cf-ink)">{responses}</dd>
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="size-3.5 shrink-0" aria-hidden />
@@ -497,7 +473,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         {isPublished ? (
           <Link
             href={`/dashboard/sketches/${form.id}`}
-            className="cf-btn group/btn h-[38px] flex-1 px-4 text-[12.5px]" style={{ background: "var(--cf-ink)" }}
+            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]" style={{ background: "var(--cf-ink)" }}
           >
             Open
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -505,7 +481,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         ) : (
           <Link
             href={`/dashboard/sketches/${form.id}`}
-            className="cf-btn group/btn h-[38px] flex-1 px-4 text-[12.5px]"
+            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
           >
             Continue editing
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -520,7 +496,7 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
             e.stopPropagation();
             onShare();
           }}
-          className="cf-btn-outline size-[38px] shrink-0"
+          className="cf-btn-outline size-9.5 shrink-0"
         >
           <Share2 className="size-3.5" />
         </button>
@@ -546,7 +522,7 @@ function EmptyState({
       <h3 className="cf-display text-[30px] leading-tight sm:text-[44px]">
         {hasFilters ? "No matches" : "Start your first form"}
       </h3>
-      <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-sm mx-auto">
+      <p className="text-[13.5px] text-(--cf-ink-soft) leading-relaxed max-w-sm mx-auto">
         {hasFilters
           ? "Try a different search or clear your filters to see all forms."
           : "Sketch on an open canvas in minutes. Free to start, no card required."}
@@ -562,7 +538,7 @@ function EmptyState({
         )}
         <button
           onClick={onCreate}
-          className="cf-btn cf-raised cf-press h-[42px] px-6 text-[13px]"
+          className="cf-btn cf-raised cf-press h-10.5 px-6 text-[13px]"
         >
           <Plus className="size-4" />
           New form

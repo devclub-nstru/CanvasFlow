@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { useGetFormById, useSubmitForm } from "~/hooks/api/form";
-import { useRecordView, useRecordFieldAnswer } from "~/hooks/api/analytics";
+import { useRecordFieldAnswer } from "~/hooks/api/analytics";
 import { FormLoadingState } from "~/components/forms/FormLoadingState";
 import { FormErrorState } from "~/components/forms/FormErrorState";
 import { FormThankYou } from "~/components/forms/FormThankYou";
@@ -14,13 +14,40 @@ import { FormHeader } from "~/components/forms/FormHeader";
 import { FormFooter } from "~/components/forms/FormFooter";
 import Noise from "~/components/Noise";
 
+type DeviceType = "desktop" | "mobile" | "tablet";
+
+function detectDeviceType(): DeviceType {
+  const ua = window.navigator.userAgent.toLowerCase();
+  if (/tablet|ipad|playbook|silk/i.test(ua)) return "tablet";
+  if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile|webos/i.test(ua)) return "mobile";
+  return "desktop";
+}
+
+function getOrCreateVisitorId(formId: string): string | null {
+  const newId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  try {
+    const storageKey = `cf_vid_${formId}`;
+    let visitorId = window.localStorage.getItem(storageKey);
+    if (!visitorId) {
+      visitorId = newId();
+      window.localStorage.setItem(storageKey, visitorId);
+    }
+    return visitorId;
+  } catch {
+    return null;
+  }
+}
+
 export default function PublicFormPage() {
   const params = useParams();
   const formId = params.formId as string;
 
   const { form, isLoading, error } = useGetFormById(formId);
   const { submitForm, isPending } = useSubmitForm();
-  const { recordView } = useRecordView();
   const { recordFieldAnswer } = useRecordFieldAnswer();
 
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -28,30 +55,18 @@ export default function PublicFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [siteRating, setSiteRating] = useState<number | null>(null);
 
-  // True once we know this visitor has already submitted this form — set
-  // by either the localStorage flag we write on success, or the server
-  // sentinel error on a duplicate submit attempt.
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
+  const [limitReached, setLimitReached] = useState(false);
+
   const formOpenedAtRef = React.useRef<number>(Date.now());
-  const viewRecordedRef = React.useRef(false);
-  // Per-form visitor id. We compute it once on mount (matching the key
-  // recordView uses) so the same id is sent on every subsequent call —
-  // notably submitForm, which the server uses to enforce one-per-visitor.
   const visitorIdRef = React.useRef<string | null>(null);
-  // Idempotency key — generated once per page mount and replayed if the
-  // user double-submits (rapid clicks, slow network retry). The server
-  // dedups on (form_id, idempotency_key) so duplicates collapse to the
-  // first successful submission.
   const idempotencyKeyRef = React.useRef<string>(
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
 
-  // Restore "already submitted" from localStorage on first paint so a
-  // returning visitor sees the lockout immediately, before any network
-  // round-trip.
   useEffect(() => {
     if (!formId) return;
     try {
@@ -64,51 +79,9 @@ export default function PublicFormPage() {
   }, [formId]);
 
   useEffect(() => {
+    if (!formId) return;
     formOpenedAtRef.current = Date.now();
-    if (formId && !viewRecordedRef.current) {
-      viewRecordedRef.current = true;
-      const ua = window.navigator.userAgent.toLowerCase();
-      let deviceType = "desktop";
-      if (/tablet|ipad|playbook|silk/i.test(ua)) {
-        deviceType = "tablet";
-      } else if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile|webos/i.test(ua)) {
-        deviceType = "mobile";
-      }
-
-      // Per-form visitor UUID kept in localStorage so reloads dedup on the
-      // server. Scoped per form so we can't cross-track between forms.
-      const storageKey = `cf_vid_${formId}`;
-      let visitorId: string | null = null;
-      try {
-        visitorId = window.localStorage.getItem(storageKey);
-        if (!visitorId) {
-          visitorId =
-            typeof crypto !== "undefined" && "randomUUID" in crypto
-              ? crypto.randomUUID()
-              : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          window.localStorage.setItem(storageKey, visitorId);
-        }
-      } catch {
-        // localStorage can throw in privacy modes / disabled storage — fall
-        // back to no visitorId, which means no dedup (acceptable).
-        visitorId = null;
-      }
-      // Stash for submitForm — the same id is required for the one-per-
-      // visitor server-side check.
-      visitorIdRef.current = visitorId;
-
-      const urlParams = new URLSearchParams(window.location.search);
-      recordView({
-        formId,
-        visitorId,
-        deviceType,
-        referrer: document.referrer || null,
-        utmSource: urlParams.get("utm_source"),
-        utmMedium: urlParams.get("utm_medium"),
-        utmCampaign: urlParams.get("utm_campaign"),
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    visitorIdRef.current = getOrCreateVisitorId(formId);
   }, [formId]);
 
   // default values for toggles
@@ -156,8 +129,6 @@ export default function PublicFormPage() {
       return;
     }
 
-    // Format validation for typed inputs. We only enforce when the user
-    // actually supplied a value — empty optional fields can still pass.
     if (typeof value === "string" && value.trim() !== "") {
       if (currentField.type === "EMAIL") {
         // Pragmatic email check: one '@', non-empty local part, dotted host.
@@ -168,8 +139,6 @@ export default function PublicFormPage() {
         }
       } else if (currentField.type === "URL") {
         try {
-          // URL constructor enforces a real scheme + host; we only care
-          // whether it throws, so the value is discarded.
           new URL(value.trim());
         } catch {
           toast.error("Please enter a valid URL (including https://)");
@@ -195,6 +164,8 @@ export default function PublicFormPage() {
         value,
       }));
 
+      const urlParams = new URLSearchParams(window.location.search);
+
       submitForm(
         {
           formId,
@@ -202,17 +173,15 @@ export default function PublicFormPage() {
           idempotencyKey: idempotencyKeyRef.current,
           visitorId: visitorIdRef.current,
           referrer: document.referrer || null,
-          utmSource: new URLSearchParams(window.location.search).get("utm_source"),
-          utmMedium: new URLSearchParams(window.location.search).get("utm_medium"),
-          utmCampaign: new URLSearchParams(window.location.search).get("utm_campaign"),
+          utmSource: urlParams.get("utm_source"),
+          utmMedium: urlParams.get("utm_medium"),
+          utmCampaign: urlParams.get("utm_campaign"),
           timeSpentMs: Date.now() - formOpenedAtRef.current,
+          deviceType: detectDeviceType(),
         },
         {
           onSuccess: () => {
             setSubmitted(true);
-            // Persist the lockout so a reload (or a fresh tab from the
-            // same browser) shows the "already submitted" screen
-            // instantly, without waiting on the network round-trip.
             try {
               window.localStorage.setItem(`cf_submitted_${formId}`, "1");
             } catch {
@@ -221,9 +190,6 @@ export default function PublicFormPage() {
             toast.success("Thanks — your response was submitted");
           },
           onError: (err) => {
-            // Server signals "this visitor already submitted" with a
-            // sentinel string. Flip the UI to the lockout state
-            // instead of showing a generic error toast.
             if (err.message === "ALREADY_SUBMITTED") {
               try {
                 window.localStorage.setItem(`cf_submitted_${formId}`, "1");
@@ -231,6 +197,10 @@ export default function PublicFormPage() {
                 /* noop */
               }
               setAlreadySubmitted(true);
+              return;
+            }
+            if (err.message === "LIMIT_REACHED") {
+              setLimitReached(true);
               return;
             }
             toast.error(err.message || "Failed to submit form");
@@ -253,24 +223,23 @@ export default function PublicFormPage() {
   if (form.expiresAt && new Date() > new Date(form.expiresAt)) {
     return <FormErrorState type="expired" />;
   }
-  if (
+  // Full on arrival, or filled up mid-session and the server said so.
+  const capReachedOnLoad =
     form.maxSubmissions !== null &&
     form.maxSubmissions !== undefined &&
     form.submissionsCount !== null &&
     form.submissionsCount !== undefined &&
-    form.submissionsCount >= form.maxSubmissions
-  ) {
+    form.submissionsCount >= form.maxSubmissions;
+
+  if (limitReached || capReachedOnLoad) {
     return <FormErrorState type="limit-reached" />;
   }
-  // Returning visitor (or a duplicate submit attempt that came back from
-  // the server). Render the lockout instead of the form so they can't
-  // even start typing a second response.
   if (alreadySubmitted) return <FormErrorState type="already-submitted" />;
 
   const formCode = form.slug.substring(0, 7).toUpperCase();
 
   return (
-    <div className="cf-landing cf-dotgrid relative flex min-h-screen w-full flex-col items-center overflow-hidden bg-[color:var(--cf-cream)] px-4 py-6 text-[color:var(--cf-ink)] sm:px-10 sm:py-8">
+    <div className="cf-landing cf-dotgrid relative flex min-h-screen w-full flex-col items-center overflow-hidden bg-(--cf-cream) px-4 py-6 text-(--cf-ink) sm:px-10 sm:py-8">
       <Noise />
       <style>{`
         @keyframes cf-card-in {
@@ -311,19 +280,16 @@ export default function PublicFormPage() {
       />
 
       <main className="flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-8 sm:py-12">
-        {/* Title block. The reference's thick left rule, which gives the form
-            a masthead instead of opening straight onto question one. Hidden
-            once submitted so the confirmation stands alone. */}
         {!submitted && (
           <div className="mb-8 w-full sm:mb-10">
             <h1
-              className="cf-display border-l-4 pl-4 text-[26px] leading-[1.05] text-[color:var(--cf-ink)] sm:border-l-[6px] sm:pl-5 sm:text-[34px]"
+              className="cf-display border-l-4 pl-4 text-[26px] leading-[1.05] text-(--cf-ink) sm:border-l-[6px] sm:pl-5 sm:text-[34px]"
               style={{ borderLeftColor: "var(--cf-ink)" }}
             >
               {form.title}
             </h1>
             {form.description && (
-              <p className="mt-3 pl-4 text-[14.5px] leading-relaxed text-[color:var(--cf-ink-soft)] sm:pl-5">
+              <p className="mt-3 pl-4 text-[14.5px] leading-relaxed text-(--cf-ink-soft) sm:pl-5">
                 {form.description}
               </p>
             )}
@@ -346,11 +312,11 @@ export default function PublicFormPage() {
               boxShadow: "5px 5px 0 0 rgba(26, 29, 41, 0.08)",
             }}
           >
-            <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-[color:var(--cf-ink-soft)] uppercase">
+            <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-(--cf-ink-soft) uppercase">
               Empty form
             </p>
             <h3 className="cf-display mt-4 text-[26px] leading-tight">Nothing to fill out yet</h3>
-            <p className="mt-3 text-[14px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+            <p className="mt-3 text-[14px] leading-relaxed text-(--cf-ink-soft)">
               The author hasn&apos;t added any questions to this form.
             </p>
           </div>

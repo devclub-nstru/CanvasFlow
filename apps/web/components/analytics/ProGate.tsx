@@ -67,7 +67,7 @@ export function ProGate({ locked, title, body, children }: ProGateProps) {
           </p>
           <Link
             href="/dashboard/pricing"
-            className="cf-btn cf-raised cf-press group mt-6 h-[38px] px-5 text-[12.5px]"
+            className="cf-btn cf-raised cf-press group mt-6 h-9.5 px-5 text-[12.5px]"
           >
             <Sparkles className="size-3.5" />
             Upgrade to Pro+

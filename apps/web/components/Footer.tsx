@@ -15,11 +15,11 @@ const Footer = () => {
   return (
     // Colour comes from the accent token rather than a literal, so the footer
     // and the app's primary actions can never drift apart.
-    <footer className="relative flex flex-col overflow-hidden border-t border-[color:var(--cf-orange)] bg-white font-sans text-[color:var(--cf-orange)]">
-      <div className="mx-auto w-full max-w-[1600px] border-x border-[color:var(--cf-orange)] flex flex-col relative">
+    <footer className="relative flex flex-col overflow-hidden border-t border-(--cf-orange) bg-white font-sans text-(--cf-orange)">
+      <div className="mx-auto w-full max-w-400 border-x border-(--cf-orange) flex flex-col relative">
 
         {/* Links Section */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 p-8 lg:p-12 border-b border-[color:var(--cf-orange)]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 p-8 lg:p-12 border-b border-(--cf-orange)">
           <div className="col-span-2 md:col-span-1">
             <Link
               href="/"
@@ -60,14 +60,14 @@ const Footer = () => {
         </div>
 
         {/* Top Huge Text */}
-        <div className="w-full border-b border-[color:var(--cf-orange)] flex items-center justify-center p-4 lg:p-8 overflow-hidden">
+        <div className="w-full border-b border-(--cf-orange) flex items-center justify-center p-4 lg:p-8 overflow-hidden">
           <h2 className="text-[11vw] lg:text-[9.5vw] leading-[0.8] font-medium tracking-tight whitespace-nowrap">
             CanvasFlow—Forms
           </h2>
         </div>
 
         {/* Middle Huge Abstract Shapes (Cut off text) */}
-        <div className="w-full border-b border-[color:var(--cf-orange)] overflow-hidden relative flex items-end justify-center h-[35vw] lg:h-[25vw] bg-white text-[color:var(--cf-orange)]">
+        <div className="w-full border-b border-(--cf-orange) overflow-hidden relative flex items-end justify-center h-[35vw] lg:h-[25vw] bg-white text-(--cf-orange)">
            <h2 className="text-[30vw] lg:text-[24vw] leading-[0.65] font-black tracking-tighter whitespace-nowrap -mb-[6vw] select-none">
              CANVASFLOW
            </h2>

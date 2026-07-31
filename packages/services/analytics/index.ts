@@ -2,7 +2,6 @@ import { db, eq, and, desc, gte, lt, count } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
-import { formViewsTable } from "@repo/database/models/form-view";
 import { formFieldViewsTable } from "@repo/database/models/form-field-view";
 import { requireViewer } from "../form";
 
@@ -13,8 +12,6 @@ import {
   type GetSubmissionsListInputType,
   getProAnalyticsInput,
   type GetProAnalyticsInputType,
-  recordViewInput,
-  type RecordViewInputType,
   recordFieldAnswerInput,
   type RecordFieldAnswerInputType,
 } from "./model";
@@ -44,12 +41,12 @@ class AnalyticsService {
         .from(formSubmissionsTable)
         .where(eq(formSubmissionsTable.formId, formId)),
 
-      // Device breakdown from views
+      // Device breakdown from submissions
       db
-        .select({ deviceType: formViewsTable.deviceType, value: count() })
-        .from(formViewsTable)
-        .where(eq(formViewsTable.formId, formId))
-        .groupBy(formViewsTable.deviceType),
+        .select({ deviceType: formSubmissionsTable.deviceType, value: count() })
+        .from(formSubmissionsTable)
+        .where(eq(formSubmissionsTable.formId, formId))
+        .groupBy(formSubmissionsTable.deviceType),
 
       // Submission timestamps for last 30 days (no values jsonb — just timestamps)
       db
@@ -65,28 +62,24 @@ class AnalyticsService {
 
     const totalResponses = Number(totalResponseRow[0]?.value ?? 0);
 
-    // ─── Views & device breakdown ─────────────────────────────────────────
+    // ─── Device breakdown ─────────────────────────────────────────────────
+    // Sourced from form_submissions.device_type, so this counts the devices
+    // people submitted from — not everyone who opened the form. Rows with a
+    // null device_type (submitted before the column existed) are skipped
+    // rather than bucketed into desktop, which would fabricate a reading.
     const deviceMap: Record<string, number> = { desktop: 0, mobile: 0, tablet: 0 };
-    let totalViews = 0;
     deviceRows.forEach((r) => {
+      if (!r.deviceType) return;
       const n = Number(r.value);
-      totalViews += n;
       const dev = r.deviceType.toLowerCase();
       if (dev.includes("mobile")) deviceMap["mobile"] = (deviceMap["mobile"] ?? 0) + n;
       else if (dev.includes("tablet")) deviceMap["tablet"] = (deviceMap["tablet"] ?? 0) + n;
       else deviceMap["desktop"] = (deviceMap["desktop"] ?? 0) + n;
     });
-    const deviceViews = Object.entries(deviceMap).map(([device, cnt]) => ({ device, count: cnt }));
-
-    // Submissions are now deduped per visitor at the DB level, so under
-    // normal conditions submissions ≤ views and this ratio sits in
-    // [0, 100]. Visitors without localStorage (private mode) bypass
-    // dedup, so we still clamp as defence-in-depth — the dashboard
-    // should never display a non-physical rate like 500%.
-    const completionRate =
-      totalViews > 0
-        ? parseFloat(Math.min((totalResponses / totalViews) * 100, 100).toFixed(1))
-        : 0;
+    const deviceBreakdown = Object.entries(deviceMap).map(([device, cnt]) => ({
+      device,
+      count: cnt,
+    }));
 
     // ─── Daily trends (last 30 days, zero-filled) ─────────────────────────
     const dailyMap: Record<string, number> = {};
@@ -124,9 +117,7 @@ class AnalyticsService {
 
     return {
       totalResponses,
-      totalViews,
-      completionRate,
-      deviceViews,
+      deviceBreakdown,
       dailyTrends,
       peakDay,
       avgSubmissionsPerDay,
@@ -174,7 +165,6 @@ class AnalyticsService {
       count90d,
       referrerRows,
       utmRows,
-      totalViewsRow,
       fieldViewRows,
       rawFieldViewRows,
     ] = await Promise.all([
@@ -220,22 +210,19 @@ class AnalyticsService {
           and(eq(formSubmissionsTable.formId, formId), gte(formSubmissionsTable.createdAt, ago90)),
         ),
 
-      // Top referrers from views
+      // Top referrers from submissions
       db
-        .select({ referrer: formViewsTable.referrer, value: count() })
-        .from(formViewsTable)
-        .where(eq(formViewsTable.formId, formId))
-        .groupBy(formViewsTable.referrer),
+        .select({ referrer: formSubmissionsTable.referrer, value: count() })
+        .from(formSubmissionsTable)
+        .where(eq(formSubmissionsTable.formId, formId))
+        .groupBy(formSubmissionsTable.referrer),
 
-      // UTM source breakdown from views
+      // UTM source breakdown from submissions
       db
-        .select({ utmSource: formViewsTable.utmSource, value: count() })
-        .from(formViewsTable)
-        .where(eq(formViewsTable.formId, formId))
-        .groupBy(formViewsTable.utmSource),
-
-      // Total views (for overall drop-off context)
-      db.select({ value: count() }).from(formViewsTable).where(eq(formViewsTable.formId, formId)),
+        .select({ utmSource: formSubmissionsTable.utmSource, value: count() })
+        .from(formSubmissionsTable)
+        .where(eq(formSubmissionsTable.formId, formId))
+        .groupBy(formSubmissionsTable.utmSource),
 
       // Per-field answer counts from form_field_views (the real completion source)
       db
@@ -451,23 +438,18 @@ class AnalyticsService {
 
     // ─── Field completion rates ────────────────────────────────────────────
     // Source: form_field_views — one row per field per visitor who answered it
-    // and clicked Next. Denominator: total form views (visitors who opened it).
-    // This gives true per-field drop-off: e.g. if 4 people opened the form,
-    // 3 answered field A, 2 answered field B → A=75%, B=50%.
-    const totalViews = Number(totalViewsRow[0]?.value ?? 0);
+    // and clicked Next. Denominator: the most-answered field, which stands in
+    // for "people who started the form" now that page views aren't tracked.
+    // The first question is almost always the most answered, so this gives
+    // relative drop-off: e.g. 4 answered field A, 2 answered field B →
+    // A=100%, B=50%. Falls back to total submissions when no field
+    // interactions have been recorded.
     // Build a map of fieldId → answer count from form_field_views
     const fieldViewMap = new Map<string, number>(
       fieldViewRows.map((r) => [r.fieldId, Number(r.value)]),
     );
-    // Denominator: prefer total views; fall back to max field interactions if
-    // views weren't recorded (e.g. before this feature was deployed)
     const maxFieldInteractions = fieldViewRows.reduce((m, r) => Math.max(m, Number(r.value)), 0);
-    const denominator =
-      totalViews > 0
-        ? totalViews
-        : maxFieldInteractions > 0
-          ? maxFieldInteractions
-          : totalSubmissions;
+    const denominator = maxFieldInteractions > 0 ? maxFieldInteractions : totalSubmissions;
 
     const fieldCompletionRates = fields.map((field) => {
       const answeredCount = fieldViewMap.get(field.id) ?? 0;
@@ -576,50 +558,6 @@ class AnalyticsService {
       : null;
 
     return { submissions, nextCursor };
-  }
-
-  /**
-   * Records a form page view with device type.
-   * Called by the public form page on mount — no auth required.
-   *
-   * Dedup: when the client supplies a visitorId (a per-form UUID kept in
-   * localStorage), we skip the insert if a row already exists for this
-   * (formId, visitorId) pair within the last 30 minutes. That collapses
-   * reload-spam into a single view per browsing session.
-   */
-  public async recordView(payload: RecordViewInputType) {
-    const { formId, visitorId, deviceType, referrer, utmSource, utmMedium, utmCampaign } =
-      await recordViewInput.parseAsync(payload);
-
-    if (visitorId) {
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-      const existing = await db
-        .select({ id: formViewsTable.id })
-        .from(formViewsTable)
-        .where(
-          and(
-            eq(formViewsTable.formId, formId),
-            eq(formViewsTable.visitorId, visitorId),
-            gte(formViewsTable.createdAt, thirtyMinutesAgo),
-          ),
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        return { success: true };
-      }
-    }
-
-    await db.insert(formViewsTable).values({
-      formId,
-      visitorId: visitorId ?? null,
-      deviceType,
-      referrer: referrer ?? null,
-      utmSource: utmSource ?? null,
-      utmMedium: utmMedium ?? null,
-      utmCampaign: utmCampaign ?? null,
-    });
-    return { success: true };
   }
 
   /**

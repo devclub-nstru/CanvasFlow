@@ -71,7 +71,7 @@ export function FormThankYou({
         }}
       >
         <div
-          className="cf-animate-pop mx-auto flex size-16 items-center justify-center border text-[color:var(--cf-orange)]"
+          className="cf-animate-pop mx-auto flex size-16 items-center justify-center border text-(--cf-orange)"
           style={{ borderColor: "var(--cf-orange)", background: "#fff" }}
         >
           <svg className="size-8" viewBox="0 0 52 52" fill="none" aria-hidden>
@@ -95,13 +95,13 @@ export function FormThankYou({
           </svg>
         </div>
 
-        <p className="mt-6 font-mono text-[10px] font-bold tracking-[0.2em] text-[color:var(--cf-ink-soft)] uppercase">
+        <p className="mt-6 font-mono text-[10px] font-bold tracking-[0.2em] text-(--cf-ink-soft) uppercase">
           Response received
         </p>
-        <h2 className="cf-display mt-3 text-[30px] leading-tight text-[color:var(--cf-ink)] sm:text-[38px]">
+        <h2 className="cf-display mt-3 text-[30px] leading-tight text-(--cf-ink) sm:text-[38px]">
           Thanks for your time.
         </h2>
-        <p className="mx-auto mt-3 max-w-sm text-[14.5px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+        <p className="mx-auto mt-3 max-w-sm text-[14.5px] leading-relaxed text-(--cf-ink-soft)">
           Your response has been recorded. You can close this tab whenever you&apos;re ready.
         </p>
       </div>
@@ -112,7 +112,7 @@ export function FormThankYou({
           className="border"
           style={{ borderColor: "var(--cf-line-strong)", background: "#fff" }}
         >
-          <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-mono text-[10px] font-bold tracking-[0.16em] text-[color:var(--cf-ink-soft)] uppercase">
+          <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-mono text-[10px] font-bold tracking-[0.16em] text-(--cf-ink-soft) uppercase">
             Your answers ({answered.length})
             <span aria-hidden className="text-[13px]">
               +
@@ -125,10 +125,10 @@ export function FormThankYou({
                 className="border-b px-4 py-3 last:border-b-0"
                 style={{ borderBottomColor: "var(--cf-line)" }}
               >
-                <dt className="font-mono text-[9.5px] font-bold tracking-[0.16em] text-[color:var(--cf-ink-soft)] uppercase">
+                <dt className="font-mono text-[9.5px] font-bold tracking-[0.16em] text-(--cf-ink-soft) uppercase">
                   Q{String(i + 1).padStart(2, "0")} · {field.label}
                 </dt>
-                <dd className="mt-1 text-[14px] break-words text-[color:var(--cf-ink)]">
+                <dd className="mt-1 text-[14px] wrap-break-word text-(--cf-ink)">
                   {display(field)}
                 </dd>
               </div>
@@ -142,7 +142,7 @@ export function FormThankYou({
         className="border p-5 text-center"
         style={{ borderColor: "var(--cf-line-strong)", background: "#fff" }}
       >
-        <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[color:var(--cf-ink-soft)] uppercase">
+        <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-(--cf-ink-soft) uppercase">
           {siteRating ? "Thanks for the rating" : "How was the experience?"}
         </p>
         <div className="mt-3 flex items-center justify-center gap-1">
@@ -162,8 +162,8 @@ export function FormThankYou({
                 <Star
                   className={`size-6 ${
                     on
-                      ? "fill-[color:var(--cf-orange)] text-[color:var(--cf-orange)]"
-                      : "fill-current text-[color:var(--cf-ink)]/15"
+                      ? "fill-(--cf-orange) text-(--cf-orange)"
+                      : "fill-current text-(--cf-ink)/15"
                   }`}
                 />
               </button>
@@ -174,12 +174,12 @@ export function FormThankYou({
 
       {/* ── CTA ── */}
       <div className="space-y-4 text-center">
-        <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-[color:var(--cf-ink-soft)]">
+        <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-(--cf-ink-soft)">
           Like this form? Build your own — free to start, no card required.
         </p>
         <Link
           href="/signUp"
-          className="group inline-flex h-[46px] items-center gap-2 border px-6 text-[14px] font-semibold text-white transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+          className="group inline-flex h-11.5 items-center gap-2 border px-6 text-[14px] font-semibold text-white transition-all hover:translate-x-px hover:translate-y-px hover:shadow-none"
           style={{
             background: "var(--cf-orange)",
             borderColor: "var(--cf-line-strong)",

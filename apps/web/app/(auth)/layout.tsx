@@ -11,17 +11,6 @@ import {
   VerticalScaleDark,
 } from "~/components/Scale";
 
-/**
- * Auth shell — a two-panel split.
- *
- * Left: an inverted brand column carrying the product pitch. Hidden below lg,
- * because at that width it would push the form itself below the fold.
- * Right: the form, on the same cream stock and squared black-edged chrome as
- * the landing page, so arriving here from the marketing site is continuous.
- *
- * Both panels are bracketed by the same ruled hatch strips the landing uses.
- */
-
 const PANEL_POINTS: [string, string][] = [
   ["01", "Twelve field types, drag to reorder"],
   ["02", "One question at a time for whoever fills it in"],
@@ -84,7 +73,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           <div>
             {PANEL_POINTS.map(([n, label]) => (
-              <div key={n} className="flex items-center gap-4 border-b border-white/[0.06] py-3.5">
+              <div key={n} className="flex items-center gap-4 border-b border-white/6 py-3.5">
                 <span className="hex-mono w-5 shrink-0 text-[10px] text-white/45">{n}</span>
                 <div className="h-3.5 w-px shrink-0 bg-white/15" />
                 <span className="text-[13px] text-white/50">{label}</span>
@@ -128,7 +117,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </nav>
 
         <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12 sm:px-10 sm:py-14">
-          <div className="flex w-full max-w-[500px] flex-col">{children}</div>
+          <div className="flex w-full max-w-125 flex-col">{children}</div>
         </div>
 
         <div className="relative z-10">
