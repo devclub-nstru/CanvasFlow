@@ -1,17 +1,12 @@
-import {
-  authenticatedProcedure,
-  proAuthenticatedProcedure,
-  publicProcedure,
-  router,
-} from "../../trpc";
+import { authenticatedProcedure, publicProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import {
   getFormAnalyticsInputModel,
   getFormAnalyticsOutputModel,
   getSubmissionsListInputModel,
   getSubmissionsListOutputModel,
-  getProAnalyticsInput as getProAnalyticsInputModel,
-  getProAnalyticsOutput as getProAnalyticsOutputModel,
+  getDetailedAnalyticsInput as getDetailedAnalyticsInputModel,
+  getDetailedAnalyticsOutput as getDetailedAnalyticsOutputModel,
   recordFieldAnswerInputModel,
   recordFieldAnswerOutputModel,
 } from "./model";
@@ -23,7 +18,7 @@ const getPath = generatePath("/analytics");
 export const analyticsRouter = router({
   /**
    * GET /analytics/getFormAnalytics/{formId}
-   * Returns all free-tier analytics metrics for a form in a single call:
+   * Returns all summary analytics metrics for a form in a single call:
    *   - totalResponses
    *   - deviceBreakdown (desktop / mobile / tablet from submission records)
    *   - dailyTrends (last 30 days, zero-filled)
@@ -93,26 +88,28 @@ export const analyticsRouter = router({
     }),
 
   /**
-   * GET /analytics/getProAnalytics/{formId}
-   * Pro-tier: day-of-week breakdown, 30/60/90d trend totals,
-   * response velocity (first 24h after publish), and per-question
-   * response distribution for SELECT, CHECKBOX, RADIO, RATING, TOGGLE fields.
+   * GET /analytics/getDetailedAnalytics/{formId}
+   * Day-of-week breakdown, 30/60/90d trend totals, response velocity (first
+   * 24h after publish), and per-question response distribution for SELECT,
+   * CHECKBOX, RADIO, RATING, TOGGLE fields.
    *
-   * Returns FORBIDDEN for Free-tier users.
+   * Available to anyone who can see the form. This was gated behind a
+   * subscription tier; tiers no longer exist, so the ordinary authenticated
+   * procedure is the whole check.
    */
-  getProAnalytics: proAuthenticatedProcedure
+  getDetailedAnalytics: authenticatedProcedure
     .meta({
       openapi: {
         method: "GET",
-        path: getPath("/getProAnalytics/{formId}"),
+        path: getPath("/getDetailedAnalytics/{formId}"),
         tags: TAGS,
         protect: true,
       },
     })
-    .input(getProAnalyticsInputModel)
-    .output(getProAnalyticsOutputModel)
+    .input(getDetailedAnalyticsInputModel)
+    .output(getDetailedAnalyticsOutputModel)
     .query(async ({ input, ctx }) => {
-      return analyticsService.getProAnalytics({
+      return analyticsService.getDetailedAnalytics({
         formId: input.formId,
         ownerId: ctx.user.id,
       });

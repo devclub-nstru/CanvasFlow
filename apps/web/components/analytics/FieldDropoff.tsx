@@ -109,8 +109,8 @@ export function FieldDropoff({ fieldCompletionRates, fields, submissions }: Fiel
           <div>
             <p className="cf-meta">Drop-off by field</p>
             <p className="mt-1 text-[12px]" style={{ color: "var(--cf-ink-soft)" }}>
-              Share of people who started the form and answered each field. Select one to read
-              its answers.
+              Share of people who started the form and answered each field. Select one to read its
+              answers.
             </p>
           </div>
           <span className="cf-meta shrink-0">{rows.length} fields</span>

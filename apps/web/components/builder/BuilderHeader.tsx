@@ -207,10 +207,14 @@ export function BuilderHeader({
         </button>
 
         {/* Preview / Share / Delete — visible on sm+ */}
+        {/* `?preview=1` makes the public form fillable and submittable without
+            writing anything: no response, no draft, no answer tracking. Without
+            it, an author testing their own form would record a response to it
+            and burn their one-per-visitor slot. */}
         <Link
-          href={`/forms/${formId}`}
+          href={`/forms/${formId}?preview=1`}
           target="_blank"
-          title="Preview form"
+          title="Preview form — responses aren't saved"
           className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
         >
           <Eye className="size-3.5" />
@@ -272,7 +276,7 @@ export function BuilderHeader({
               className="cf-panel cf-raised absolute top-full right-0 z-50 mt-1.5 w-44 p-1.5"
             >
               <Link
-                href={`/forms/${formId}`}
+                href={`/forms/${formId}?preview=1`}
                 target="_blank"
                 onClick={() => setMenuOpen(false)}
                 className="cf-menu-item flex items-center gap-2.5 py-2! text-[13px]"

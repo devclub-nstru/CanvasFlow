@@ -57,10 +57,7 @@ function ChoiceBar({ option, index }: { option: OptionCount; index: number }) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 text-[12px]">
         <span className="truncate">{option.value}</span>
-        <span
-          className="shrink-0 font-mono tabular-nums"
-          style={{ color: "var(--cf-ink-soft)" }}
-        >
+        <span className="shrink-0 font-mono tabular-nums" style={{ color: "var(--cf-ink-soft)" }}>
           {option.count} <span className="opacity-60">({option.percent}%)</span>
         </span>
       </div>
@@ -85,7 +82,10 @@ function RatingStars({ avg }: { avg: number }) {
           return (
             <div key={i} className="relative size-4">
               <Star className="absolute inset-0 size-4 fill-current text-(--cf-ink)/15" />
-              <div className="absolute inset-0 overflow-hidden" style={{ width: `${filled * 100}%` }}>
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: `${filled * 100}%` }}
+              >
                 <Star className="size-4" style={{ fill: SEMANTIC.warn, color: SEMANTIC.warn }} />
               </div>
             </div>
@@ -103,23 +103,14 @@ function RatingDistBar({ dist }: { dist: RatingDistItem[] }) {
     <div className="mt-3 space-y-1.5">
       {dist.map((d) => (
         <div key={d.rating} className="flex items-center gap-2 font-mono text-[11px]">
-          <span
-            className="w-3 text-right tabular-nums"
-            style={{ color: "var(--cf-ink-soft)" }}
-          >
+          <span className="w-3 text-right tabular-nums" style={{ color: "var(--cf-ink-soft)" }}>
             {d.rating}
           </span>
           <Star className="size-3 shrink-0" style={{ fill: SEMANTIC.warn, color: SEMANTIC.warn }} />
           <div className="h-2 flex-1 overflow-hidden" style={{ background: "var(--cf-line)" }}>
-            <div
-              className="h-full"
-              style={{ width: `${d.percent}%`, background: SEMANTIC.warn }}
-            />
+            <div className="h-full" style={{ width: `${d.percent}%`, background: SEMANTIC.warn }} />
           </div>
-          <span
-            className="w-8 text-right tabular-nums"
-            style={{ color: "var(--cf-ink-soft)" }}
-          >
+          <span className="w-8 text-right tabular-nums" style={{ color: "var(--cf-ink-soft)" }}>
             {d.count}
           </span>
         </div>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useAnimatedCounter } from '~/hooks/useAnimatedCounter';
-import { useScrollReveal } from '~/hooks/useScrollReveal';
+import { useAnimatedCounter } from "~/hooks/useAnimatedCounter";
+import { useScrollReveal } from "~/hooks/useScrollReveal";
 
 export function AnimatedCounter({
   value,
-  suffix = '',
+  suffix = "",
   label,
 }: {
   value: number;
@@ -18,7 +18,8 @@ export function AnimatedCounter({
   return (
     <div ref={ref} className="flex flex-col items-center justify-center">
       <span className="text-5xl md:text-7xl font-black tracking-tighter mb-2">
-        {count.toLocaleString()}{suffix}
+        {count.toLocaleString()}
+        {suffix}
       </span>
       <span className="text-xs font-black uppercase text-muted-foreground tracking-widest">
         {label}

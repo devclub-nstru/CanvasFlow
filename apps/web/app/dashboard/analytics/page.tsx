@@ -10,14 +10,12 @@ import { toast } from "sonner";
 import { useListFormsByUserId, useGetFormById } from "~/hooks/api/form";
 import {
   useGetFormAnalytics,
-  useGetProAnalytics,
+  useGetDetailedAnalytics,
   useGetSubmissions,
 } from "~/hooks/api/analytics";
-import { useGetMe } from "~/hooks/api/user";
 import { useDebounce } from "~/hooks/useDebounce";
 
 import { AnalyticsFormPicker } from "~/components/analytics/AnalyticsFormPicker";
-import { ProGate } from "~/components/analytics/ProGate";
 import { MetricsGrid } from "~/components/analytics/MetricsGrid";
 import { StatsRow } from "~/components/analytics/StatsRow";
 import { SubmissionsTable } from "~/components/analytics/SubmissionsTable";
@@ -106,9 +104,9 @@ export function AnalyticsPage() {
     isFetchingNextPage,
     fetchNextPage,
   } = useGetSubmissions(selectedFormId || "");
-  const { hasDetailedAnalytics } = useGetMe();
-
-  const { proAnalytics } = useGetProAnalytics(hasDetailedAnalytics ? selectedFormId || "" : "");
+  // No longer conditional on a subscription tier — every signed-in owner gets
+  // the detailed breakdown, so the query runs whenever a form is selected.
+  const { detailedAnalytics } = useGetDetailedAnalytics(selectedFormId || "");
 
   // Auto-select the first form when none is in the URL.
   useEffect(() => {
@@ -272,9 +270,7 @@ export function AnalyticsPage() {
               className="flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-6"
               style={{ borderBottomColor: "var(--cf-line-strong)" }}
             >
-              <span className="truncate text-[12px] font-medium">
-                CanvasFlow · {form.title}
-              </span>
+              <span className="truncate text-[12px] font-medium">CanvasFlow · {form.title}</span>
               <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href={`/dashboard/sketches/${form.id}`}
@@ -335,14 +331,14 @@ export function AnalyticsPage() {
                       <ResponseTimeline totalResponses={totalResponses} trends={dailyTrends} />
                       <DeviceBreakdown deviceData={deviceData} />
                     </div>
-                    {/* Momentum needs the Pro trend buckets, so this row only
-                        renders on a paid plan. */}
-                    {proAnalytics && (
+                    {/* Waits on the detailed query rather than gating on a
+                        plan — the trend buckets simply aren't loaded yet. */}
+                    {detailedAnalytics && (
                       <div className="grid grid-cols-1 gap-5">
                         <PeriodComparison
-                          trend30d={proAnalytics.trend30d}
-                          trend60d={proAnalytics.trend60d}
-                          trend90d={proAnalytics.trend90d}
+                          trend30d={detailedAnalytics.trend30d}
+                          trend60d={detailedAnalytics.trend60d}
+                          trend90d={detailedAnalytics.trend90d}
                         />
                       </div>
                     )}
@@ -365,52 +361,39 @@ export function AnalyticsPage() {
                 )}
 
                 {tab === "dropoff" && (
-                  <ProGate
-                    locked={!hasDetailedAnalytics}
-                    title="Drop-off per question"
-                    body="See which question people abandon and how each field performs, on Pro+ and Business."
-                  >
-                    <div className="space-y-5">
-                      <FieldDropoff
-                        fieldCompletionRates={proAnalytics?.fieldCompletionRates ?? []}
-                        fields={form.fields ?? []}
-                        submissions={submissions as Submission[]}
-                      />
-                      <QuestionDistribution
-                        questionDistribution={proAnalytics?.questionDistribution ?? []}
-                      />
-                    </div>
-                  </ProGate>
+                  <div className="space-y-5">
+                    <FieldDropoff
+                      fieldCompletionRates={detailedAnalytics?.fieldCompletionRates ?? []}
+                      fields={form.fields ?? []}
+                      submissions={submissions as Submission[]}
+                    />
+                    <QuestionDistribution
+                      questionDistribution={detailedAnalytics?.questionDistribution ?? []}
+                    />
+                  </div>
                 )}
 
                 {tab === "segments" && (
-                  <ProGate
-                    locked={!hasDetailedAnalytics}
-                    title="Segments and sources"
-                    body="See where responses come from by referrer and campaign, plus day-of-week engagement, on Pro+ and Business."
-                  >
-                    <div className="space-y-8">
-                      <SegmentGroup
-                        label="Engagement"
-                        hint="How long people take, and how quickly they arrive."
-                      >
-                        <EngagementStats
-                          avgTimeSpentMs={proAnalytics?.avgTimeSpentMs ?? null}
-                          medianResponseTime={proAnalytics?.medianResponseTime ?? null}
-                          returningRate={proAnalytics?.returningRate ?? 0}
-                          velocityFirst24h={proAnalytics?.velocityFirst24h ?? 0}
-                        />
-                      </SegmentGroup>
+                  <div className="space-y-8">
+                    <SegmentGroup
+                      label="Engagement"
+                      hint="How long people take, and how quickly they arrive."
+                    >
+                      <EngagementStats
+                        avgTimeSpentMs={detailedAnalytics?.avgTimeSpentMs ?? null}
+                        medianResponseTime={detailedAnalytics?.medianResponseTime ?? null}
+                        returningRate={detailedAnalytics?.returningRate ?? 0}
+                        velocityFirst24h={detailedAnalytics?.velocityFirst24h ?? 0}
+                      />
+                    </SegmentGroup>
 
-                      <SegmentGroup label="Acquisition" hint="Where the responses came from.">
-                        <TrafficSources topReferrers={proAnalytics?.topReferrers ?? []} />
-                      </SegmentGroup>
-                    </div>
-                  </ProGate>
+                    <SegmentGroup label="Acquisition" hint="Where the responses came from.">
+                      <TrafficSources topReferrers={detailedAnalytics?.topReferrers ?? []} />
+                    </SegmentGroup>
+                  </div>
                 )}
               </div>
             </div>
-
           </div>
         )}
       </div>
@@ -434,10 +417,7 @@ function SegmentGroup({
         style={{ borderBottomColor: "var(--cf-line)" }}
       >
         <h3 className="cf-meta">{label}</h3>
-        <p
-          className="truncate text-right text-[11px]"
-          style={{ color: "var(--cf-ink-soft)" }}
-        >
+        <p className="truncate text-right text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
           {hint}
         </p>
       </div>

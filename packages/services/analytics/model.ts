@@ -97,10 +97,10 @@ export type RecordFieldAnswerOutputType = z.infer<typeof recordFieldAnswerOutput
 
 // ─── Pro analytics ────────────────────────────────────────────────────────────
 
-export const getProAnalyticsInput = z.object({
+export const getDetailedAnalyticsInput = z.object({
   formId: z.string().uuid().describe("Form ID"),
 });
-export type GetProAnalyticsInputType = z.infer<typeof getProAnalyticsInput>;
+export type GetDetailedAnalyticsInputType = z.infer<typeof getDetailedAnalyticsInput>;
 
 export const questionDistributionOutput = z.object({
   fieldId: z.string().uuid(),
@@ -135,7 +135,7 @@ export const questionDistributionOutput = z.object({
   textSamples: z.array(z.string()).optional(),
 });
 
-export const getProAnalyticsOutput = z.object({
+export const getDetailedAnalyticsOutput = z.object({
   dowBreakdown: z.array(z.object({ day: z.string(), count: z.number() })),
   trend30d: z.number(),
   trend60d: z.number(),
@@ -160,4 +160,4 @@ export const getProAnalyticsOutput = z.object({
   // UTM source breakdown, also from form_submissions
   utmSources: z.array(z.object({ source: z.string(), count: z.number() })),
 });
-export type GetProAnalyticsOutputType = z.infer<typeof getProAnalyticsOutput>;
+export type GetDetailedAnalyticsOutputType = z.infer<typeof getDetailedAnalyticsOutput>;

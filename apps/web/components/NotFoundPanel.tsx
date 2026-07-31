@@ -116,11 +116,7 @@ export function NotFoundPanel() {
             >
               {glitch}
             </p>
-            <div
-              className="mt-2 h-2 w-full"
-              style={{ background: "var(--hex-ink)" }}
-              aria-hidden
-            />
+            <div className="mt-2 h-2 w-full" style={{ background: "var(--hex-ink)" }} aria-hidden />
           </div>
 
           {/* Copy */}
@@ -227,7 +223,10 @@ export function NotFoundPanel() {
             color: "#fff",
           }}
         >
-          <ArrowLeft className="size-5 transition-transform group-hover:-translate-x-1" aria-hidden />
+          <ArrowLeft
+            className="size-5 transition-transform group-hover:-translate-x-1"
+            aria-hidden
+          />
           Back to home
         </Link>
 
@@ -250,7 +249,6 @@ export function NotFoundPanel() {
             ["About", "/about"],
             ["Your forms", "/dashboard/sketches"],
             ["Analytics", "/dashboard/analytics"],
-            ["Pricing", "/dashboard/pricing"],
           ].map(([label, href]) => (
             <Link key={href} href={href!} className="hex-link text-[14px]">
               {label}

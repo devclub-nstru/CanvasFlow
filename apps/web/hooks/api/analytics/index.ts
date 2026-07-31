@@ -1,7 +1,7 @@
 import { trpc } from "~/trpc/client";
 
 /**
- * Fetches all free-tier analytics metrics for a single form.
+ * Fetches all summary analytics metrics for a single form.
  *
  * Returns exactly: totalResponses, deviceBreakdown, dailyTrends (30d),
  * peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek.
@@ -101,33 +101,23 @@ export const useRecordFieldAnswer = () => {
 };
 
 /**
- * Pro-tier: per-question distribution, day-of-week breakdown,
- * 30/60/90d trend totals, response velocity.
- * Only call this when you've already confirmed the user has Pro+/Business plan
- * via useGetMe — the server will still enforce it, but the client gates first.
+ * The heavier breakdown: per-question distribution, day-of-week, 30/60/90d
+ * trend totals, response velocity.
+ *
+ * Split from the summary query because it's the expensive one, not because it
+ * was ever gated — it's available to anyone who can see the form.
  */
-export const useGetProAnalytics = (formId: string) => {
+export const useGetDetailedAnalytics = (formId: string) => {
   const {
-    data: proAnalytics,
+    data: detailedAnalytics,
     error,
     isLoading,
     isError,
     refetch,
-  } = trpc.analytics.getProAnalytics.useQuery(
+  } = trpc.analytics.getDetailedAnalytics.useQuery(
     { formId },
     { enabled: !!formId && formId.length === 36, retry: false },
   );
 
-  return { proAnalytics, error, isLoading, isError, refetch };
+  return { detailedAnalytics, error, isLoading, isError, refetch };
 };
-
-/*
- * `useUserPlan` used to live here. It was a placeholder that always returned
- * `hasPro: false` while firing a full form-list query for nothing, so any
- * caller would have silently gated Pro features off for everyone.
- *
- * Use `useGetMe` from `~/hooks/api/user` instead — it exposes the real `plan`
- * and a derived `hasDetailedAnalytics`, which is what the analytics dashboard
- * already gates on. The server re-checks the plan in `proAuthenticatedProcedure`
- * regardless, so the client gate is a UX affordance, not the enforcement.
- */

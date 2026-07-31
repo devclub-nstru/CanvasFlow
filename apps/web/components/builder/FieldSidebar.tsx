@@ -142,9 +142,7 @@ function FieldItem({
         <p className="text-[12.5px] font-medium text-(--cf-ink) leading-tight truncate">
           {field.label}
         </p>
-        <p className="text-[11px] text-(--cf-ink-soft) truncate mt-0.5">
-          {field.description}
-        </p>
+        <p className="text-[11px] text-(--cf-ink-soft) truncate mt-0.5">{field.description}</p>
       </div>
     </Tag>
   );

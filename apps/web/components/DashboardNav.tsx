@@ -4,16 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  ChevronRight,
-  Compass,
-  Menu,
-  PencilRuler,
-  Plus,
-  Wallet,
-  X,
-} from "lucide-react";
+import { BarChart3, ChevronRight, Compass, Menu, PencilRuler, Plus, X } from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
@@ -33,7 +24,6 @@ const LINKS = [
   { href: "/dashboard", label: "Studio", icon: Compass },
   { href: "/dashboard/sketches", label: "Forms", icon: PencilRuler },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/pricing", label: "Pricing", icon: Wallet },
 ];
 
 export default function DashboardNav() {
@@ -92,9 +82,7 @@ export default function DashboardNav() {
                   aria-current={active ? "page" : undefined}
                   className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
                   style={
-                    active
-                      ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
-                      : undefined
+                    active ? { background: "var(--cf-ink)", color: "var(--cf-cream)" } : undefined
                   }
                 >
                   <Icon className="size-3.5" />
@@ -185,10 +173,7 @@ export default function DashboardNav() {
 
               {/* Signing out lives on the profile page now, so this row is
                   purely the way there — full width, no trailing action. */}
-              <div
-                className="mt-4 border-t pt-4"
-                style={{ borderTopColor: "var(--cf-line)" }}
-              >
+              <div className="mt-4 border-t pt-4" style={{ borderTopColor: "var(--cf-line)" }}>
                 <Link
                   href="/dashboard/profile"
                   onClick={() => setMenuOpen(false)}
@@ -199,10 +184,7 @@ export default function DashboardNav() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium">{fullName}</p>
-                    <p
-                      className="truncate text-[11px]"
-                      style={{ color: "var(--cf-ink-soft)" }}
-                    >
+                    <p className="truncate text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
                       {email}
                     </p>
                   </div>

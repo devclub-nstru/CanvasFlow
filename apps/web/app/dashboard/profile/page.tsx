@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Check, LogOut, Pencil, X } from "lucide-react";
+import { Check, LogOut, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSignOut } from "~/hooks/api/auth";
@@ -28,7 +28,7 @@ const formatDate = (value: string | null | undefined) => {
 };
 
 export default function ProfilePage() {
-  const { me, plan, isLoading: meLoading } = useGetMe();
+  const { me, isLoading: meLoading } = useGetMe();
   const { stats, isLoading: statsLoading } = useGetDashboardStats();
   const { forms } = useListFormsByUserId();
   const { signOutAsync } = useSignOut();
@@ -213,17 +213,6 @@ export default function ProfilePage() {
               </div>
 
               <dl className="space-y-4 border-t border-(--cf-line) pt-4">
-                <Field label="Current plan">
-                  <span
-                    className="inline-block border px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase"
-                    style={{
-                      borderColor: plan === "Free" ? "var(--cf-line-strong)" : "var(--cf-orange)",
-                      color: plan === "Free" ? "var(--cf-ink-soft)" : "var(--cf-orange)",
-                    }}
-                  >
-                    {plan}
-                  </span>
-                </Field>
                 <Field label="Days active">
                   <span className="tabular-nums">
                     {daysActive} {daysActive === 1 ? "day" : "days"}
@@ -246,13 +235,6 @@ export default function ProfilePage() {
                 <LogOut className="size-4" />
                 Sign out
               </button>
-              <Link
-                href="/dashboard/pricing"
-                className="cf-btn-outline group h-11 w-full justify-start gap-2.5 px-4 text-[13px]"
-              >
-                <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                {plan === "Free" ? "See plans" : "Manage plan"}
-              </Link>
             </div>
           </section>
         </div>
@@ -285,14 +267,16 @@ export default function ProfilePage() {
                     }}
                     aria-hidden
                   >
-                    {m.unlocked ? <Check className="size-3.5" /> : <span className="text-[10px]">○</span>}
+                    {m.unlocked ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <span className="text-[10px]">○</span>
+                    )}
                   </span>
                   <p className="font-mono text-[10.5px] font-bold tracking-wide uppercase">
                     {m.label}
                   </p>
-                  <p className="mt-0.5 font-mono text-[9.5px] text-(--cf-ink-soft)">
-                    {m.desc}
-                  </p>
+                  <p className="mt-0.5 font-mono text-[9.5px] text-(--cf-ink-soft)">{m.desc}</p>
                   <span className="sr-only">{m.unlocked ? "Unlocked" : "Locked"}</span>
                 </div>
               ))}

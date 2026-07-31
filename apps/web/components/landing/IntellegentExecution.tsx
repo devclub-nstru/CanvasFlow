@@ -1,4 +1,4 @@
-const Badge = ({ text, className = '' }: { text: string; className?: string }) => (
+const Badge = ({ text, className = "" }: { text: string; className?: string }) => (
   <div
     className={`absolute -bottom-6 left-0 px-2 py-0.5 rounded-lg text-[10px] font-mono flex items-center gap-1 shadow-sm ${className}`}
   >
@@ -11,7 +11,7 @@ export const IntelligentExecutionGraph = () => {
     <div className="relative w-full h-150">
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-0"
-        style={{ stroke: 'rgba(26,29,41,0.15)', fill: 'none', strokeWidth: 1.5 }}
+        style={{ stroke: "rgba(26,29,41,0.15)", fill: "none", strokeWidth: 1.5 }}
       >
         <path
           d="M -50 450 C 100 450, 150 450, 200 450 C 250 450, 280 430, 300 400 C 330 350, 350 350, 400 350"
@@ -39,16 +39,32 @@ export const IntelligentExecutionGraph = () => {
         <circle cx="800" cy="60" r="3" fill="var(--c-purple)" stroke="none" />
 
         <circle r="2" fill="var(--c-purple)" stroke="none">
-          <animateMotion dur="4s" repeatCount="indefinite" path="M 150 450 C 200 450, 200 380, 250 380" />
+          <animateMotion
+            dur="4s"
+            repeatCount="indefinite"
+            path="M 150 450 C 200 450, 200 380, 250 380"
+          />
         </circle>
         <circle r="2" fill="var(--c-purple)" stroke="none">
-          <animateMotion dur="6s" repeatCount="indefinite" path="M 380 350 C 450 350, 450 250, 500 250" />
+          <animateMotion
+            dur="6s"
+            repeatCount="indefinite"
+            path="M 380 350 C 450 350, 450 250, 500 250"
+          />
         </circle>
         <circle r="2" fill="var(--c-purple)" stroke="none">
-          <animateMotion dur="5s" repeatCount="indefinite" path="M 520 180 C 580 180, 580 120, 620 120" />
+          <animateMotion
+            dur="5s"
+            repeatCount="indefinite"
+            path="M 520 180 C 580 180, 580 120, 620 120"
+          />
         </circle>
         <circle r="2" fill="var(--c-purple)" stroke="none">
-          <animateMotion dur="7s" repeatCount="indefinite" path="M 620 120 C 660 120, 660 60, 700 60" />
+          <animateMotion
+            dur="7s"
+            repeatCount="indefinite"
+            path="M 620 120 C 660 120, 660 60, 700 60"
+          />
         </circle>
       </svg>
 
@@ -83,22 +99,28 @@ export const IntelligentExecutionGraph = () => {
             <div className="h-1 w-1/2 bg-slate-200 rounded" />
           </div>
         </div>
-        <Badge text="branch_path" className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal" />
+        <Badge
+          text="branch_path"
+          className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal"
+        />
       </div>
 
       <div className="absolute left-37.5 top-107.5 w-48 bg-white rounded-md shadow-lg border border-slate-200 p-3 z-10">
         <div className="text-[10px] text-slate-400 font-normal mb-2">Validation Check</div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1 text-[9px] font-mono text-slate-500 p-1 rounded font-normal">
-            <span>SCORE</span> <span className="opacity-40">&lt;</span>{' '}
+            <span>SCORE</span> <span className="opacity-40">&lt;</span>{" "}
             <span className="text-slate-500">5</span>
           </div>
           <div className="flex items-center gap-1 text-[9px] font-mono text-slate-500 p-1 rounded font-normal">
-            <span className="opacity-40">AND</span> <span>SENTIMENT</span>{' '}
+            <span className="opacity-40">AND</span> <span>SENTIMENT</span>{" "}
             <span className="text-slate-400">is</span> <span>Negative</span>
           </div>
         </div>
-        <Badge text="routing_condition" className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal" />
+        <Badge
+          text="routing_condition"
+          className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal"
+        />
       </div>
 
       <div className="absolute left-62.5 top-70 w-56 bg-white rounded-md shadow-lg border border-slate-200 p-3 z-10">
@@ -107,15 +129,18 @@ export const IntelligentExecutionGraph = () => {
           <span className="text-[#3b82f6]">generate</span> follow_up_questions
           <br />
           &nbsp;&nbsp;<span className="text-[#3b82f6]">from</span> (
-          <span className="text-[#ec4899]">context</span> session_data){' '}
-          <br />
+          <span className="text-[#ec4899]">context</span> session_data) <br />
           <span className="text-[#3b82f6]">where</span> sentiment = ((
           <span className="text-[#4f46e5]">negative</span>
           ))
           <br />
-          <span className="text-[#3b82f6]">using</span> prompt_template(<span className="text-[#10b981]">{"'churn_risk'"}</span>)
+          <span className="text-[#3b82f6]">using</span> prompt_template(
+          <span className="text-[#10b981]">{"'churn_risk'"}</span>)
         </div>
-        <Badge text="ai_response" className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal" />
+        <Badge
+          text="ai_response"
+          className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-normal"
+        />
       </div>
 
       <div className="absolute left-100 top-80 w-32 bg-white/95 backdrop-blur-md rounded-md shadow-md border hex-line-soft p-3 z-10">
@@ -124,7 +149,10 @@ export const IntelligentExecutionGraph = () => {
           Very Dissatisfied
           <span className="opacity-40 text-[8px]">▼</span>
         </div>
-        <Badge text="user_score" className="bg-slate-100 border border-slate-200 text-slate-600 font-normal" />
+        <Badge
+          text="user_score"
+          className="bg-slate-100 border border-slate-200 text-slate-600 font-normal"
+        />
       </div>
 
       <div className="absolute left-95 top-25 w-48 bg-white/95 backdrop-blur-md rounded-md shadow-md border hex-line-soft p-4 z-10">

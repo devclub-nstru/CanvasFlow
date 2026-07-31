@@ -1,11 +1,4 @@
-import { pgTable, varchar, timestamp, boolean, text, pgEnum, index } from "drizzle-orm/pg-core";
-
-export const subscriptionTypeEnum = pgEnum("subscription_type", [
-  "Free",
-  "Pro",
-  "Pro+",
-  "Business",
-]);
+import { pgTable, varchar, timestamp, boolean, text, index } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -14,7 +7,6 @@ export const usersTable = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  plan: subscriptionTypeEnum("plan").notNull().default("Free"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

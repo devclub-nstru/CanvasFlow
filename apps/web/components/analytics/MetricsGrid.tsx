@@ -12,7 +12,7 @@ interface MetricsGridProps {
  * mono supporting line.
  *
  * The supporting line carries a real derived number rather than a
- * "↑ 9.7% vs last week" style delta — the free-tier analytics payload has no
+ * "↑ 9.7% vs last week" style delta — the summary analytics payload has no
  * previous-period figures to compare against, and inventing one would be
  * worse than omitting it.
  *

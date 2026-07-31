@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export function useAnimatedCounter(target: number, duration = 1500, start = false) {
   const [count, setCount] = useState(0);

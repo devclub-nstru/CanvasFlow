@@ -21,6 +21,12 @@ export const fieldTypeZodEnum = z.enum([
 
 export const createFormFieldInput = z.object({
   formId: z.string().uuid().describe("ID of the parent form"),
+  segmentId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .describe("Segment this question belongs to; null means the implicit first segment"),
   label: z.string().trim().max(255, "Label is too long"),
   placeholder: z.string().trim().max(255).optional().nullable(),
   isRequired: z.boolean().default(false),
@@ -42,6 +48,12 @@ export const createFormFieldInput = z.object({
 
 export const updateFormFieldInput = z.object({
   id: z.string().uuid().describe("ID of the field to update"),
+  segmentId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .describe("Move the question to this segment; null moves it to the implicit first segment"),
   label: z.string().trim().max(255).optional(),
   placeholder: z.string().trim().max(255).optional().nullable(),
   isRequired: z.boolean().optional(),
@@ -102,6 +114,20 @@ export const getFormFieldInput = z.object({
 export const getFormFieldOutput = z.object({
   id: z.string().uuid().describe("ID of the form field"),
   formId: z.string().uuid().describe("ID of the parent form"),
+  /* Nullable but not optional, unlike the inputs above.
+   *
+   * On the way in, an absent `segmentId` means "don't change it". On the way out
+   * there is no such thing: the row always has a value, even if that value is
+   * null. Making the property required is what stops a client building a
+   * field-shaped object and forgetting the segment — which is exactly how a
+   * question added from the outline came to land outside every segment, where
+   * the segment filter hid it and the editor saw an Add button that appeared to
+   * do nothing. The type system can catch that; a reviewer reliably can't. */
+  segmentId: z
+    .string()
+    .uuid()
+    .nullable()
+    .describe("Segment this question belongs to; null means the implicit first segment"),
   label: z.string().describe("Label of the field"),
   labelKey: z.string().describe("Immutable slug key of the field"),
   placeholder: z.string().nullable().optional().describe("Placeholder of the field"),

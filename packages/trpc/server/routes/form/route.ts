@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { authenticatedProcedure, publicProcedure, router } from "../../trpc";
+import { auth } from "../../auth";
 import { generatePath } from "../../utils/path-generator";
 import {
   createFormInputModel,
@@ -37,8 +38,37 @@ import {
   transferOwnershipOutputModel,
   updateFormSettingsInputModel,
   updateFormSettingsOutputModel,
+  createFormSegmentInputModel,
+  createFormSegmentOutputModel,
+  updateFormSegmentInputModel,
+  updateFormSegmentOutputModel,
+  deleteFormSegmentInputModel,
+  deleteFormSegmentOutputModel,
+  listFormSegmentsInputModel,
+  listFormSegmentsOutputModel,
+  createLogicRuleInputModel,
+  createLogicRuleOutputModel,
+  updateLogicRuleInputModel,
+  updateLogicRuleOutputModel,
+  deleteLogicRuleInputModel,
+  deleteLogicRuleOutputModel,
+  listLogicRulesInputModel,
+  listLogicRulesOutputModel,
+  saveDraftInputModel,
+  saveDraftOutputModel,
+  getDraftInputModel,
+  getDraftOutputModel,
+  deleteDraftInputModel,
+  deleteDraftOutputModel,
 } from "./model";
-import { formService, formFieldService, formSubmissionService } from "../../services";
+import {
+  formService,
+  formFieldService,
+  formSubmissionService,
+  formSegmentService,
+  formLogicService,
+  formDraftService,
+} from "../../services";
 
 const TAGS = ["Forms"];
 const getPath = generatePath("/forms");
@@ -254,9 +284,24 @@ export const formRouter = router({
     })
     .input(submitFormInputModel)
     .output(submitFormOutputModel)
-    .mutation(async ({ input }) => {
-      const result = await formSubmissionService.submitForm(input);
-      return result;
+    .mutation(async ({ input, ctx }) => {
+      /* Still a public procedure — most forms accept anonymous answers — but it
+       * reads the session when there is one, so a form that requires signing in
+       * can be enforced without a second endpoint.
+       *
+       * The respondent's identity is taken from the session here and passed
+       * separately from `input`. That is the point: an email in the request body
+       * is an email the sender chose, which would make the domain restriction
+       * decorative. */
+      const session = await auth.api.getSession({
+        headers: new Headers(ctx.req.headers as Record<string, string>),
+      });
+
+      const respondent = session?.user
+        ? { id: session.user.id, email: session.user.email }
+        : null;
+
+      return formSubmissionService.submitForm({ ...input, respondent });
     }),
 
   listCollaborators: authenticatedProcedure
@@ -347,5 +392,181 @@ export const formRouter = router({
     .output(updateFormSettingsOutputModel)
     .mutation(async ({ input, ctx }) => {
       return formService.updateFormSettings({ ...input, requesterId: ctx.user.id });
+    }),
+
+  /* ─── Segments ──────────────────────────────────────────────────────── */
+
+  createFormSegment: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/createFormSegment"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(createFormSegmentInputModel)
+    .output(createFormSegmentOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formSegmentService.createFormSegment({ ...input, userId: ctx.user.id });
+    }),
+
+  updateFormSegment: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/updateFormSegment"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(updateFormSegmentInputModel)
+    .output(updateFormSegmentOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formSegmentService.updateFormSegment({ ...input, userId: ctx.user.id });
+    }),
+
+  deleteFormSegment: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/deleteFormSegment"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(deleteFormSegmentInputModel)
+    .output(deleteFormSegmentOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formSegmentService.deleteFormSegment({ ...input, userId: ctx.user.id });
+    }),
+
+  listFormSegments: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/listFormSegments"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(listFormSegmentsInputModel)
+    .output(listFormSegmentsOutputModel)
+    .query(async ({ input, ctx }) => {
+      return formSegmentService.listFormSegments({ ...input, userId: ctx.user.id });
+    }),
+
+  /* ─── Conditional branching ─────────────────────────────────────────── */
+
+  createLogicRule: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/createLogicRule"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(createLogicRuleInputModel)
+    .output(createLogicRuleOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formLogicService.createLogicRule({ ...input, userId: ctx.user.id });
+    }),
+
+  updateLogicRule: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/updateLogicRule"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(updateLogicRuleInputModel)
+    .output(updateLogicRuleOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formLogicService.updateLogicRule({ ...input, userId: ctx.user.id });
+    }),
+
+  deleteLogicRule: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/deleteLogicRule"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(deleteLogicRuleInputModel)
+    .output(deleteLogicRuleOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formLogicService.deleteLogicRule({ ...input, userId: ctx.user.id });
+    }),
+
+  listLogicRules: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/listLogicRules"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(listLogicRulesInputModel)
+    .output(listLogicRulesOutputModel)
+    .query(async ({ input, ctx }) => {
+      return formLogicService.listLogicRules({ ...input, userId: ctx.user.id });
+    }),
+
+  /* ─── Drafts ─────────────────────────────────────────────────────────
+   *
+   * Authenticated, and scoped to `ctx.user.id` rather than to anything in the
+   * input — a draft is personal, and the caller can only ever reach their own.
+   * An anonymous respondent has no stable identity between sessions, so there
+   * is deliberately no public equivalent. */
+
+  saveDraft: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/saveDraft"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(saveDraftInputModel)
+    .output(saveDraftOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formDraftService.saveDraft({ ...input, userId: ctx.user.id });
+    }),
+
+  getDraft: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getDraft/{formId}"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(getDraftInputModel)
+    .output(getDraftOutputModel)
+    .query(async ({ input, ctx }) => {
+      return formDraftService.getDraft({ ...input, userId: ctx.user.id });
+    }),
+
+  deleteDraft: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/deleteDraft"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(deleteDraftInputModel)
+    .output(deleteDraftOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formDraftService.deleteDraft({ ...input, userId: ctx.user.id });
     }),
 });

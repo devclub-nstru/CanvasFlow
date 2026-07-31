@@ -28,8 +28,8 @@ export function DeleteFormDialog({
           Delete this form?
         </h3>
         <p className="mt-2 text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
-          <span className="text-(--cf-ink) font-medium">&ldquo;{formTitle}&rdquo;</span>{" "}
-          and all its fields and submissions will be permanently removed. This cannot be undone.
+          <span className="text-(--cf-ink) font-medium">&ldquo;{formTitle}&rdquo;</span> and all its
+          fields and submissions will be permanently removed. This cannot be undone.
         </p>
 
         <div className="flex justify-end gap-3 pt-6">

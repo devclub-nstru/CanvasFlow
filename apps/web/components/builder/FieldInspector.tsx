@@ -2,9 +2,36 @@
 
 import React from "react";
 import { MousePointerClick, SlidersHorizontal, Trash2 } from "lucide-react";
+import { GitBranch, Pencil } from "lucide-react";
 import { getFieldIcon } from "./FormFieldNode";
 
-export interface FieldInspectorProps {
+/**
+ * Segment assignment and branching for the selected question.
+ *
+ * Optional as a group: `FieldInspectorBody` is shared with the phone editor
+ * (`MobileFieldEditorSheet`), which doesn't carry the form-wide segment and
+ * rule state. When they're absent the section simply isn't rendered, so the
+ * mobile sheet keeps working unchanged rather than needing a parallel
+ * implementation.
+ *
+ * Branching is represented here only as sentences and a button. The controls
+ * themselves need far more room than a 288px rail can give — see
+ * `LogicDialog` — and a summary is what the inspector is actually good at:
+ * telling you what this question does without you having to open anything.
+ */
+export interface FieldFlowProps {
+  segmentOptions?: Array<{ id: string; label: string }>;
+  currentSegmentId?: string | null;
+  onChangeSegment?: (segmentId: string | null) => void;
+  /** One plain-English line per branch, in evaluation order. */
+  ruleSummaries?: string[];
+  /** Branches that are saved but incomplete, so the rail can say so. */
+  incompleteRuleCount?: number;
+  onEditBranching?: () => void;
+  isLastInSegment?: boolean;
+}
+
+export interface FieldInspectorProps extends FieldFlowProps {
   selectedField: any;
   label: string;
   setLabel: (val: string) => void;
@@ -87,6 +114,13 @@ export function FieldInspectorBody({
   optionsList,
   setOptionsList,
   updateLocal,
+  segmentOptions,
+  currentSegmentId,
+  onChangeSegment,
+  ruleSummaries,
+  incompleteRuleCount,
+  onEditBranching,
+  isLastInSegment,
 }: Omit<FieldInspectorProps, "handleDeleteField">) {
   return (
     <div className="space-y-3">
@@ -352,6 +386,79 @@ export function FieldInspectorBody({
           </div>
         </Section>
       )}
+
+      {/* ── flow: which page this question is on, and where answers lead ── */}
+      {segmentOptions && segmentOptions.length > 0 && onChangeSegment && (
+        <Section title="Segment">
+          <div>
+            <Label>This question belongs to</Label>
+            <select
+              value={currentSegmentId ?? ""}
+              onChange={(e) => onChangeSegment(e.target.value || null)}
+              className="cf-input h-9 cursor-pointer px-3 text-[13px]"
+            >
+              {/* Only offered while it's the actual state. Once a form is
+                  segmented, "no segment" isn't a place an author means to put
+                  a question — it would render ahead of segment 1. */}
+              {!currentSegmentId && <option value="">Not in a segment</option>}
+              {segmentOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Section>
+      )}
+
+      {onEditBranching && (
+        <Section title="Branching">
+          {ruleSummaries && ruleSummaries.length > 0 ? (
+            <ol className="space-y-1.5">
+              {ruleSummaries.map((summary, i) => (
+                <li
+                  key={i}
+                  className="border-l-2 pl-2.5 text-[12px] leading-relaxed text-(--cf-ink-soft)"
+                  style={{ borderLeftColor: "var(--cf-orange)" }}
+                >
+                  {summary}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-[12px] leading-relaxed text-(--cf-ink-soft)">
+              {isLastInSegment
+                ? "This is the last question of its segment — a good place to send people to different segments based on their answers."
+                : "Route people to different questions based on the answers so far."}
+            </p>
+          )}
+
+          {!!incompleteRuleCount && incompleteRuleCount > 0 && (
+            <p className="text-[11px] leading-relaxed text-(--cf-orange)">
+              {incompleteRuleCount} {incompleteRuleCount === 1 ? "branch is" : "branches are"} not
+              finished and {incompleteRuleCount === 1 ? "does" : "do"} nothing yet.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={onEditBranching}
+            className="cf-btn cf-press h-9 w-full text-[12.5px]"
+          >
+            {ruleSummaries && ruleSummaries.length > 0 ? (
+              <>
+                <Pencil className="size-3.5" />
+                Edit branching
+              </>
+            ) : (
+              <>
+                <GitBranch className="size-3.5" />
+                Add branching
+              </>
+            )}
+          </button>
+        </Section>
+      )}
     </div>
   );
 }
@@ -363,7 +470,7 @@ export function FieldInspector(props: FieldInspectorProps) {
 
   if (!selectedField) {
     return (
-      <aside className="cf-rail flex w-72 shrink-0 flex-col items-center justify-center gap-3 p-6 select-none">
+      <aside className="cf-rail flex w-64 shrink-0 flex-col items-center justify-center gap-3 p-6 select-none xl:w-72">
         <div
           className="flex size-12 items-center justify-center border text-(--cf-ink-soft)"
           style={{ borderColor: "var(--cf-line-strong)", background: "var(--cf-cream)" }}
@@ -383,7 +490,7 @@ export function FieldInspector(props: FieldInspectorProps) {
   const FieldIcon = getFieldIcon(selectedField.type);
 
   return (
-    <aside className="cf-rail flex w-72 shrink-0 flex-col">
+    <aside className="cf-rail flex w-64 shrink-0 flex-col xl:w-72">
       {/* header */}
       <div className="cf-pane-bar">
         <div className="flex items-center gap-2">

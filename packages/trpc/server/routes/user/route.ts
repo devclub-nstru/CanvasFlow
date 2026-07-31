@@ -34,7 +34,6 @@ const meOutput = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string(),
-  plan: z.enum(["Free", "Pro", "Pro+", "Business"]),
   /** Either one of AVATAR_PRESETS, a provider URL, or null. */
   image: z.string().nullable(),
   /**
@@ -54,7 +53,6 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
-  plan: "Free" | "Pro" | "Pro+" | "Business";
   image: string | null;
   createdAt: Date;
 };
@@ -63,7 +61,6 @@ const toMe = (user: UserRow) => ({
   id: user.id,
   name: user.name,
   email: user.email,
-  plan: user.plan,
   image: user.image,
   createdAt: user.createdAt.toISOString(),
 });
@@ -71,8 +68,8 @@ const toMe = (user: UserRow) => ({
 export const userRouter = router({
   /**
    * GET /user/me
-   * Returns the current authenticated user's id, name, email, subscription
-   * plan, avatar preset and signup date.
+   * Returns the current authenticated user's id, name, email, avatar preset
+   * and signup date.
    */
   getMe: authenticatedProcedure
     .meta({
@@ -94,7 +91,6 @@ export const userRouter = router({
           id: users.id,
           name: users.name,
           email: users.email,
-          plan: users.plan,
           image: users.image,
           createdAt: users.createdAt,
         })
@@ -112,8 +108,8 @@ export const userRouter = router({
    * Updates the caller's own display name and/or avatar preset.
    *
    * Scoped to `ctx.user.id` — there is no user id in the input, so this cannot
-   * be pointed at another account. `plan` and `email` are deliberately not
-   * editable: one is billing state and the other is an auth identifier.
+   * be pointed at another account. `email` is deliberately not editable: it's
+   * an auth identifier.
    */
   updateMe: authenticatedProcedure
     .meta({
@@ -146,18 +142,13 @@ export const userRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Nothing to update" });
       }
 
-      const rows = await db
-        .update(users)
-        .set(patch)
-        .where(dbEq(users.id, ctx.user.id))
-        .returning({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          plan: users.plan,
-          image: users.image,
-          createdAt: users.createdAt,
-        });
+      const rows = await db.update(users).set(patch).where(dbEq(users.id, ctx.user.id)).returning({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        createdAt: users.createdAt,
+      });
 
       const user = rows[0];
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });

@@ -1,37 +1,48 @@
 "use client";
 
-import React, { FormEvent, useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { MessageSquareWarning, X, Send, Bug, MessageCircle, Lightbulb, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
-import { useGetLoggedInUserInfo } from '~/hooks/api/auth';
-import { useSubmitFeedback } from '~/hooks/api/feedback';
-import { cn } from '~/lib/utils';
-import { Button } from '~/components/ui/button';
-import { Input } from '~/components/ui/input';
-import { Textarea } from '~/components/ui/textarea';
+import React, { FormEvent, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import {
+  MessageSquareWarning,
+  X,
+  Send,
+  Bug,
+  MessageCircle,
+  Lightbulb,
+  AlertTriangle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
+import { useSubmitFeedback } from "~/hooks/api/feedback";
+import { cn } from "~/lib/utils";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 
-type ComplaintType = 'bug' | 'feedback' | 'complaint' | 'feature_request';
+type ComplaintType = "bug" | "feedback" | "complaint" | "feature_request";
 
-const typeConfig: Record<ComplaintType, { label: string; description: string; icon: React.ReactNode }> = {
+const typeConfig: Record<
+  ComplaintType,
+  { label: string; description: string; icon: React.ReactNode }
+> = {
   feedback: {
-    label: 'Feedback',
-    description: 'Share product thoughts',
+    label: "Feedback",
+    description: "Share product thoughts",
     icon: <MessageCircle size={15} />,
   },
   bug: {
-    label: 'Bug report',
-    description: 'Something is broken',
+    label: "Bug report",
+    description: "Something is broken",
     icon: <Bug size={15} />,
   },
   feature_request: {
-    label: 'Feature request',
-    description: 'Request an improvement',
+    label: "Feature request",
+    description: "Request an improvement",
     icon: <Lightbulb size={15} />,
   },
   complaint: {
-    label: 'Complaint',
-    description: 'Escalate an issue',
+    label: "Complaint",
+    description: "Escalate an issue",
     icon: <AlertTriangle size={15} />,
   },
 };
@@ -39,9 +50,9 @@ const typeConfig: Record<ComplaintType, { label: string; description: string; ic
 const FeedbackWidget = () => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [type, setType] = useState<ComplaintType>('feedback');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [type, setType] = useState<ComplaintType>("feedback");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const subjectRef = useRef<HTMLInputElement>(null);
   const { userInfo: user } = useGetLoggedInUserInfo();
   const { submitFeedbackAsync, isPending: loading } = useSubmitFeedback();
@@ -51,13 +62,13 @@ const FeedbackWidget = () => {
 
     const focusTimer = window.setTimeout(() => subjectRef.current?.focus(), 100);
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === "Escape") setIsOpen(false);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.clearTimeout(focusTimer);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
 
@@ -67,11 +78,11 @@ const FeedbackWidget = () => {
     // Mirrors the server's minimums so the caller gets told before the round
     // trip. The server still enforces them — this is convenience, not a check.
     if (subject.trim().length < 3) {
-      toast.error('Please add a subject (at least 3 characters)');
+      toast.error("Please add a subject (at least 3 characters)");
       return;
     }
     if (message.trim().length < 10) {
-      toast.error('Please add a little more detail (at least 10 characters)');
+      toast.error("Please add a little more detail (at least 10 characters)");
       return;
     }
 
@@ -88,18 +99,20 @@ const FeedbackWidget = () => {
         type,
         subject: subject.trim(),
         message: message.trim(),
-        pageUrl: typeof window !== 'undefined' ? window.location.href : null,
+        pageUrl: typeof window !== "undefined" ? window.location.href : null,
       });
 
       toast.success("Thanks — we've got it.");
-      setSubject('');
-      setMessage('');
-      setType('feedback');
+      setSubject("");
+      setMessage("");
+      setType("feedback");
       setIsOpen(false);
     } catch (err) {
       // Surface the server's message where there is one: it carries the real
       // reason (too short, over the hourly cap) instead of a generic failure.
-      toast.error(err instanceof Error && err.message ? err.message : 'Failed to submit. Please try again.');
+      toast.error(
+        err instanceof Error && err.message ? err.message : "Failed to submit. Please try again.",
+      );
     }
   };
 
@@ -109,7 +122,14 @@ const FeedbackWidget = () => {
   // view of a form somebody else built — they aren't a CanvasFlow user, and a
   // floating "report a bug in CanvasFlow" button there is both confusing and a
   // distraction from the form they came to answer.
-  if (pathname?.startsWith('/forms/')) return null;
+  if (pathname?.startsWith("/forms/")) return null;
+
+  // Hidden in the builder too. It's a full-bleed workspace whose own canvas
+  // controls (zoom, fit, lock) sit in the bottom-left and whose inspector runs
+  // to the bottom-right edge, so a floating button there covers the tool it
+  // overlaps. `/dashboard/sketches` (the list) keeps the widget; only the
+  // per-form builder loses it.
+  if (/^\/dashboard\/sketches\/[^/]+/.test(pathname ?? "")) return null;
 
   return (
     <>
@@ -120,7 +140,7 @@ const FeedbackWidget = () => {
         size="icon"
         className={cn(
           "fixed bottom-5 right-5 z-50 h-12 w-12 border border-foreground/15 bg-foreground text-background shadow-[3px_3px_0_0_var(--foreground)] hover:bg-foreground/90 focus-visible:ring-accent md:bottom-6 md:right-6",
-          isOpen && "hidden"
+          isOpen && "hidden",
         )}
         title="Report Issue / Feedback"
         aria-label="Open report and feedback form"
@@ -137,7 +157,10 @@ const FeedbackWidget = () => {
         >
           <div className="flex items-start justify-between gap-4 border-b border-foreground/10 px-4 py-4">
             <div>
-              <h3 id="feedback-widget-title" className="text-sm font-bold uppercase tracking-[0.08em]">
+              <h3
+                id="feedback-widget-title"
+                className="text-sm font-bold uppercase tracking-[0.08em]"
+              >
                 Report / Feedback
               </h3>
               <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -163,30 +186,46 @@ const FeedbackWidget = () => {
                   Type
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {(Object.entries(typeConfig) as [ComplaintType, typeof typeConfig[ComplaintType]][]).map(([key, cfg]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setType(key)}
-                    aria-pressed={type === key}
-                    className={cn(
-                      "flex min-h-14.5 items-start gap-2 border border-foreground/15 bg-background p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                      type === key && "border-foreground bg-foreground text-background hover:bg-foreground/90"
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-xs font-semibold leading-tight">{cfg.label}</span>
-                      <span className={cn("mt-1 block text-[11px] leading-tight text-muted-foreground", type === key && "text-background/75")}>
-                        {cfg.description}
+                  {(
+                    Object.entries(typeConfig) as [
+                      ComplaintType,
+                      (typeof typeConfig)[ComplaintType],
+                    ][]
+                  ).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setType(key)}
+                      aria-pressed={type === key}
+                      className={cn(
+                        "flex min-h-14.5 items-start gap-2 border border-foreground/15 bg-background p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                        type === key &&
+                          "border-foreground bg-foreground text-background hover:bg-foreground/90",
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold leading-tight">
+                          {cfg.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-1 block text-[11px] leading-tight text-muted-foreground",
+                            type === key && "text-background/75",
+                          )}
+                        >
+                          {cfg.description}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="feedback-subject" className="block text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                <label
+                  htmlFor="feedback-subject"
+                  className="block text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
+                >
                   Subject
                 </label>
                 <Input
@@ -203,10 +242,15 @@ const FeedbackWidget = () => {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="feedback-message" className="block text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <label
+                    htmlFor="feedback-message"
+                    className="block text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
+                  >
                     Details
                   </label>
-                  <span className="text-[11px] font-medium text-muted-foreground">{message.length}/1000</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {message.length}/1000
+                  </span>
                 </div>
                 <Textarea
                   id="feedback-message"

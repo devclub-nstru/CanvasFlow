@@ -89,9 +89,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
           </h4>
 
           {field.description && (
-            <p className="text-[11px] text-(--cf-ink-soft) leading-relaxed">
-              {field.description}
-            </p>
+            <p className="text-[11px] text-(--cf-ink-soft) leading-relaxed">{field.description}</p>
           )}
         </div>
 
@@ -156,10 +154,7 @@ function FieldPreview({ field }: { field: any }) {
     return (
       <div className="space-y-1.5">
         {options.slice(0, 3).map((opt, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 text-[11px] text-(--cf-ink-soft)"
-          >
+          <div key={i} className="flex items-center gap-2 text-[11px] text-(--cf-ink-soft)">
             <div className="size-3 shrink-0 border border-(--cf-line-strong) bg-(--cf-cream)" />
             <span className="truncate">{opt}</span>
           </div>

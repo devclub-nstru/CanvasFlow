@@ -1,19 +1,41 @@
 services:
-  postgresdb:
+  postgres:
     image: postgres:15
+    container_name: canvasflow-postgres
     restart: unless-stopped
-    container_name: postgresdb
 
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dev
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dev}
 
+    # Host port 5434, not the usual 5432. Other Postgres containers on this
+    # machine already claim 5432 (chatapp) and 5433 (jobcrawler), and a
+    # collision there fails the container at start with "address already in
+    # use". Override with POSTGRES_PORT in .env if 5434 is taken too — just
+    # remember to update DATABASE_URL to match.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
 
     volumes:
       - pg_data:/var/lib/postgresql/data
+
+    # `docker compose up -d` returns as soon as the container is *running*,
+    # but Postgres needs a few more seconds before it accepts connections.
+    # Without this, `pnpm db:migrate` immediately after `up` loses the race
+    # with ECONNREFUSED. `--host` + `-p` force pg_isready over TCP (matching
+    # how the app connects) rather than the local unix socket, which comes
+    # up earlier and would report ready too soon.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready --host=127.0.0.1 -p 5432 -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dev}",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
 
 volumes:
   pg_data:

@@ -58,9 +58,7 @@ export function DeviceBreakdown({ deviceData }: DeviceBreakdownProps) {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
               <span className="cf-display text-[20px] leading-none">{total}</span>
-              <span className="cf-eyebrow text-(--cf-ink-soft) mt-1 text-[9px]">
-                total
-              </span>
+              <span className="cf-eyebrow text-(--cf-ink-soft) mt-1 text-[9px]">total</span>
             </div>
           </div>
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight, Star } from "lucide-react";
+import { ArrowUpRight, RotateCcw, Star } from "lucide-react";
 import { toast } from "sonner";
 
 interface SummaryField {
@@ -17,6 +17,11 @@ interface FormThankYouProps {
   /** Fields in display order, for the response summary. */
   fields?: SummaryField[];
   answers?: Record<string, any>;
+  /** The author's own note, shown in addition to the app's confirmation rather
+   *  than replacing it — the respondent still needs to know it landed. */
+  customMessage?: string | null;
+  /** Offered when the form accepts more than one response. */
+  onRespondAgain?: () => void;
 }
 
 /**
@@ -38,6 +43,8 @@ export function FormThankYou({
   setSiteRating,
   fields = [],
   answers = {},
+  customMessage,
+  onRespondAgain,
 }: FormThankYouProps) {
   /** Render an answer of any supported field type as a readable string. */
   const display = (field: SummaryField): string => {
@@ -104,6 +111,35 @@ export function FormThankYou({
         <p className="mx-auto mt-3 max-w-sm text-[14.5px] leading-relaxed text-(--cf-ink-soft)">
           Your response has been recorded. You can close this tab whenever you&apos;re ready.
         </p>
+
+        {/* The author's note, below the app's confirmation rather than instead
+            of it. Whatever they wrote — "we'll email you Monday", a link to the
+            next step — is additional context; the respondent still needs the
+            plain fact that the submission landed, and that isn't the author's
+            job to remember to say. `whitespace-pre-line` so the paragraph breaks
+            they typed survive. */}
+        {customMessage && customMessage.trim() !== "" && (
+          <div
+            className="mx-auto mt-6 max-w-md border-l-2 px-4 py-3 text-left"
+            style={{ borderLeftColor: "var(--cf-orange)", background: "var(--cf-cream)" }}
+          >
+            <p className="cf-meta mb-1.5">A note from the author</p>
+            <p className="text-[14px] leading-relaxed whitespace-pre-line text-(--cf-ink)">
+              {customMessage}
+            </p>
+          </div>
+        )}
+
+        {onRespondAgain && (
+          <button
+            type="button"
+            onClick={onRespondAgain}
+            className="cf-btn cf-raised cf-press mx-auto mt-6 h-10 px-4 text-[13px]"
+          >
+            <RotateCcw className="size-3.5" />
+            Submit another response
+          </button>
+        )}
       </div>
 
       {/* ── what you sent ── */}
@@ -161,9 +197,7 @@ export function FormThankYou({
               >
                 <Star
                   className={`size-6 ${
-                    on
-                      ? "fill-(--cf-orange) text-(--cf-orange)"
-                      : "fill-current text-(--cf-ink)/15"
+                    on ? "fill-(--cf-orange) text-(--cf-orange)" : "fill-current text-(--cf-ink)/15"
                   }`}
                 />
               </button>

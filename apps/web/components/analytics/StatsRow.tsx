@@ -16,12 +16,7 @@ interface ChipDef {
   icon: React.ElementType;
 }
 
-export function StatsRow({
-  peakDay,
-  avgPerWeek,
-  velocityFirst24h,
-  returningRate,
-}: StatsRowProps) {
+export function StatsRow({ peakDay, avgPerWeek, velocityFirst24h, returningRate }: StatsRowProps) {
   const chips: ChipDef[] = [
     { label: "Peak day", value: peakDay ?? "—", icon: Calendar },
     { label: "Avg / week", value: avgPerWeek.toFixed(1), icon: BarChart2 },

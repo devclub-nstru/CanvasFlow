@@ -1,5 +1,6 @@
 import { db, eq, and, max } from "@repo/database";
 import { formFieldsTable } from "@repo/database/models/form-field";
+import { formSegmentsTable } from "@repo/database/models/form-segment";
 import { requireEditor } from "../form";
 import {
   createFormFieldInput,
@@ -26,9 +27,36 @@ class FormFieldService {
     return next.toFixed(2);
   }
 
+  /**
+   * A question's segment must belong to the same form as the question.
+   *
+   * The FK only guarantees the segment row exists, not that it's in scope —
+   * without this an editor could file a question under another form's
+   * segment, where it would be invisible in this form's builder but still
+   * ordered against it.
+   */
+  private async assertSegmentBelongsToForm(
+    formId: string,
+    segmentId?: string | null,
+  ): Promise<void> {
+    if (!segmentId) return;
+
+    const rows = await db
+      .select({ formId: formSegmentsTable.formId })
+      .from(formSegmentsTable)
+      .where(eq(formSegmentsTable.id, segmentId));
+
+    const segment = rows[0];
+    if (!segment) throw new Error("Segment not found");
+    if (segment.formId !== formId) {
+      throw new Error("Segment belongs to a different form");
+    }
+  }
+
   public async createFormField(payload: CreateFormFieldInputType & { userId: string }) {
     const {
       formId,
+      segmentId,
       label,
       placeholder,
       isRequired,
@@ -39,6 +67,7 @@ class FormFieldService {
     } = await createFormFieldInput.parseAsync(payload);
 
     await requireEditor(formId, payload.userId);
+    await this.assertSegmentBelongsToForm(formId, segmentId);
 
     const labelKey =
       label
@@ -59,6 +88,7 @@ class FormFieldService {
       .insert(formFieldsTable)
       .values({
         formId,
+        segmentId: segmentId || null,
         label,
         labelKey,
         placeholder: placeholder || undefined,
@@ -86,6 +116,7 @@ class FormFieldService {
   public async updateFormField(payload: UpdateFormFieldInputType & { userId: string }) {
     const {
       id,
+      segmentId,
       label,
       placeholder,
       isRequired,
@@ -106,6 +137,7 @@ class FormFieldService {
     }
 
     await requireEditor(existingField.formId, payload.userId);
+    await this.assertSegmentBelongsToForm(existingField.formId, segmentId);
 
     // Optimistic-lock check — if the caller supplied an expected version
     // and the row has since moved past it, another client wrote first.
@@ -138,6 +170,9 @@ class FormFieldService {
     const updateResult = await db
       .update(formFieldsTable)
       .set({
+        // `null` is meaningful here (move back to the implicit first
+        // segment), so this checks `undefined` rather than falsiness.
+        ...(segmentId !== undefined ? { segmentId } : {}),
         ...(label !== undefined ? { label } : {}),
         ...(newLabelKey !== undefined ? { labelKey: newLabelKey } : {}),
         ...(placeholder !== undefined ? { placeholder } : {}),

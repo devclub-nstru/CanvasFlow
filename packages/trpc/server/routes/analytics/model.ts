@@ -3,8 +3,8 @@ export {
   getFormAnalyticsOutput as getFormAnalyticsOutputModel,
   getSubmissionsListInput as getSubmissionsListInputModel,
   getSubmissionsListOutput as getSubmissionsListOutputModel,
-  getProAnalyticsInput,
-  getProAnalyticsOutput,
+  getDetailedAnalyticsInput,
+  getDetailedAnalyticsOutput,
   recordFieldAnswerInput as recordFieldAnswerInputModel,
   recordFieldAnswerOutput as recordFieldAnswerOutputModel,
 } from "@repo/services/analytics/model";

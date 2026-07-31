@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, Menu, X } from 'lucide-react';
-import { cn } from '~/lib/utils';
-import { useGetLoggedInUserInfo } from '~/hooks/api/auth';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
+import { ChevronDown, Menu, X } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 
 /* ── Nav content ───────────────────────────────────────────────────────
    Held as data rather than inline JSX so the desktop dropdowns and the
@@ -16,82 +16,125 @@ type NavLinkItem = { title: string; desc: string; href: string };
 
 const PLATFORM_GROUPS: { heading: string; items: NavLinkItem[] }[] = [
   {
-    heading: 'Products',
+    heading: "Products",
     items: [
-      { title: 'Field library', desc: 'Twelve field types, drag to reorder, edit inline', href: '/#fields' },
-      { title: 'Visual form canvas', desc: 'Build, set required fields, and publish on one surface', href: '/#canvas' },
-      { title: 'Response analytics', desc: 'Live dashboards the moment answers start landing', href: '/#analytics' },
-      { title: 'Response stream', desc: 'Every submission in a table you can export', href: '/#responses' },
+      {
+        title: "Field library",
+        desc: "Twelve field types, drag to reorder, edit inline",
+        href: "/#fields",
+      },
+      {
+        title: "Visual form canvas",
+        desc: "Build, set required fields, and publish on one surface",
+        href: "/#canvas",
+      },
+      {
+        title: "Response analytics",
+        desc: "Live dashboards the moment answers start landing",
+        href: "/#analytics",
+      },
+      {
+        title: "Response stream",
+        desc: "Every submission in a table you can export",
+        href: "/#responses",
+      },
     ],
   },
   {
-    heading: 'Capabilities',
+    heading: "Capabilities",
     items: [
-      { title: 'One question at a time', desc: 'A focused flow with a progress bar and inline validation', href: '/#how-it-works' },
-      { title: 'Share by link or QR', desc: 'Publish, copy the link, or hand over a QR code', href: '/#responses' },
-      { title: 'CSV export', desc: 'Take every response with you whenever you want', href: '/#analytics' },
-      { title: 'Access controls', desc: 'Close a form, set an expiry, or cap submissions', href: '/#faq' },
+      {
+        title: "One question at a time",
+        desc: "A focused flow with a progress bar and inline validation",
+        href: "/#how-it-works",
+      },
+      {
+        title: "Share by link or QR",
+        desc: "Publish, copy the link, or hand over a QR code",
+        href: "/#responses",
+      },
+      {
+        title: "CSV export",
+        desc: "Take every response with you whenever you want",
+        href: "/#analytics",
+      },
+      {
+        title: "Access controls",
+        desc: "Close a form, set an expiry, or cap submissions",
+        href: "/#faq",
+      },
     ],
   },
 ];
 
 const PLATFORM_PROMO = {
-  title: 'Build together',
-  desc: 'Invite teammates with per-area roles and hand over ownership',
-  href: '/#collaborate',
+  title: "Build together",
+  desc: "Invite teammates with per-area roles and hand over ownership",
+  href: "/#collaborate",
 };
 
 const SOLUTIONS_ITEMS: NavLinkItem[] = [
-  { title: 'For product teams', desc: 'User research and feedback loops', href: '/#how-it-works' },
-  { title: 'For marketing', desc: 'Lead capture and qualification', href: '/#how-it-works' },
-  { title: 'For customer success', desc: 'Satisfaction ratings and follow-ups', href: '/#analytics' },
+  { title: "For product teams", desc: "User research and feedback loops", href: "/#how-it-works" },
+  { title: "For marketing", desc: "Lead capture and qualification", href: "/#how-it-works" },
+  {
+    title: "For customer success",
+    desc: "Satisfaction ratings and follow-ups",
+    href: "/#analytics",
+  },
 ];
 
 const RESOURCES_ITEMS: NavLinkItem[] = [
-  { title: 'Documentation', desc: 'A guide to every feature', href: '/docs' },
-  { title: 'Learn more', desc: 'Every capability, end to end', href: '/learn-more' },
-  { title: 'About', desc: 'Why CanvasFlow exists', href: '/about' },
-  { title: 'Your forms', desc: 'Jump back into a draft', href: '/dashboard/sketches' },
-  { title: 'FAQ', desc: 'The short answers, fast', href: '/#faq' },
+  { title: "Documentation", desc: "A guide to every feature", href: "/docs" },
+  { title: "Learn more", desc: "Every capability, end to end", href: "/learn-more" },
+  { title: "About", desc: "Why CanvasFlow exists", href: "/about" },
+  { title: "Your forms", desc: "Jump back into a draft", href: "/dashboard/sketches" },
+  { title: "FAQ", desc: "The short answers, fast", href: "/#faq" },
 ];
 
 interface NavItemProps {
   label: string;
   to?: string;
   children?: React.ReactNode;
-  dropdownAlign?: 'left' | 'center' | 'right';
+  dropdownAlign?: "left" | "center" | "right";
 }
 
-const NavItem = ({ label, to, children, dropdownAlign = 'left' }: NavItemProps) => {
+const NavItem = ({ label, to, children, dropdownAlign = "left" }: NavItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const alignClass = 
-    dropdownAlign === 'left' ? 'left-0' :
-    dropdownAlign === 'right' ? 'right-0' :
-    'left-1/2 -translate-x-1/2';
+  const alignClass =
+    dropdownAlign === "left"
+      ? "left-0"
+      : dropdownAlign === "right"
+        ? "right-0"
+        : "left-1/2 -translate-x-1/2";
 
   return (
-    <div 
+    <div
       className="relative h-full flex items-center"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
       {to ? (
-        <Link 
-          href={to} 
+        <Link
+          href={to}
           className="flex items-center gap-1.5 text-[14px] font-medium transition-colors hover:text-foreground"
-          style={{ color: isOpen ? 'var(--foreground)' : 'var(--hex-ink-soft)' }}
+          style={{ color: isOpen ? "var(--foreground)" : "var(--hex-ink-soft)" }}
         >
           {label}
         </Link>
       ) : (
-        <button 
+        <button
           className="flex items-center gap-1.5 text-[14px] font-medium transition-colors hover:text-foreground"
-          style={{ color: isOpen ? 'var(--foreground)' : 'var(--hex-ink-soft)' }}
+          style={{ color: isOpen ? "var(--foreground)" : "var(--hex-ink-soft)" }}
         >
           {label}
           {children && (
-            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-300 opacity-60", isOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "w-3.5 h-3.5 transition-transform duration-300 opacity-60",
+                isOpen && "rotate-180",
+              )}
+            />
           )}
         </button>
       )}
@@ -119,8 +162,12 @@ const NavItem = ({ label, to, children, dropdownAlign = 'left' }: NavItemProps) 
 
 const MegaMenuItem = ({ title, desc, href }: { title: string; desc: string; href: string }) => (
   <Link href={href} className="group cursor-pointer block">
-    <div className="text-[14px] font-medium text-foreground mb-1 group-hover:text-foreground transition-colors">{title}</div>
-    <div className="text-[13px] leading-[1.4]" style={{ color: 'var(--hex-ink-soft)' }}>{desc}</div>
+    <div className="text-[14px] font-medium text-foreground mb-1 group-hover:text-foreground transition-colors">
+      {title}
+    </div>
+    <div className="text-[13px] leading-[1.4]" style={{ color: "var(--hex-ink-soft)" }}>
+      {desc}
+    </div>
   </Link>
 );
 
@@ -132,8 +179,12 @@ const SimpleDropdown = ({ items }: { items: NavLinkItem[] }) => (
         href={item.href}
         className="group cursor-pointer p-3 rounded-lg hover:bg-[#f5f3ee] transition-colors"
       >
-        <div className="text-[14px] font-medium text-foreground mb-0.5 transition-colors">{item.title}</div>
-        <div className="text-[13px] leading-snug" style={{ color: 'var(--hex-ink-soft)' }}>{item.desc}</div>
+        <div className="text-[14px] font-medium text-foreground mb-0.5 transition-colors">
+          {item.title}
+        </div>
+        <div className="text-[13px] leading-snug" style={{ color: "var(--hex-ink-soft)" }}>
+          {item.desc}
+        </div>
       </Link>
     ))}
   </div>
@@ -152,7 +203,7 @@ const PlatformMegaMenu = () => (
         <div key={group.heading}>
           <div
             className="hex-mono mb-5 text-[11px] font-semibold tracking-[0.15em] uppercase"
-            style={{ color: 'var(--hex-ink-muted)' }}
+            style={{ color: "var(--hex-ink-muted)" }}
           >
             {group.heading}
           </div>
@@ -175,8 +226,10 @@ const PlatformMegaMenu = () => (
       />
       <div className="relative z-10 flex items-center gap-3">
         <div>
-          <div className="mb-0.5 text-[14px] font-semibold text-foreground">{PLATFORM_PROMO.title}</div>
-          <div className="text-[13px]" style={{ color: 'var(--hex-ink-soft)' }}>
+          <div className="mb-0.5 text-[14px] font-semibold text-foreground">
+            {PLATFORM_PROMO.title}
+          </div>
+          <div className="text-[13px]" style={{ color: "var(--hex-ink-soft)" }}>
             {PLATFORM_PROMO.desc}
           </div>
         </div>
@@ -211,7 +264,10 @@ const MobileSection = ({
       >
         {label}
         <ChevronDown
-          className={cn('h-4 w-4 opacity-60 transition-transform duration-300', open && 'rotate-180')}
+          className={cn(
+            "h-4 w-4 opacity-60 transition-transform duration-300",
+            open && "rotate-180",
+          )}
         />
       </button>
       {open && (
@@ -224,7 +280,7 @@ const MobileSection = ({
               className="rounded-lg px-3 py-2.5 transition-colors hover:bg-[#f5f3ee]"
             >
               <div className="text-[14px] font-medium text-foreground">{item.title}</div>
-              <div className="text-[13px] leading-snug" style={{ color: 'var(--hex-ink-soft)' }}>
+              <div className="text-[13px] leading-snug" style={{ color: "var(--hex-ink-soft)" }}>
                 {item.desc}
               </div>
             </Link>
@@ -236,8 +292,7 @@ const MobileSection = ({
 };
 
 /** Scallop shape for the strip beneath the nav bar, used as a mask. */
-const WAVE_MASK =
-  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10'%3E%3Cpath d='M0,0 C5,10 15,10 20,0 Z' fill='%23000'/%3E%3C/svg%3E")`;
+const WAVE_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10'%3E%3Cpath d='M0,0 C5,10 15,10 20,0 Z' fill='%23000'/%3E%3C/svg%3E")`;
 
 const Navbar = () => {
   const { userInfo: user } = useGetLoggedInUserInfo();
@@ -248,12 +303,12 @@ const Navbar = () => {
   // it mounted underneath the restored desktop nav.
   useEffect(() => {
     if (!menuOpen) return;
-    const mq = window.matchMedia('(min-width: 1024px)');
+    const mq = window.matchMedia("(min-width: 1024px)");
     const onChange = () => {
       if (mq.matches) setMenuOpen(false);
     };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, [menuOpen]);
 
   return (
@@ -264,12 +319,11 @@ const Navbar = () => {
       <nav
         className="relative w-full h-16 backdrop-blur-md"
         style={{
-          background: 'var(--hex-nav)',
-          borderBottomColor: 'var(--hex-line)',
+          background: "var(--hex-nav)",
+          borderBottomColor: "var(--hex-line)",
         }}
       >
         <div className="max-w-300 mx-auto px-4 sm:px-6 h-full flex items-center justify-between relative z-10">
-
           {/* Left Navigation — desktop only. The hover dropdowns it hosts
               have no touch equivalent, so below lg the whole group is
               replaced by the disclosure panel. */}
@@ -282,7 +336,11 @@ const Navbar = () => {
               <SimpleDropdown items={SOLUTIONS_ITEMS} />
             </NavItem>
 
-            <Link href="/#faq" className="text-[14px] font-medium transition-colors hover:text-foreground" style={{ color: 'var(--hex-ink-soft)' }}>
+            <Link
+              href="/#faq"
+              className="text-[14px] font-medium transition-colors hover:text-foreground"
+              style={{ color: "var(--hex-ink-soft)" }}
+            >
               Enterprise
             </Link>
           </div>
@@ -290,7 +348,11 @@ const Navbar = () => {
           {/* Logo. Centred on desktop between the two nav groups; flush
               left on mobile, where the hamburger takes the right. */}
           <div className="flex items-center justify-start lg:justify-center">
-            <Link href="/" className="text-[19px] sm:text-[22px] font-bold tracking-tight text-foreground flex items-center gap-2" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.04em' }}>
+            <Link
+              href="/"
+              className="text-[19px] sm:text-[22px] font-bold tracking-tight text-foreground flex items-center gap-2"
+              style={{ fontFamily: "'Inter', sans-serif", letterSpacing: "-0.04em" }}
+            >
               CanvasFlow
             </Link>
           </div>
@@ -301,18 +363,15 @@ const Navbar = () => {
               <SimpleDropdown items={RESOURCES_ITEMS} />
             </NavItem>
 
-            <Link href="/dashboard/pricing" className="text-[14px] font-medium transition-colors hover:text-foreground" style={{ color: 'var(--hex-ink-soft)' }}>
-              Pricing
-            </Link>
-
             <div className="flex items-center gap-4 pl-2">
-              <Link href={user ? "/dashboard" : "/signIn"} className="text-[14px] font-medium transition-colors hover:text-foreground" style={{ color: 'var(--hex-ink-soft)' }}>
+              <Link
+                href={user ? "/dashboard" : "/signIn"}
+                className="text-[14px] font-medium transition-colors hover:text-foreground"
+                style={{ color: "var(--hex-ink-soft)" }}
+              >
                 {user ? "Dashboard" : "Log in"}
               </Link>
-              <Link
-                href={user ? "/dashboard" : "/signUp"}
-                className="hex-btn-ghost"
-              >
+              <Link href={user ? "/dashboard" : "/signUp"} className="hex-btn-ghost">
                 {user ? "Go to dashboard" : "Get started"}
               </Link>
             </div>
@@ -324,14 +383,13 @@ const Navbar = () => {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-nav-panel"
             className="lg:hidden -mr-2 flex h-10 w-10 items-center justify-center text-foreground"
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-
         </div>
 
         {/* Mobile panel */}
@@ -362,36 +420,27 @@ const Navbar = () => {
               >
                 Enterprise
               </Link>
-              <Link
-                href="/dashboard/pricing"
-                onClick={closeMenu}
-                className="block border-b hex-line-soft py-4 text-[15px] font-medium text-foreground"
-                style={{ borderBottomWidth: 1 }}
-              >
-                Pricing
-              </Link>
-
               <div className="mt-5 flex flex-col gap-3">
                 <Link
-                  href={user ? '/dashboard' : '/signIn'}
+                  href={user ? "/dashboard" : "/signIn"}
                   onClick={closeMenu}
                   className="text-[15px] font-medium"
-                  style={{ color: 'var(--hex-ink-soft)' }}
+                  style={{ color: "var(--hex-ink-soft)" }}
                 >
-                  {user ? 'Dashboard' : 'Log in'}
+                  {user ? "Dashboard" : "Log in"}
                 </Link>
                 <Link
-                  href={user ? '/dashboard' : '/signUp'}
+                  href={user ? "/dashboard" : "/signUp"}
                   onClick={closeMenu}
                   className="hex-btn-ghost w-full"
                 >
-                  {user ? 'Go to dashboard' : 'Get started'}
+                  {user ? "Go to dashboard" : "Get started"}
                 </Link>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         {/* Wave bottom decoration */}
         {/* Scalloped edge under the bar. The wave is applied as a mask and
             filled with the nav token rather than baked into the SVG, so it
@@ -400,13 +449,13 @@ const Navbar = () => {
         <div
           className="absolute top-[calc(100%-1px)] left-0 right-0 h-2.5 w-full pointer-events-none"
           style={{
-            background: 'var(--hex-nav)',
+            background: "var(--hex-nav)",
             maskImage: WAVE_MASK,
             WebkitMaskImage: WAVE_MASK,
-            maskSize: '20px 10px',
-            WebkitMaskSize: '20px 10px',
-            maskRepeat: 'repeat-x',
-            WebkitMaskRepeat: 'repeat-x',
+            maskSize: "20px 10px",
+            WebkitMaskSize: "20px 10px",
+            maskRepeat: "repeat-x",
+            WebkitMaskRepeat: "repeat-x",
           }}
           aria-hidden="true"
         />

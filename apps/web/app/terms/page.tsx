@@ -9,7 +9,7 @@ import { HorizontalScale, VerticalScale } from "~/components/Scale";
 export const metadata: Metadata = {
   title: "Terms of Service · CanvasFlow",
   description:
-    "The agreement for using CanvasFlow: what you may build, the limits that apply to your plan, who owns your content, and what you owe the people who answer your forms.",
+    "The agreement for using CanvasFlow: what you may build, who owns your content, and what you owe the people who answer your forms.",
 };
 
 /* ============================================================
@@ -22,21 +22,18 @@ export const metadata: Metadata = {
      · LEGAL_ENTITY    — the contracting party. Until it is set,
        nothing here names a company, which means there is no
        identified counterparty to the agreement.
-     · A governing-law and dispute-resolution clause. Prices on
-       /dashboard/pricing are in INR, which implies India, but
-       that is an inference and not something to assert here.
+     · A governing-law and dispute-resolution clause.
      · Consumer-law carve-outs for your markets. The liability
        and disclaimer sections below are drafted broadly and are
        unenforceable as written in several jurisdictions.
 
    Kept deliberately accurate to the build as of LAST_UPDATED:
-     · The plan limits in PLANS are the values actually enforced
-       in packages/services/form-submission (submitForm).
-     · No payment processor is integrated, so there are no
-       billing, renewal, refund, or tax terms here. Add them
-       before paid plans become purchasable — see "Paid plans".
-   If you change an enforced limit, change PLANS in the same
-   commit or this page becomes a misrepresentation.
+     · The service is free and metered by nothing. There are no
+       plans, no submission or form ceilings, and no payment
+       processor — so there are no billing, renewal, refund, or
+       tax terms here. Add all of the above together if paid
+       tiers are ever introduced; a pricing claim without an
+       enforced limit behind it is a misrepresentation.
    ============================================================ */
 const CONTACT_EMAIL: string | null = null;
 const LEGAL_ENTITY: string | null = null;
@@ -46,15 +43,7 @@ const SUMMARY = [
   "Your forms and responses are yours. We host them, we don't claim them, and we don't use them to advertise.",
   "You're responsible for what you ask people and what you do with their answers.",
   "Don't use CanvasFlow to phish, impersonate, or collect data you have no right to collect.",
-  "Each plan has a monthly submission limit, counted across every form you own.",
-];
-
-/** Limits as actually enforced on submit, not as marketed. */
-const PLANS = [
-  { name: "Free", limit: "1,000 submissions per month" },
-  { name: "Pro", limit: "10,000 submissions per month" },
-  { name: "Pro+", limit: "50,000 submissions per month" },
-  { name: "Business", limit: "500,000 submissions per month" },
+  "The service is free to use, with no cap on how many forms you build or responses you collect.",
 ];
 
 const ACCOUNT_TERMS = [
@@ -171,9 +160,9 @@ const SERVICE_TERMS = [
       "Features change. We may add, alter, or retire them. If we remove something you rely on, or reduce a limit, we'll give you notice and time to export your data first.",
   },
   {
-    what: "Your own limits",
+    what: "Your own controls",
     detail:
-      "Independently of your plan, you can close a form, set an expiry date, or cap its submissions. Those are your controls and we enforce them as set.",
+      "You can close a form to new responses or give it an expiry date. Those are your controls and we enforce them as set.",
   },
   {
     what: "Suspension",
@@ -319,7 +308,7 @@ export default function TermsPage() {
         </div>
       </section>
 
-      {/* ── Plans and limits ───────────────────────────────────────── */}
+      {/* ── Cost ───────────────────────────────────────────────────── */}
       <section
         className="hex-vignette relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-24"
         style={{ borderBottomWidth: 1 }}
@@ -329,77 +318,24 @@ export default function TermsPage() {
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <h2 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:tracking-[-0.035em] lg:text-[40px]">
-            Plans and limits
+            What it costs
           </h2>
-          <p
-            className="mt-5 max-w-2xl text-[15px] leading-relaxed"
-            style={{ color: "var(--hex-ink-soft)" }}
-          >
-            Every plan gets the whole builder, the analytics, and unlimited respondents. What scales
-            is how many submissions you can receive in a month.
-          </p>
 
-          <div className="mt-10 grid gap-4 sm:mt-14 sm:grid-cols-2 lg:grid-cols-4">
-            {PLANS.map((plan) => (
-              <div key={plan.name} className="hex-card p-5 sm:p-6">
-                <div
-                  className="hex-mono mb-3 text-[11px] font-semibold tracking-[0.15em] uppercase"
-                  style={{ color: "var(--hex-ink-muted)" }}
-                >
-                  {plan.name}
-                </div>
-                <p
-                  className="text-[14.5px] leading-relaxed"
-                  style={{ color: "var(--hex-ink-soft)" }}
-                >
-                  {plan.limit}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-10 max-w-2xl space-y-5">
+          <div className="mt-8 max-w-2xl space-y-5">
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              The count covers every form you own, added together, and resets at the start of each
-              calendar month. Reaching it stops new submissions on your forms until the reset or an
-              upgrade — your existing responses are never touched.
+              Nothing. There are no plans or tiers, no card is required, and there is no cap on how
+              many forms you build or how many responses you collect. Every account gets the whole
+              builder, the analytics, and unlimited respondents.
             </p>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              A submission counts against the owner of the form. If a form is transferred, later
-              submissions count against whoever owns it then.
+              No payment processor is integrated, so nothing in these terms authorises us to charge
+              you. If that ever changes, the billing terms — price, renewal, cancellation, refunds,
+              and tax — will be presented and accepted before any charge.
             </p>
           </div>
         </div>
 
         <HorizontalScale className="absolute bottom-0 left-0 h-6 w-full sm:h-10" />
-      </section>
-
-      {/* ── Paid plans ─────────────────────────────────────────────── */}
-      <section
-        className="relative border-b hex-line-soft py-16 sm:py-20 lg:py-24"
-        style={{ borderBottomWidth: 1 }}
-      >
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <h2 className="max-w-2xl text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:tracking-[-0.035em] lg:text-[40px]">
-            Paid plans
-          </h2>
-
-          <div className="mt-8 max-w-2xl space-y-5">
-            <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              Paid tiers are listed on the{" "}
-              <Link href="/dashboard/pricing" className="hex-link">
-                pricing page
-              </Link>{" "}
-              but aren&rsquo;t purchasable yet, and the Free tier requires no card. Nothing in these
-              terms authorises us to charge you today.
-            </p>
-            <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              When paid plans open, the billing terms — price, renewal, cancellation, refunds, and
-              tax — will be presented and accepted at that point, before any charge. Prices shown
-              now are indicative and may change before launch.
-            </p>
-          </div>
-        </div>
       </section>
 
       {/* ── Your content ───────────────────────────────────────────── */}
@@ -595,13 +531,8 @@ export default function TermsPage() {
 
           <div className="mt-10 grid gap-5 sm:mt-14 sm:grid-cols-2">
             <div className="hex-card p-6 sm:p-7">
-              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">
-                Provided as it is
-              </h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">Provided as it is</h3>
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 CanvasFlow is provided without warranties beyond those the law won&rsquo;t let us
                 exclude. We don&rsquo;t promise it will be uninterrupted, error-free, or fit for a
                 particular purpose you have in mind. Keep your own copies of anything you
@@ -610,10 +541,7 @@ export default function TermsPage() {
             </div>
             <div className="hex-card p-6 sm:p-7">
               <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">Liability</h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 To the extent the law allows, we aren&rsquo;t liable for indirect or consequential
                 loss, lost profits, or lost data, and our total liability is limited to what you
                 paid us in the twelve months before the claim. Nothing here limits liability for

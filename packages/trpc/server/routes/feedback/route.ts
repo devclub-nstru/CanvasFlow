@@ -4,10 +4,7 @@ import { publicProcedure, router } from "../../trpc";
 import { auth } from "../../auth";
 import { feedbackService } from "../../services";
 import { generatePath } from "../../utils/path-generator";
-import {
-  submitFeedbackInput,
-  submitFeedbackOutput,
-} from "@repo/services/feedback/model";
+import { submitFeedbackInput, submitFeedbackOutput } from "@repo/services/feedback/model";
 
 const TAGS = ["Feedback"];
 const getPath = generatePath("/feedback");

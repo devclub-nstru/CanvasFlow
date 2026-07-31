@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { formsTable } from "./form";
+import { usersTable } from "./auth";
 
 export interface FormSubmissionValue {
   formFieldId: string;
@@ -38,12 +39,30 @@ export const formSubmissionsTable = pgTable(
     idempotencyKey: varchar("idempotency_key", { length: 64 }),
 
     // Per-form anonymous visitor id (UUID, generated client-side and
-    // persisted in localStorage as `cf_vid_<formId>`). When supplied,
-    // (form_id, visitor_id) is unique so a returning visitor can't
-    // submit the same form twice. We keep this nullable for
-    // private-mode / no-storage clients — those just fall through to
-    // the idempotency-key check.
+    // persisted in localStorage as `cf_vid_<formId>`).
+    //
+    // No longer a uniqueness key. It used to carry a hard one-per-browser
+    // lockout, which was both too strict (a shared computer locked out the
+    // second person) and too weak (a different browser defeated it). Limiting
+    // responses is now an opt-in tied to an account. This is kept because the
+    // returning-respondent metric is derived from it.
     visitorId: varchar("visitor_id", { length: 64 }),
+
+    // The signed-in respondent, when the form required signing in. Nullable
+    // because a form that doesn't require it still accepts anonymous answers.
+    //
+    // ON DELETE SET NULL, not CASCADE: if the respondent later deletes their
+    // account, the response is still the form owner's data and still counts —
+    // it just becomes anonymous again.
+    respondentUserId: text("respondent_user_id").references(() => usersTable.id, {
+      onDelete: "set null",
+    }),
+
+    // Copied from the account at submit time when the form asks for it. Stored
+    // rather than joined so the response keeps the address it was submitted
+    // with, even if the respondent later changes their account email or
+    // deletes the account.
+    respondentEmail: varchar("respondent_email", { length: 255 }),
 
     // Attribution & timing (collected by the public form page)
     referrer: varchar("referrer", { length: 2048 }),
@@ -67,12 +86,17 @@ export const formSubmissionsTable = pgTable(
     formIdempotencyIdx: uniqueIndex("form_submissions_form_idempotency_idx")
       .on(table.formId, table.idempotencyKey)
       .where(sql`${table.idempotencyKey} IS NOT NULL`),
-    // Partial unique index on (form_id, visitor_id). Enforces the
-    // "one submission per visitor" rule at the database level so two
-    // racing inserts can't both squeak through the application-level
-    // check. NULL visitor_ids (no localStorage available) are exempt.
-    formVisitorIdx: uniqueIndex("form_submissions_form_visitor_idx")
-      .on(table.formId, table.visitorId)
-      .where(sql`${table.visitorId} IS NOT NULL`),
+    // Non-unique on purpose.
+    //
+    // "One response per respondent" is a per-form setting, and a unique index
+    // can't be conditional on a column in another table — so the rule is
+    // enforced in the service, and this index is what makes that check cheap.
+    // The residual race (the same account submitting twice simultaneously) is
+    // narrow and its outcome is a duplicate row rather than corruption; the
+    // idempotency key already covers the common cause, double-clicks.
+    formRespondentIdx: index("form_submissions_form_respondent_idx").on(
+      table.formId,
+      table.respondentUserId,
+    ),
   }),
 );

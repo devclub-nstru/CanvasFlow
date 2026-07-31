@@ -10,7 +10,7 @@ import { createTRPCHttpBatchClientClient } from "~/trpc/create-client";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // 5 min stale time — form lists, dashboard stats, user plan etc. only
+      // 5 min stale time — form lists, dashboard stats, the current user etc. only
       // change on explicit user action, not passively. Avoids background
       // refetch storms when navigating between pages sharing queries.
       staleTime: 5 * 60 * 1000,

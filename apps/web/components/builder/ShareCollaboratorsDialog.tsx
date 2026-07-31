@@ -156,14 +156,13 @@ export function ShareCollaboratorsDialog({
         <div className="cf-dialog-bar">
           <span className="truncate">Share · {formTitle}</span>
           <span className="flex shrink-0 items-center gap-3">
-            <span className="font-mono text-[11px] capitalize" style={{ color: "var(--cf-ink-soft)" }}>
+            <span
+              className="font-mono text-[11px] capitalize"
+              style={{ color: "var(--cf-ink-soft)" }}
+            >
               {role}
             </span>
-            <button
-              onClick={onClose}
-              className="cf-btn-outline size-7"
-              aria-label="Close dialog"
-            >
+            <button onClick={onClose} className="cf-btn-outline size-7" aria-label="Close dialog">
               <X className="size-3.5" />
             </button>
           </span>
@@ -198,10 +197,7 @@ export function ShareCollaboratorsDialog({
           <div className="grid gap-5 sm:grid-cols-[148px_1fr]">
             <div>
               <p className="cf-meta mb-2">QR code</p>
-              <div
-                className="border bg-white p-2"
-                style={{ borderColor: "var(--cf-line-strong)" }}
-              >
+              <div className="border bg-white p-2" style={{ borderColor: "var(--cf-line-strong)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(publicUrl)}&color=1a1d29&bgcolor=ffffff`}
@@ -256,14 +252,20 @@ export function ShareCollaboratorsDialog({
                     />
                   </div>
                 ) : collaborators?.length === 0 ? (
-                  <p className="py-3 text-center text-[12.5px]" style={{ color: "var(--cf-ink-soft)" }}>
+                  <p
+                    className="py-3 text-center text-[12.5px]"
+                    style={{ color: "var(--cf-ink-soft)" }}
+                  >
                     No collaborators yet.
                   </p>
                 ) : (
                   collaborators?.map((c) => (
                     <div key={c.id} className="cf-row">
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <User className="size-3.5 shrink-0" style={{ color: "var(--cf-ink-soft)" }} />
+                        <User
+                          className="size-3.5 shrink-0"
+                          style={{ color: "var(--cf-ink-soft)" }}
+                        />
                         <span className="min-w-0">
                           <span className="block truncate font-medium">
                             {c.name || "Collaborator"}
@@ -336,9 +338,8 @@ export function ShareCollaboratorsDialog({
                   Transfer ownership
                 </p>
                 <p className="mt-2 text-[12.5px] leading-relaxed">
-                  Make{" "}
-                  <span className="font-semibold">{confirmTransferUserEmail}</span> the new owner?
-                  You become an editor and cannot undo this yourself.
+                  Make <span className="font-semibold">{confirmTransferUserEmail}</span> the new
+                  owner? You become an editor and cannot undo this yourself.
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
                   <button

@@ -294,9 +294,6 @@ export default function AboutPage() {
             <Link href="/signUp" className="hex-btn-ghost">
               Get started →
             </Link>
-            <Link href="/dashboard/pricing" className="hex-link text-[14px]">
-              See pricing
-            </Link>
             {CONTACT_EMAIL && (
               <a href={`mailto:${CONTACT_EMAIL}`} className="hex-link text-[14px]">
                 {CONTACT_EMAIL}

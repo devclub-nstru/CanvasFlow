@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 export function TypewriterText({
   texts,
@@ -20,7 +20,7 @@ export function TypewriterText({
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const currentText = texts[textIndex] ?? '';
+    const currentText = texts[textIndex] ?? "";
 
     if (!isDeleting && charIndex === currentText.length) {
       const timeout = setTimeout(() => setIsDeleting(true), pauseDuration);
@@ -35,14 +35,14 @@ export function TypewriterText({
 
     const timeout = setTimeout(
       () => setCharIndex((prev) => prev + (isDeleting ? -1 : 1)),
-      isDeleting ? deleteSpeed : speed
+      isDeleting ? deleteSpeed : speed,
     );
     return () => clearTimeout(timeout);
   }, [charIndex, isDeleting, textIndex, texts, speed, deleteSpeed, pauseDuration]);
 
   return (
     <span className={className}>
-      {(texts[textIndex] ?? '').substring(0, charIndex)}
+      {(texts[textIndex] ?? "").substring(0, charIndex)}
       <span className="inline-block w-0.75 h-[1em] bg-accent ml-1 animate-pulse align-baseline" />
     </span>
   );

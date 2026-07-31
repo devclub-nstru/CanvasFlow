@@ -60,11 +60,6 @@ const AUTHZ_LAYERS = [
       "Every authenticated endpoint revalidates the session server-side before it runs. There is no trusted client state — a request with a stale or forged cookie is rejected at the boundary, not deeper in.",
   },
   {
-    what: "The plan, read from the database",
-    detail:
-      "Plan-gated features re-read your tier from the database on each call rather than believing whatever the browser claims. Editing local storage to say “Business” gets you a 403, not detailed analytics.",
-  },
-  {
     what: "The role, per form",
     detail:
       "Before any read or write touching a specific form, we check that you own it or hold an explicit collaborator role on it. Viewer, editor, and owner are distinct, and the check runs on the request path — knowing a form's ID is not access to it.",
@@ -121,11 +116,6 @@ const LIMITS = [
     what: "Request size",
     detail:
       "Request bodies are capped at 200 KB. A form submission is small; anything far larger is either a mistake or an attempt to exhaust memory.",
-  },
-  {
-    what: "Monthly submission caps",
-    detail:
-      "Each plan has a monthly submission ceiling counted across all your forms. Beyond billing, it bounds how much traffic a single account can generate if one of its forms is targeted.",
   },
   {
     what: "Report flooding",
@@ -495,20 +485,19 @@ export default function SecurityPage() {
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
               We&rsquo;d genuinely rather hear it from you than find out the hard way. Report what
               you found, how to reproduce it, and what you think the impact is. We&rsquo;ll confirm
-              we received it, keep you posted while we fix it, and credit you if you&rsquo;d like
-              to be credited.
+              we received it, keep you posted while we fix it, and credit you if you&rsquo;d like to
+              be credited.
             </p>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
               Please test only against your own account and your own forms, don&rsquo;t run
               automated scans or load tests against the service, and don&rsquo;t access, alter, or
               retain anyone else&rsquo;s responses. Report it and stop there — that&rsquo;s enough
-              to prove the point, and we won&rsquo;t pursue researchers who stay within those
-              lines.
+              to prove the point, and we won&rsquo;t pursue researchers who stay within those lines.
             </p>
             {!SECURITY_EMAIL && (
               <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-                Use the feedback option inside the app to reach us — it routes straight to us.
-                Mark it as a bug and mention it&rsquo;s security-related so we prioritise it.
+                Use the feedback option inside the app to reach us — it routes straight to us. Mark
+                it as a bug and mention it&rsquo;s security-related so we prioritise it.
               </p>
             )}
           </div>

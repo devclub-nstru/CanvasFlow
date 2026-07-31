@@ -61,10 +61,6 @@ const ACCOUNT_DATA = [
       "Either a password — stored hashed, never in readable form — or the tokens your OAuth provider issues, plus which provider you used.",
   },
   {
-    what: "Plan",
-    detail: "Your subscription tier, which determines submission and feature limits.",
-  },
-  {
     what: "Sessions",
     detail:
       "A session token, its expiry, and the IP address and browser user-agent the session was created from. This is how we keep you signed in and how you can tell a stranger's session from your own.",
@@ -76,8 +72,7 @@ const ACCOUNT_DATA = [
   },
   {
     what: "Collaborators",
-    detail:
-      "If you share a form, we record who has access, their role, and who added them.",
+    detail: "If you share a form, we record who has access, their role, and who added them.",
   },
   {
     what: "Support reports",
@@ -157,8 +152,7 @@ const RIGHTS = [
   },
   {
     what: "Correct or delete",
-    detail:
-      "Edit or delete forms and responses directly. Deleting your account removes the rest.",
+    detail: "Edit or delete forms and responses directly. Deleting your account removes the rest.",
   },
   {
     what: "If you answered someone's form",
@@ -278,11 +272,10 @@ export default function PrivacyPage() {
 
           <div className="mt-10 grid gap-5 sm:mt-14 sm:grid-cols-2">
             <div className="hex-card p-6 sm:p-7">
-              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">The form&rsquo;s owner</h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">
+                The form&rsquo;s owner
+              </h3>
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 They decide what to ask, why, and what to do with the answers. For the responses
                 collected through their form, they are the party responsible — the controller, in
                 data-protection terms. What they ask for is their call, not ours.
@@ -290,13 +283,10 @@ export default function PrivacyPage() {
             </div>
             <div className="hex-card p-6 sm:p-7">
               <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">CanvasFlow</h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 We store and process those responses on the owner&rsquo;s behalf, and nothing more.
-                For account data — your email, your sessions, your plan — we are the responsible
-                party ourselves.
+                For account data — your email and your sessions — we are the responsible party
+                ourselves.
               </p>
             </div>
           </div>
@@ -318,7 +308,7 @@ export default function PrivacyPage() {
             className="mt-5 max-w-2xl text-[15px] leading-relaxed"
             style={{ color: "var(--hex-ink-soft)" }}
           >
-            All of this exists to sign you in, keep your work, and enforce the limits of your plan.
+            All of this exists to sign you in and keep your work. Nothing more.
           </p>
 
           <div className="mt-10 sm:mt-14">
@@ -533,8 +523,8 @@ export default function PrivacyPage() {
             style={{ color: "var(--hex-ink-soft)" }}
           >
             Depending on where you live you may have further rights over your personal data,
-            including the right to complain to a supervisory authority. Exercising any of them
-            costs you nothing and we won&rsquo;t degrade your account for asking.
+            including the right to complain to a supervisory authority. Exercising any of them costs
+            you nothing and we won&rsquo;t degrade your account for asking.
           </p>
         </div>
       </section>
@@ -551,11 +541,10 @@ export default function PrivacyPage() {
 
           <div className="mt-10 grid gap-5 sm:mt-14 sm:grid-cols-2">
             <div className="hex-card p-6 sm:p-7">
-              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">How it&rsquo;s protected</h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">
+                How it&rsquo;s protected
+              </h3>
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 Traffic is encrypted in transit. Passwords are hashed, never stored readably. Access
                 to a form&rsquo;s responses is checked on every request against ownership or an
                 explicit collaborator role. No system is perfect, and we won&rsquo;t pretend
@@ -565,10 +554,7 @@ export default function PrivacyPage() {
             </div>
             <div className="hex-card p-6 sm:p-7">
               <h3 className="mb-2 text-[17px] font-medium tracking-[-0.01em]">Children</h3>
-              <p
-                className="text-[14.5px] leading-relaxed"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
+              <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                 CanvasFlow isn&rsquo;t intended for children, and we don&rsquo;t knowingly create
                 accounts for them. If you believe a child&rsquo;s personal data has reached us
                 through an account or a form, tell us and we will remove it.

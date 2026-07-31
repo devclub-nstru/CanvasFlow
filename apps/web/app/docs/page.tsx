@@ -31,7 +31,6 @@ const SECTIONS: Section[] = [
   { id: "responses", title: "Responses & export" },
   { id: "analytics", title: "Analytics" },
   { id: "managing", title: "Managing your forms" },
-  { id: "plans", title: "Plans" },
 ];
 
 /** The twelve types the palette offers, grouped as the sidebar groups them. */
@@ -116,7 +115,10 @@ function Chapter({
 }) {
   return (
     <section id={id} className="scroll-mt-28 border-b hex-line-soft pb-12 sm:pb-16">
-      <div className="hex-mono mb-3 text-[11px] font-bold tracking-[0.18em]" style={{ color: "var(--hex-ink-muted)" }}>
+      <div
+        className="hex-mono mb-3 text-[11px] font-bold tracking-[0.18em]"
+        style={{ color: "var(--hex-ink-muted)" }}
+      >
         {String(n).padStart(2, "0")}
       </div>
       <h2 className="text-[26px] leading-[1.1] font-semibold tracking-[-0.03em] sm:text-[32px]">
@@ -250,8 +252,8 @@ export default function DocsPage() {
             className="mt-6 max-w-2xl text-[16px] leading-relaxed sm:text-[17.5px]"
             style={{ color: "var(--hex-ink-soft)" }}
           >
-            From signing up to exporting your last response. Sixteen sections, in the order you&rsquo;ll
-            meet them.
+            From signing up to exporting your last response. Sixteen sections, in the order
+            you&rsquo;ll meet them.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -284,13 +286,16 @@ export default function DocsPage() {
                 <Steps
                   items={[
                     <>
-                      Open <Link href="/signUp" className="hex-link">Sign up</Link> and register with
-                      your name, email, and a password — or use <UI>Google</UI> or <UI>GitHub</UI> to
-                      skip the password.
+                      Open{" "}
+                      <Link href="/signUp" className="hex-link">
+                        Sign up
+                      </Link>{" "}
+                      and register with your name, email, and a password — or use <UI>Google</UI> or{" "}
+                      <UI>GitHub</UI> to skip the password.
                     </>,
                     <>
-                      You land on the dashboard, called <strong>Studio</strong>. It&rsquo;s empty until
-                      you make something.
+                      You land on the dashboard, called <strong>Studio</strong>. It&rsquo;s empty
+                      until you make something.
                     </>,
                     <>
                       Sign out from the icon at the top right of the dashboard bar. It asks for
@@ -313,10 +318,12 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Studio", "The overview: total forms, active forms, total responses, average per day, and your peak day, with a response trend chart over a range you pick."],
+                    [
+                      "Studio",
+                      "The overview: total forms, active forms, total responses, average per day, and your peak day, with a response trend chart over a range you pick.",
+                    ],
                     ["Forms", "Every form you own or collaborate on."],
                     ["Analytics", "Metrics and responses, one form at a time."],
-                    ["Pricing", "Plans and limits."],
                     ["New form", "Opens the create dialog from anywhere in the dashboard."],
                   ]}
                 />
@@ -332,7 +339,10 @@ export default function DocsPage() {
                 <DefList
                   rows={[
                     ["Title", "What the form is called, for you and for respondents."],
-                    ["Slug", "The URL-safe name. Lowercase words joined by hyphens, like quarterly-feedback."],
+                    [
+                      "Slug",
+                      "The URL-safe name. Lowercase words joined by hyphens, like quarterly-feedback.",
+                    ],
                     ["Description", "Optional. A short note for your team."],
                   ]}
                 />
@@ -341,8 +351,11 @@ export default function DocsPage() {
                   and slug are both required.
                 </p>
                 <Note>
-                  There&rsquo;s a shortcut on the <Link href="/" className="hex-link">home page</Link>:
-                  type a name into the hero field and press <UI>Create form</UI>. The slug is
+                  There&rsquo;s a shortcut on the{" "}
+                  <Link href="/" className="hex-link">
+                    home page
+                  </Link>
+                  : type a name into the hero field and press <UI>Create form</UI>. The slug is
                   generated from what you typed.
                 </Note>
               </Chapter>
@@ -356,15 +369,21 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Canvas", "A freeform board. Drag a field from the palette onto the canvas and position it wherever you want."],
-                    ["Outline", "An ordered list. Click a field in the palette to append it, then move it up or down."],
+                    [
+                      "Canvas",
+                      "A freeform board. Drag a field from the palette onto the canvas and position it wherever you want.",
+                    ],
+                    [
+                      "Outline",
+                      "An ordered list. Click a field in the palette to append it, then move it up or down.",
+                    ],
                   ]}
                 />
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                   The palette sits on the left under <strong>Fields</strong>, grouped into Text,
                   Numbers, Choice, Interactive, and Date &amp; time. There&rsquo;s a{" "}
-                  <UI>Search fields...</UI> box if you&rsquo;d rather type than browse. Selecting a field
-                  opens its settings on the right; with nothing selected you&rsquo;ll see{" "}
+                  <UI>Search fields...</UI> box if you&rsquo;d rather type than browse. Selecting a
+                  field opens its settings on the right; with nothing selected you&rsquo;ll see{" "}
                   <em>No field selected</em>.
                 </p>
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
@@ -411,8 +430,14 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Label", "The question itself. Unlabelled fields show as Untitled in the builder."],
-                    ["Help text", "An optional line under the question, for context or an example."],
+                    [
+                      "Label",
+                      "The question itself. Unlabelled fields show as Untitled in the builder.",
+                    ],
+                    [
+                      "Help text",
+                      "An optional line under the question, for context or an example.",
+                    ],
                     ["Placeholder", "Hint text inside the input, before anyone types."],
                     ["Required", "Forces an answer before the respondent can continue."],
                   ]}
@@ -439,15 +464,19 @@ export default function DocsPage() {
                       first.
                     </>,
                     <>
-                      The status pill flips from <UI>Draft</UI> to <UI>Live</UI> and the button reads{" "}
-                      <UI>Published</UI>.
+                      The status pill flips from <UI>Draft</UI> to <UI>Live</UI> and the button
+                      reads <UI>Published</UI>.
                     </>,
                     <>The public link starts working and the form begins recording views.</>,
                   ]}
                 />
                 <Note>
-                  Publishing is what makes the link live. To take it offline again, close the form or
-                  set a limit — see <a href="#availability" className="hex-link">Availability &amp; limits</a>.
+                  Publishing is what makes the link live. To take it offline again, close the form
+                  or set a limit — see{" "}
+                  <a href="#availability" className="hex-link">
+                    Availability &amp; limits
+                  </a>
+                  .
                 </Note>
               </Chapter>
 
@@ -460,13 +489,19 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Public link", "The URL to hand out. Copy public link puts it on your clipboard."],
-                    ["QR code", "A scannable code for the same link, downloadable as an image for print or slides."],
+                    [
+                      "Public link",
+                      "The URL to hand out. Copy public link puts it on your clipboard.",
+                    ],
+                    [
+                      "QR code",
+                      "A scannable code for the same link, downloadable as an image for print or slides.",
+                    ],
                   ]}
                 />
                 <Note>
-                  One response per visitor is enforced, and duplicate submits are ignored — a refresh
-                  or a double-click won&rsquo;t inflate your numbers.
+                  One response per visitor is enforced, and duplicate submits are ignored — a
+                  refresh or a double-click won&rsquo;t inflate your numbers.
                 </Note>
               </Chapter>
 
@@ -479,7 +514,10 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Accepting submissions", "Open or Closed. Manually open or close the form at any time."],
+                    [
+                      "Accepting submissions",
+                      "Open or Closed. Manually open or close the form at any time.",
+                    ],
                     ["Expiration date", "Stop accepting after a given time."],
                     ["Submission limit", "Stop accepting after a total count."],
                   ]}
@@ -489,9 +527,12 @@ export default function DocsPage() {
                   <UI>Save settings</UI> to apply.
                 </p>
                 <Note>
-                  These stack. Whichever condition trips first closes the form, and each one shows the
-                  respondent a different message — see{" "}
-                  <a href="#closed-states" className="hex-link">When a form won&rsquo;t accept</a>.
+                  These stack. Whichever condition trips first closes the form, and each one shows
+                  the respondent a different message — see{" "}
+                  <a href="#closed-states" className="hex-link">
+                    When a form won&rsquo;t accept
+                  </a>
+                  .
                 </Note>
               </Chapter>
 
@@ -504,7 +545,10 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Owner", "Full control, including settings, deletion, and transferring ownership."],
+                    [
+                      "Owner",
+                      "Full control, including settings, deletion, and transferring ownership.",
+                    ],
                     ["Editor", "Can work on the form."],
                     ["Viewer", "Read-only access."],
                   ]}
@@ -539,12 +583,24 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["A single question", "One prompt on screen at a time, so a long form doesn't read as long."],
+                    [
+                      "A single question",
+                      "One prompt on screen at a time, so a long form doesn't read as long.",
+                    ],
                     ["A progress bar", "How far through they are, filling to complete on submit."],
-                    ["Inline validation", "Email and URL fields are checked as they type — an invalid address is caught before the next step."],
-                    ["Required answers", "Marked as required, and enforced before they can continue."],
+                    [
+                      "Inline validation",
+                      "Email and URL fields are checked as they type — an invalid address is caught before the next step.",
+                    ],
+                    [
+                      "Required answers",
+                      "Marked as required, and enforced before they can continue.",
+                    ],
                     ["Next and Submit", "Next advances; Submit sends on the last question."],
-                    ["A confirmation", "Response received, with an optional How was the experience? rating."],
+                    [
+                      "A confirmation",
+                      "Response received, with an optional How was the experience? rating.",
+                    ],
                   ]}
                 />
                 <Note>
@@ -572,15 +628,18 @@ export default function DocsPage() {
               >
                 <DefList
                   rows={[
-                    ["Browse", "Responses load newest-first, with Load older to page back through them."],
+                    [
+                      "Browse",
+                      "Responses load newest-first, with Load older to page back through them.",
+                    ],
                     ["Search", "Search responses... filters the table."],
                     ["Inspect", "View details opens a single submission in full."],
                     ["Export", "Export downloads the whole set as a CSV named after the form."],
                   ]}
                 />
                 <Note>
-                  Export needs at least one response — with none, it tells you there&rsquo;s nothing to
-                  export rather than handing you an empty file.
+                  Export needs at least one response — with none, it tells you there&rsquo;s nothing
+                  to export rather than handing you an empty file.
                 </Note>
               </Chapter>
 
@@ -619,21 +678,6 @@ export default function DocsPage() {
                   Deleting a form is permanent and takes its responses with it. The confirmation
                   dialog says so — read it before agreeing.
                 </Note>
-              </Chapter>
-
-              {/* 16 */}
-              <Chapter
-                id="plans"
-                n={16}
-                title="Plans"
-                lead="The Free plan is ₹0 forever: ten active forms, a thousand submissions a month, every field type, and CSV export."
-              >
-                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-                  Paid tiers raise the form and submission ceilings, extend how long response history
-                  is kept, and unlock the per-question analytics breakdowns. The{" "}
-                  <Link href="/dashboard/pricing" className="hex-link">pricing page</Link> has the
-                  current numbers for each tier.
-                </p>
               </Chapter>
 
               {/* Close */}

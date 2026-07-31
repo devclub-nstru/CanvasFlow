@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Field, PasswordField, SocialButtons } from "~/components/auth/AuthFields";
 import { useSignIn } from "~/hooks/api/auth";
 import { authClient } from "~/lib/auth-client";
+import { safeRedirect } from "~/lib/utils";
 
 const SignInUserWithEmailAndPasswordInputModel = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -20,10 +21,17 @@ const SignInUserWithEmailAndPasswordInputModel = z.object({
 
 type SignInValues = z.infer<typeof SignInUserWithEmailAndPasswordInputModel>;
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signInUserWithEmailAndPassword, isPending } = useSignIn();
   const [isSocialPending, setIsSocialPending] = React.useState(false);
+
+  /* Where to land afterwards. Almost always the dashboard, but a respondent
+   * sent here by a sign-in-gated form needs to come back to that form — landing
+   * on the dashboard would leave them to find the link again themselves.
+   * Sanitised, because an unchecked `redirect` is an open redirect. */
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
 
   const {
     register,
@@ -37,9 +45,14 @@ export default function SignInPage() {
   const handleSocialSignIn = async (provider: "google" | "github") => {
     setIsSocialPending(true);
     try {
+      // The destination has to survive the round trip through the provider, so
+      // it rides along on the callback URL rather than in local state.
+      const callback = new URL("/auth/callback", window.location.origin);
+      if (redirectTo !== "/dashboard") callback.searchParams.set("redirect", redirectTo);
+
       await authClient.signIn.social({
         provider,
-        callbackURL: window.location.origin + "/auth/callback",
+        callbackURL: callback.toString(),
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start social sign-in.");
@@ -54,7 +67,7 @@ export default function SignInPage() {
     signInUserWithEmailAndPassword(data, {
       onSuccess: () => {
         toast.success("Signed in. Welcome back.");
-        router.push("/dashboard");
+        router.push(redirectTo);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to sign in. Please try again.");
@@ -137,8 +150,15 @@ export default function SignInPage() {
         <span className="text-[13px]" style={{ color: "var(--hex-ink-soft)" }}>
           Don&rsquo;t have an account?
         </span>
+        {/* Carries the destination across, because a respondent gated out of a
+            form often doesn't have an account yet — dropping it here would send
+            them to the dashboard after signing up and lose the form. */}
         <Link
-          href="/signUp"
+          href={
+            redirectTo === "/dashboard"
+              ? "/signUp"
+              : `/signUp?redirect=${encodeURIComponent(redirectTo)}`
+          }
           className="text-[13px] font-semibold underline underline-offset-2 transition-opacity hover:opacity-70"
         >
           Sign up
@@ -160,5 +180,17 @@ export default function SignInPage() {
         .
       </p>
     </>
+  );
+}
+
+export default function SignInPage() {
+  /* `useSearchParams` opts the page out of prerendering unless it sits under a
+   * Suspense boundary — the build fails outright otherwise. Null fallback
+   * because the shell around this comes from the (auth) layout, so a spinner
+   * here would flash inside an already-rendered frame. */
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }

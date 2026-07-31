@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Field, PasswordField, SocialButtons } from "~/components/auth/AuthFields";
 import { useSignUp } from "~/hooks/api/auth";
 import { authClient } from "~/lib/auth-client";
+import { safeRedirect } from "~/lib/utils";
 
 const createUserWithEmailAndPasswordInputModel = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -21,10 +22,14 @@ const createUserWithEmailAndPasswordInputModel = z.object({
 
 type SignUpValues = z.infer<typeof createUserWithEmailAndPasswordInputModel>;
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { createUserWithEmailAndPassword, isPending } = useSignUp();
   const [isSocialPending, setIsSocialPending] = React.useState(false);
+
+  /** Set when someone arrived from a sign-in-gated form and had no account. */
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
 
   const {
     register,
@@ -38,9 +43,12 @@ export default function SignUpPage() {
   const handleSocialSignIn = async (provider: "google" | "github") => {
     setIsSocialPending(true);
     try {
+      const callback = new URL("/auth/callback", window.location.origin);
+      if (redirectTo !== "/dashboard") callback.searchParams.set("redirect", redirectTo);
+
       await authClient.signIn.social({
         provider,
-        callbackURL: window.location.origin + "/auth/callback",
+        callbackURL: callback.toString(),
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start social sign-in.");
@@ -52,7 +60,7 @@ export default function SignUpPage() {
     createUserWithEmailAndPassword(data, {
       onSuccess: () => {
         toast.success("Account created. Welcome to CanvasFlow.");
-        router.push("/dashboard");
+        router.push(redirectTo);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to create account. Please try again.");
@@ -147,7 +155,11 @@ export default function SignUpPage() {
           Already have an account?
         </span>
         <Link
-          href="/signIn"
+          href={
+            redirectTo === "/dashboard"
+              ? "/signIn"
+              : `/signIn?redirect=${encodeURIComponent(redirectTo)}`
+          }
           className="text-[13px] font-semibold underline underline-offset-2 transition-opacity hover:opacity-70"
         >
           Sign in
@@ -169,5 +181,14 @@ export default function SignUpPage() {
         .
       </p>
     </>
+  );
+}
+
+export default function SignUpPage() {
+  // Suspense boundary for `useSearchParams` — see the note on SignInPage.
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
   );
 }

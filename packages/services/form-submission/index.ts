@@ -1,5 +1,11 @@
-import { db, eq, and, desc, gte, lt, count, usersTable } from "@repo/database";
+import { db, eq, and, desc, lt } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
+import {
+  assertRespondentAllowed,
+  ALREADY_RESPONDED_ERROR,
+  type Respondent,
+} from "./access";
+export * from "./access";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import {
   submitFormInput,
@@ -13,15 +19,16 @@ import {
 // string stable — the public form page matches against it.
 export const ALREADY_SUBMITTED_ERROR = "ALREADY_SUBMITTED";
 
-// Same contract, for "this form can't take any more responses". Raised both
-// when the form hits its own maxSubmissions cap and when the owner's monthly
-// plan quota is exhausted: to the person filling the form in, those are the
-// same dead end, and the plan case must not report the owner's tier or quota
-// to a stranger on a public page.
-export const LIMIT_REACHED_ERROR = "LIMIT_REACHED";
-
 class FormSubmissionService {
-  public async submitForm(payload: SubmitFormInputType) {
+  /**
+   * Record a response.
+   *
+   * `respondent` is deliberately a separate argument rather than part of the
+   * validated input: it comes from the session, and keeping it out of the Zod
+   * schema makes it impossible for a request body to supply one.
+   */
+  public async submitForm(payload: SubmitFormInputType & { respondent?: Respondent | null }) {
+    const { respondent } = payload;
     const {
       formId,
       values,
@@ -51,22 +58,49 @@ class FormSubmissionService {
       throw new Error("Form has expired");
     }
 
-    if (form.maxSubmissions !== null && form.maxSubmissions !== undefined) {
-      const submissionsCountRows = await db
-        .select({ value: count() })
+    /* ── Who may respond ─────────────────────────────────────────────────
+     *
+     * `respondent` is resolved from the session by the tRPC layer, never from
+     * the request body. That's the whole reason the domain restriction is worth
+     * anything: an email the client could type is an email the client could
+     * choose. */
+    const rules = {
+      requireSignIn: form.requireSignIn,
+      collectRespondentEmail: form.collectRespondentEmail,
+      oneResponsePerRespondent: form.oneResponsePerRespondent,
+      allowedEmailDomains: form.allowedEmailDomains,
+    };
+
+    assertRespondentAllowed(rules, respondent ?? null);
+
+    // One response per account, checked here rather than by a unique index:
+    // the rule is a per-form setting and an index can't be conditional on a
+    // column in another table. See the note on `form_submissions_form_respondent_idx`.
+    if (form.oneResponsePerRespondent && respondent) {
+      const prior = await db
+        .select({ id: formSubmissionsTable.id })
         .from(formSubmissionsTable)
-        .where(eq(formSubmissionsTable.formId, formId));
-      const totalSubmissions = Number(submissionsCountRows[0]?.value ?? 0);
-      if (totalSubmissions >= form.maxSubmissions) {
-        throw new Error(LIMIT_REACHED_ERROR);
-      }
+        .where(
+          and(
+            eq(formSubmissionsTable.formId, formId),
+            eq(formSubmissionsTable.respondentUserId, respondent.id),
+          ),
+        )
+        .limit(1);
+
+      if (prior[0]) throw new Error(ALREADY_RESPONDED_ERROR);
     }
 
-    // One-submission-per-visitor enforcement. Visitors who can't write
-    // localStorage (private mode, storage disabled) send a null
-    // visitorId and skip this check — idempotency-key dedupe still
-    // protects them from double-clicks within a single page session.
-    if (visitorId) {
+    // Legacy per-browser check, now conditional.
+    //
+    // This used to run unconditionally and was backed by a unique index, which
+    // made every form one-response-per-browser whether the author wanted it or
+    // not. It survives only as a courtesy for forms that ask for a single
+    // response but don't require signing in — there it's the only signal
+    // available. Visitors who can't write localStorage (private mode, storage
+    // disabled) send a null visitorId and skip it — idempotency-key dedupe
+    // still protects them from double-clicks within a page session.
+    if (form.oneResponsePerRespondent && !form.requireSignIn && visitorId) {
       const prior = await db
         .select({ id: formSubmissionsTable.id })
         .from(formSubmissionsTable)
@@ -103,43 +137,6 @@ class FormSubmissionService {
       }
     }
 
-    const userResult = await db
-      .select({ plan: usersTable.plan })
-      .from(usersTable)
-      .where(eq(usersTable.id, form.ownerId));
-    const userPlan = userResult[0]?.plan || "Free";
-
-    let submissionLimit = 1000;
-    if (userPlan === "Pro") submissionLimit = 10000;
-    else if (userPlan === "Pro+") submissionLimit = 50000;
-    else if (userPlan === "Business") submissionLimit = 500000;
-
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    // Count this month's submissions across all of the owner's forms in a
-    // single COUNT query (no row materialization).
-    const monthCountRows = await db
-      .select({ value: count() })
-      .from(formSubmissionsTable)
-      .innerJoin(formsTable, eq(formSubmissionsTable.formId, formsTable.id))
-      .where(
-        and(
-          eq(formsTable.ownerId, form.ownerId),
-          gte(formSubmissionsTable.createdAt, startOfMonth),
-        ),
-      );
-
-    const monthlyCount = Number(monthCountRows[0]?.value ?? 0);
-    if (monthlyCount >= submissionLimit) {
-      // Deliberately the same opaque sentinel as the per-form cap. This used
-      // to throw the tier name and the quota number, which surfaced in a
-      // toast on a public form — telling any respondent which plan the owner
-      // is on. The owner sees the real reason in their dashboard.
-      throw new Error(LIMIT_REACHED_ERROR);
-    }
-
     let insertResult;
     try {
       insertResult = await db
@@ -149,6 +146,12 @@ class FormSubmissionService {
           values,
           idempotencyKey: idempotencyKey ?? null,
           visitorId: visitorId ?? null,
+          // Always recorded when known, because it's what "one response per
+          // respondent" is checked against on the next attempt. The email is
+          // only kept when the author asked for it — identity and contact
+          // details are separate decisions.
+          respondentUserId: respondent?.id ?? null,
+          respondentEmail: form.collectRespondentEmail ? (respondent?.email ?? null) : null,
           referrer: referrer ?? null,
           utmSource: utmSource ?? null,
           utmMedium: utmMedium ?? null,

@@ -1,8 +1,11 @@
 import { db, eq, and, gte, count, sql, usersTable } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
+import { formSegmentsTable } from "@repo/database/models/form-segment";
+import { formLogicRulesTable, formLogicConditionsTable } from "@repo/database/models/form-logic";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formCollaboratorsTable } from "@repo/database/models/form-collaborator";
+import { normaliseDomain } from "../form-submission/access";
 
 import {
   createFormInput,
@@ -149,34 +152,6 @@ class FormService {
   public async createForm(payload: CreateFormInputType) {
     const { title, description, slug, ownerId } = await createFormInput.parseAsync(payload);
 
-    const userResult = await db
-      .select({ plan: usersTable.plan })
-      .from(usersTable)
-      .where(eq(usersTable.id, ownerId));
-    const userPlan = userResult[0]?.plan || "Free";
-
-    let formLimit = 10;
-    if (userPlan === "Pro") formLimit = 50;
-    else if (userPlan === "Pro+") formLimit = 200;
-    else if (userPlan === "Business") formLimit = Infinity;
-
-    if (formLimit !== Infinity) {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const existingForms = await db
-        .select({ value: count() })
-        .from(formsTable)
-        .where(and(eq(formsTable.ownerId, ownerId), gte(formsTable.createdAt, startOfMonth)));
-
-      if (Number(existingForms[0]?.value ?? 0) >= formLimit) {
-        throw new Error(
-          `You have reached the limit of ${formLimit} forms per month for the ${userPlan} tier.`,
-        );
-      }
-    }
-
     const existingForm = await this.getFormBySlug(slug);
     if (existingForm) {
       throw new Error(`Form with slug ${slug} already exists`);
@@ -275,10 +250,38 @@ class FormService {
       throw new Error("Form not found");
     }
 
-    const submissionsCountRows = await db
-      .select({ value: count() })
-      .from(formSubmissionsTable)
-      .where(eq(formSubmissionsTable.formId, id));
+    // Four independent reads, so they go out together rather than paying four
+    // sequential round-trips. They're kept as separate statements instead of
+    // joined onto the query above because segments, rules and conditions are
+    // unrelated dimensions — joining them all would multiply rows
+    // (fields × segments × rules × conditions) and need de-duplicating
+    // client-side.
+    const [submissionsCountRows, segments, rules, conditionRows] = await Promise.all([
+      db
+        .select({ value: count() })
+        .from(formSubmissionsTable)
+        .where(eq(formSubmissionsTable.formId, id)),
+      db
+        .select()
+        .from(formSegmentsTable)
+        .where(eq(formSegmentsTable.formId, id))
+        .orderBy(formSegmentsTable.index),
+      db
+        .select()
+        .from(formLogicRulesTable)
+        .where(eq(formLogicRulesTable.formId, id))
+        .orderBy(formLogicRulesTable.index),
+      // Conditions carry no form_id of their own — they hang off a rule — so
+      // they're scoped with a join rather than a second lookup keyed on the
+      // rule ids, which would have to wait for the rules query to come back.
+      db
+        .select({ condition: formLogicConditionsTable })
+        .from(formLogicConditionsTable)
+        .innerJoin(formLogicRulesTable, eq(formLogicRulesTable.id, formLogicConditionsTable.ruleId))
+        .where(eq(formLogicRulesTable.formId, id))
+        .orderBy(formLogicConditionsTable.index),
+    ]);
+
     const submissionsCount = Number(submissionsCountRows[0]?.value ?? 0);
 
     const form = firstRow.form;
@@ -286,9 +289,29 @@ class FormService {
       .map((r) => r.field)
       .filter((f): f is NonNullable<typeof f> => !!(f && f.id));
 
+    // Nest each rule's conditions. The renderer needs them attached, and
+    // grouping here keeps the traversal code on the client from having to
+    // re-derive the relationship on every navigation.
+    const conditionsByRuleId = new Map<
+      string,
+      Array<(typeof conditionRows)[number]["condition"]>
+    >();
+    for (const row of conditionRows) {
+      const list = conditionsByRuleId.get(row.condition.ruleId);
+      if (list) list.push(row.condition);
+      else conditionsByRuleId.set(row.condition.ruleId, [row.condition]);
+    }
+
+    const logicRules = rules.map((rule) => ({
+      ...rule,
+      conditions: conditionsByRuleId.get(rule.id) ?? [],
+    }));
+
     return {
       ...form,
       fields,
+      segments,
+      logicRules,
       submissionsCount,
       role: undefined,
       permissions: undefined,
@@ -354,13 +377,14 @@ class FormService {
     // ─── One round-trip, one connection ──────────────────────────────────
     //
     // The dashboard used to fan out four queries through Promise.all. On
-    // a cold pool each one had to wait its turn for a fresh TLS handshake
-    // to Neon's pooler (~300ms each), which serialized into ~1.7s wall
-    // time despite "running in parallel".
+    // a cold pool each one had to wait its turn for a fresh connection
+    // (~300ms each against a remote pooler, where the TLS handshake
+    // dominates), which serialized into ~1.7s wall time despite
+    // "running in parallel".
     //
     // Collapsing into a single statement with subqueries:
     //   • one pg connection acquired (no handshake contention)
-    //   • one Neon round-trip
+    //   • one server round-trip
     //   • Postgres planner can share the `forms WHERE owner_id` scan
     //     across the four sub-aggregates instead of repeating it.
     //
@@ -714,11 +738,47 @@ class FormService {
   }
 
   public async updateFormSettings(payload: UpdateFormSettingsInputType & { requesterId: string }) {
-    const { id, title, description, isOpen, maxSubmissions, expiresAt } =
-      await updateFormSettingsInput.parseAsync(payload);
+    const {
+      id,
+      title,
+      description,
+      isOpen,
+      expiresAt,
+      questionLayout,
+      requireSignIn,
+      collectRespondentEmail,
+      oneResponsePerRespondent,
+      allowedEmailDomains,
+      thankYouMessage,
+    } = await updateFormSettingsInput.parseAsync(payload);
     const { requesterId } = payload;
 
     await requireOwner(id, requesterId);
+
+    /* Normalise the domain list before storing: trim, lowercase, strip a
+     * leading "@" or scheme, drop blanks and duplicates. Authors type
+     * "@example.com" and "https://example.com" about as often as the bare
+     * domain, and storing those verbatim would produce a restriction that
+     * silently matches nobody. */
+    const domains =
+      allowedEmailDomains === undefined
+        ? undefined
+        : allowedEmailDomains === null
+          ? null
+          : [...new Set(allowedEmailDomains.map(normaliseDomain).filter(Boolean))];
+
+    /* The dependency, resolved in one place.
+     *
+     * Collecting an email, limiting to one response per account, and
+     * restricting by domain all need an account, so any of them turns on the
+     * sign-in requirement. Storing the implied value rather than deriving it on
+     * read means every consumer — the renderer, the API, a future export — sees
+     * the same answer without having to remember the rule. */
+    const impliedRequireSignIn =
+      requireSignIn === true ||
+      collectRespondentEmail === true ||
+      oneResponsePerRespondent === true ||
+      (domains?.length ?? 0) > 0;
 
     await db
       .update(formsTable)
@@ -726,8 +786,24 @@ class FormService {
         title,
         description: description ?? null,
         isOpen,
-        maxSubmissions: maxSubmissions ?? null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        // Omitted rather than nulled when absent, so a caller that predates
+        // layouts can't silently reset the author's choice back to AUTO.
+        ...(questionLayout !== undefined ? { questionLayout } : {}),
+
+        ...(requireSignIn !== undefined ||
+        collectRespondentEmail !== undefined ||
+        oneResponsePerRespondent !== undefined ||
+        domains !== undefined
+          ? { requireSignIn: impliedRequireSignIn }
+          : {}),
+        ...(collectRespondentEmail !== undefined ? { collectRespondentEmail } : {}),
+        ...(oneResponsePerRespondent !== undefined ? { oneResponsePerRespondent } : {}),
+        ...(domains !== undefined ? { allowedEmailDomains: domains } : {}),
+        ...(thankYouMessage !== undefined
+          ? { thankYouMessage: thankYouMessage || null }
+          : {}),
+
         updatedAt: new Date(),
       })
       .where(eq(formsTable.id, id));

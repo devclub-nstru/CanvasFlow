@@ -178,7 +178,11 @@ export default function LearnMorePage() {
           <ScrollReveal direction="left" delay={150}>
             <p
               className="mt-8 max-w-2xl border-l pl-6 text-[16px] leading-relaxed sm:text-[18px]"
-              style={{ color: "var(--hex-ink-soft)", borderLeftWidth: 2, borderLeftColor: "var(--hex-line-strong)" }}
+              style={{
+                color: "var(--hex-ink-soft)",
+                borderLeftWidth: 2,
+                borderLeftColor: "var(--hex-line-strong)",
+              }}
             >
               CanvasFlow is a form builder with the reading half taken as seriously as the writing
               half. Twelve field types, one question at a time for whoever answers, and real numbers
@@ -275,9 +279,18 @@ export default function LearnMorePage() {
                 <ul className="mt-7 space-y-4">
                   {[
                     ["Durable data keys", "Rename a question and its answers stay attached."],
-                    ["Optimistic locking", "Two people editing at once get a conflict, not a silent overwrite."],
-                    ["One response per visitor", "A refresh or a double-click won't skew your numbers."],
-                    ["Ordered by design", "Fields carry a real index, so reordering never scrambles a form."],
+                    [
+                      "Optimistic locking",
+                      "Two people editing at once get a conflict, not a silent overwrite.",
+                    ],
+                    [
+                      "One response per visitor",
+                      "A refresh or a double-click won't skew your numbers.",
+                    ],
+                    [
+                      "Ordered by design",
+                      "Fields carry a real index, so reordering never scrambles a form.",
+                    ],
                   ].map(([term, gloss]) => (
                     <li key={term} className="flex gap-4">
                       <span
@@ -471,16 +484,13 @@ export default function LearnMorePage() {
               className="mx-auto mt-6 max-w-lg text-[15.5px] leading-relaxed sm:text-[17px]"
               style={{ color: "var(--hex-ink-soft)" }}
             >
-              The Free plan is &#8377;0, forever — ten active forms and a thousand submissions a
-              month, with CSV export included.
+              Free and unlimited — as many forms and responses as you need, every field type, with
+              CSV export included.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <Link href="/signUp" className="hex-btn-ghost px-8 py-3.5 text-[15px]">
                 Build for free →
-              </Link>
-              <Link href="/dashboard/pricing" className="hex-link text-[14px]">
-                Compare plans
               </Link>
             </div>
           </ScrollReveal>

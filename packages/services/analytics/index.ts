@@ -10,8 +10,8 @@ import {
   type GetFormAnalyticsInputType,
   getSubmissionsListInput,
   type GetSubmissionsListInputType,
-  getProAnalyticsInput,
-  type GetProAnalyticsInputType,
+  getDetailedAnalyticsInput,
+  type GetDetailedAnalyticsInputType,
   recordFieldAnswerInput,
   type RecordFieldAnswerInputType,
 } from "./model";
@@ -20,7 +20,7 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 
 class AnalyticsService {
   /**
-   * Returns all free-tier analytics for a single form in one call.
+   * Returns all summary analytics for a single form in one call.
    * Ownership is verified before querying.
    */
   public async getFormAnalytics(payload: GetFormAnalyticsInputType & { ownerId: string }) {
@@ -126,11 +126,11 @@ class AnalyticsService {
   }
 
   /**
-   * Pro-tier analytics: per-question distributions, day-of-week breakdown,
+   * Detailed analytics: per-question distributions, day-of-week breakdown,
    * 30/60/90d totals, and response velocity (first 24h after publish).
    */
-  public async getProAnalytics(payload: GetProAnalyticsInputType & { ownerId: string }) {
-    const { formId } = await getProAnalyticsInput.parseAsync(payload);
+  public async getDetailedAnalytics(payload: GetDetailedAnalyticsInputType & { ownerId: string }) {
+    const { formId } = await getDetailedAnalyticsInput.parseAsync(payload);
     const { ownerId: userId } = payload;
 
     await requireViewer(formId, userId);
