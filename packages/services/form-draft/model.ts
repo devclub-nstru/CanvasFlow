@@ -21,11 +21,6 @@ export const getDraftInput = z.object({
 });
 export type GetDraftInputType = z.infer<typeof getDraftInput>;
 
-/**
- * Nullable rather than a 404: "no draft" is the normal case on a first visit,
- * and making the caller catch an error for it would mean the form page logs an
- * error on almost every load.
- */
 export const getDraftOutput = z
   .object({
     values: z.record(z.string(), z.any()),

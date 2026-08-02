@@ -12,43 +12,16 @@ export const metadata: Metadata = {
     "What CanvasFlow stores, why, how long for, and how to get it back or have it deleted — for account holders and for people answering a form.",
 };
 
-/* ============================================================
-   BEFORE PUBLISHING — these must be filled in by whoever owns
-   the legal side. The copy below is written so the page still
-   reads correctly while they are unset, but it is NOT complete
-   as a legal document until they are:
-
-     · CONTACT_EMAIL      — a real address that reaches a human.
-       Data-protection law generally requires a working contact
-       route for rights requests.
-     · LEGAL_ENTITY       — the company or individual that is the
-       data controller. Rendered nowhere while null.
-     · SUB_PROCESSORS     — the actual vendors (hosting, managed
-       Postgres, email delivery, any payment processor). The
-       section below describes categories truthfully but names
-       no vendor, because naming one we don't use would be worse
-       than naming none.
-     · A governing-law / jurisdiction clause, and — if you serve
-       EU/UK or California users — the specific GDPR/CCPA
-       disclosures those regimes require.
-
-   The data inventory itself was written against the actual
-   database schema (packages/database/models) and is accurate as
-   of LAST_UPDATED. If you add a column that holds personal data,
-   update the tables below in the same change.
-   ============================================================ */
 const CONTACT_EMAIL: string | null = null;
 const LEGAL_ENTITY: string | null = null;
 const LAST_UPDATED = "31 July 2026";
 
-/** The one-paragraph version, for people who won't read the rest. */
 const SUMMARY = [
   "We store what you create and what people send you. We don't sell it, and we don't use it to advertise to anyone.",
   "People answering your forms are not tracked with cookies, and we never record their IP address.",
   "You can export every response to CSV at any time, and deleting a form or an account really deletes the data underneath it.",
 ];
 
-/** Data held about signed-in account holders. */
 const ACCOUNT_DATA = [
   {
     what: "Identity",
@@ -166,8 +139,6 @@ export default function PrivacyPage() {
     <div className="hex-theme hex-paper relative min-h-screen">
       <Noise />
 
-      {/* Ruled page margins, md and up only — below that there is no gutter
-          for them to sit in and they would land on the copy. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
         <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />

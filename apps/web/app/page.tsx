@@ -23,10 +23,6 @@ import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 import { useCreateForm } from "~/hooks/api/form";
 import { cn } from "~/lib/utils";
 
-/* ── Ruler strips ──────────────────────────────────────────────────── */
-
-/* ── Copy ──────────────────────────────────────────────────────────── */
-
 const STARTERS = ["Customer feedback", "Event registration", "Job application"];
 
 const FIELD_TYPES = [
@@ -140,8 +136,14 @@ const Index = () => {
       >
         {/* Background 1 of 3: tiled crack network, the lightest sheet. */}
         <div className="hex-hero-paper" aria-hidden />
-        <div className="hex-corner top-4 left-4 hidden sm:block md:top-6 md:left-6" style={{ borderRight: 0, borderBottom: 0 }} />
-        <div className="hex-corner top-4 right-4 hidden sm:block md:top-6 md:right-6" style={{ borderLeft: 0, borderBottom: 0 }} />
+        <div
+          className="hex-corner top-4 left-4 hidden sm:block md:top-6 md:left-6"
+          style={{ borderRight: 0, borderBottom: 0 }}
+        />
+        <div
+          className="hex-corner top-4 right-4 hidden sm:block md:top-6 md:right-6"
+          style={{ borderLeft: 0, borderBottom: 0 }}
+        />
 
         <div className="relative mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
           <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
@@ -251,9 +253,6 @@ const Index = () => {
               <div className="lg:col-span-5">
                 <ResponseFeedMock />
               </div>
-              {/* The wide mock takes the larger column and the upward
-                  offset, so the pair reads as staggered rather than as
-                  two cards on a shared baseline. */}
               <div className="lg:col-span-7 lg:-mt-12">
                 <FormBuilderMock />
               </div>
@@ -302,7 +301,10 @@ const Index = () => {
                   for when you want to click around.
                 </em>
               </h2>
-              <p className="mt-5 text-[15px] leading-relaxed sm:mt-6 sm:text-[16px]" style={{ color: "var(--hex-ink-soft)" }}>
+              <p
+                className="mt-5 text-[15px] leading-relaxed sm:mt-6 sm:text-[16px]"
+                style={{ color: "var(--hex-ink-soft)" }}
+              >
                 Views and responses, completion rate, the hour and the day people actually reply,
                 and which question they gave up on. Your form becomes a real dashboard the second
                 answers land — no exports, no spreadsheets.
@@ -325,7 +327,6 @@ const Index = () => {
         className="relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-28"
         style={{ borderBottomWidth: 1 }}
       >
-        {/* Background 2 of 3: the bare page stock, no overlay. */}
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-10 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
             <div className="max-w-lg">
@@ -342,7 +343,10 @@ const Index = () => {
                   You decide when it closes.
                 </em>
               </h2>
-              <p className="mt-5 text-[15px] leading-relaxed sm:mt-7 sm:text-[17px]" style={{ color: "var(--hex-ink-soft)" }}>
+              <p
+                className="mt-5 text-[15px] leading-relaxed sm:mt-7 sm:text-[17px]"
+                style={{ color: "var(--hex-ink-soft)" }}
+              >
                 Publish and share the link, or hand over a QR code. Close the form with a toggle,
                 give it an expiry date, or cap the number of submissions. Every response is kept to
                 one per visitor.
@@ -364,7 +368,6 @@ const Index = () => {
         className="relative overflow-hidden border-y hex-line-soft py-16 sm:py-20 lg:py-32"
         style={{ borderTopWidth: 1, borderBottomWidth: 1 }}
       >
-        {/* Background 2 of 3: the bare page stock, no overlay. */}
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-12 max-w-2xl sm:mb-16 lg:mb-20">
             <h2 className="text-[30px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[38px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[48px]">
@@ -443,9 +446,16 @@ const Index = () => {
                   d: "Email and password, or Google and GitHub if you'd rather skip another password.",
                 },
               ].map((item) => (
-                <div key={item.h} className="border-t hex-line-strong pt-5" style={{ borderTopWidth: 1 }}>
+                <div
+                  key={item.h}
+                  className="border-t hex-line-strong pt-5"
+                  style={{ borderTopWidth: 1 }}
+                >
                   <h3 className="text-[15px] font-semibold">{item.h}</h3>
-                  <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  <p
+                    className="mt-2 text-[14px] leading-relaxed"
+                    style={{ color: "var(--hex-ink-soft)" }}
+                  >
                     {item.d}
                   </p>
                 </div>
@@ -473,7 +483,10 @@ const Index = () => {
                 answered.
               </em>
             </h2>
-            <p className="mt-5 text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+            <p
+              className="mt-5 text-[15px] leading-relaxed"
+              style={{ color: "var(--hex-ink-soft)" }}
+            >
               The short version of what teams ask us most. Want the long one?
             </p>
             <Link href="/signUp" className="hex-link mt-5 inline-flex text-[14px]">
@@ -489,10 +502,15 @@ const Index = () => {
               >
                 <summary>
                   <span className="flex items-baseline gap-4">
-                    <span className="hex-mono text-[11px] tracking-wider" style={{ color: "var(--hex-ink-muted)" }}>
+                    <span
+                      className="hex-mono text-[11px] tracking-wider"
+                      style={{ color: "var(--hex-ink-muted)" }}
+                    >
                       0{i + 1}
                     </span>
-                    <span className="text-[16px] leading-snug font-medium sm:text-[18px]">{f.q}</span>
+                    <span className="text-[16px] leading-snug font-medium sm:text-[18px]">
+                      {f.q}
+                    </span>
                   </span>
                   <span className="hex-faq-icon">+</span>
                 </summary>
@@ -544,9 +562,6 @@ const ShareAccessMock = () => (
         </div>
       </div>
 
-      {/* QR + access controls. The QR column is a fixed 104px, which leaves
-          too little for the toggle rows beside it on a phone — below sm the
-          two stack and the QR is capped so it doesn't blow up full-width. */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-[104px_1fr]">
         <div className="max-w-35 sm:max-w-none">
           <div className="hex-select-label">QR code</div>
@@ -554,13 +569,13 @@ const ShareAccessMock = () => (
             className="grid grid-cols-7 gap-0.75 rounded-md border hex-line-soft bg-white p-2"
             aria-hidden
           >
-            {/* Deterministic pattern so server and client markup match. */}
             {Array.from({ length: 49 }).map((_, i) => (
               <span
                 key={i}
                 className="aspect-square rounded-[1px]"
                 style={{
-                  background: (i * 7 + Math.floor(i / 7) * 3) % 5 < 2 ? "var(--hex-ink)" : "transparent",
+                  background:
+                    (i * 7 + Math.floor(i / 7) * 3) % 5 < 2 ? "var(--hex-ink)" : "transparent",
                 }}
               />
             ))}
@@ -638,9 +653,6 @@ const FeatureStepCard = ({
 
     <div className="relative flex h-52 items-center justify-center border-b hex-line-soft bg-[#fdfdfb] transition-colors duration-500 group-hover:bg-transparent sm:h-64">
       <div className="hex-grid-fine pointer-events-none absolute inset-0 opacity-[0.03]" />
-      {/* The illustrations are drawn at a fixed 224x160. Scaling the whole
-          group down on small screens keeps their internal proportions
-          intact, which reflowing their parts would not. */}
       <div className="relative z-10 origin-center scale-[0.82] transform transition-transform duration-700 ease-out group-hover:scale-[0.9] sm:scale-100 sm:group-hover:scale-110">
         {illustration}
       </div>
@@ -652,7 +664,9 @@ const FeatureStepCard = ({
           Step / {n}
         </div>
       </div>
-      <h3 className="mb-3 text-[22px] leading-tight font-semibold tracking-tight sm:mb-4 sm:text-[26px]">{t}</h3>
+      <h3 className="mb-3 text-[22px] leading-tight font-semibold tracking-tight sm:mb-4 sm:text-[26px]">
+        {t}
+      </h3>
       <p className="text-[15px] leading-relaxed text-muted-foreground/80 transition-colors duration-500 group-hover:text-foreground/90 sm:text-[16px]">
         {d}
       </p>
@@ -717,8 +731,16 @@ const BuildIllustration = () => (
 
 const ShareIllustration = () => (
   <div className="relative flex h-40 w-56 items-center justify-center">
-    <svg className="absolute inset-0 h-full w-full opacity-[0.07]" viewBox="0 0 200 150" aria-hidden>
-      <path d="M0 100 L200 100 M0 120 L200 120 M0 140 L200 140" stroke="currentColor" strokeWidth="1" />
+    <svg
+      className="absolute inset-0 h-full w-full opacity-[0.07]"
+      viewBox="0 0 200 150"
+      aria-hidden
+    >
+      <path
+        d="M0 100 L200 100 M0 120 L200 120 M0 140 L200 140"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
       <path
         d="M20 150 L80 80 M60 150 L100 80 M100 150 L120 80 M140 150 L140 80 M180 150 L160 80"
         stroke="currentColor"
@@ -765,7 +787,10 @@ const SignalIllustration = () => (
             <stop offset="100%" stopColor="#2d5cf6" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d="M0 45 Q 15 40, 25 30 T 50 25 T 75 15 T 100 5 L 100 60 L 0 60 Z" fill="url(#waveGrad)" />
+        <path
+          d="M0 45 Q 15 40, 25 30 T 50 25 T 75 15 T 100 5 L 100 60 L 0 60 Z"
+          fill="url(#waveGrad)"
+        />
         <path
           d="M0 45 Q 15 40, 25 30 T 50 25 T 75 15 T 100 5"
           fill="none"
@@ -831,8 +856,13 @@ const FeatureBlock = ({
               <GeoGlyph />
               <span className="hex-fig">FIG.{glyph}</span>
             </div>
-            <h2 className="text-[30px] leading-[1.06] font-semibold tracking-[-0.03em] sm:text-[38px] sm:leading-[1.02] sm:tracking-[-0.035em] lg:text-[48px]">{title}</h2>
-            <p className="mt-5 text-[16px] leading-relaxed sm:mt-8 sm:text-[18px]" style={{ color: "var(--hex-ink-soft)" }}>
+            <h2 className="text-[30px] leading-[1.06] font-semibold tracking-[-0.03em] sm:text-[38px] sm:leading-[1.02] sm:tracking-[-0.035em] lg:text-[48px]">
+              {title}
+            </h2>
+            <p
+              className="mt-5 text-[16px] leading-relaxed sm:mt-8 sm:text-[18px]"
+              style={{ color: "var(--hex-ink-soft)" }}
+            >
               {body}
             </p>
             <div className="mt-8 flex items-center gap-6 sm:mt-12">

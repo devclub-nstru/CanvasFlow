@@ -15,27 +15,10 @@ interface FieldOutlineProps {
   fields: FieldLike[];
   onTapField: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
-  /** Which field the details pane is currently showing, if any. */
   selectedId?: string | null;
-  /**
-   * Add affordance. Omitted on surfaces that already have a field palette
-   * beside the outline — a second "Add field" button next to a full palette
-   * is just a slower way to do the same thing.
-   */
   onAdd?: () => void;
 }
 
-/**
- * Ordered outline of a form's fields: what the sequence is, and how to
- * change it. Reordering is done with up/down buttons rather than drag, which
- * works the same under a mouse and under a thumb, and doesn't fight vertical
- * scrolling on a phone.
- *
- * Used by two surfaces, hence the neutral name: the phone editor (where
- * tapping a card opens a bottom sheet) and the desktop outline builder (where
- * it sits between the palette and the details pane, and tapping a card just
- * selects it).
- */
 export function FieldOutline({ fields, onTapField, onMove, selectedId, onAdd }: FieldOutlineProps) {
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -48,10 +31,6 @@ export function FieldOutline({ fields, onTapField, onMove, selectedId, onAdd }: 
         </div>
       </div>
 
-      {/* Capped and centred: on a wide screen the middle pane runs past 900px,
-          and a card stretched that far leaves its label and its edit
-          affordance at opposite ends of the row. The cap never binds on a
-          phone. Bottom padding clears the sticky CTA where there is one. */}
       <div
         className={`mx-auto w-full max-w-190 flex-1 space-y-3 overflow-y-auto px-4 pt-4 ${
           onAdd ? "pb-28" : "pb-6"
@@ -113,8 +92,6 @@ function FieldCard({
   const displayLabel = field.label || `Untitled ${field.type.replace("_", " ").toLowerCase()}`;
 
   return (
-    /* Selected cards re-ink their edge rather than thicken it, the same way
-       canvas nodes do, so selecting one doesn't nudge the list. */
     <div
       className={`overflow-hidden border-2 bg-(--cf-cream-2) transition-shadow ${
         selected
@@ -128,7 +105,6 @@ function FieldCard({
         aria-current={selected ? "true" : undefined}
         className="flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-(--cf-cream)"
       >
-        {/* Position in the sequence — the thing this surface exists to show. */}
         <span
           className="flex size-9 shrink-0 items-center justify-center border font-mono text-[12px] font-bold"
           style={{

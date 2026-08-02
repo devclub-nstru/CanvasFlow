@@ -34,7 +34,6 @@ interface FieldDropoffProps {
   submissions: Submission[];
 }
 
-/** Render any stored answer shape as readable text. */
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined || value === "") return "";
   if (Array.isArray(value)) return value.map((v) => String(v)).join(", ");
@@ -43,18 +42,9 @@ const formatValue = (value: unknown): string => {
   return String(value);
 };
 
-/**
- * Per-field completion, with a drill-down into the answers.
- *
- * The rates come from the Pro payload, but the answers behind them come from
- * `submissions`, which the analytics page already has in memory — so opening a
- * field costs no extra request.
- */
 export function FieldDropoff({ fieldCompletionRates, fields, submissions }: FieldDropoffProps) {
   const [openFieldId, setOpenFieldId] = useState<string | null>(null);
 
-  // Index answers by field once, rather than scanning every submission each
-  // time a row is opened.
   const answersByField = useMemo(() => {
     const map = new Map<string, { submissionId: string; createdAt: string; text: string }[]>();
     for (const sub of submissions) {
@@ -70,8 +60,6 @@ export function FieldDropoff({ fieldCompletionRates, fields, submissions }: Fiel
   }, [submissions]);
 
   const rows = useMemo(() => {
-    // Prefer the server's field order; fall back to the rates list for fields
-    // the form no longer has.
     const byId = new Map(fieldCompletionRates.map((r) => [r.fieldId, r]));
     const ordered: (FieldRate & { type?: string })[] = [];
     for (const f of fields) {
@@ -142,8 +130,6 @@ export function FieldDropoff({ fieldCompletionRates, fields, submissions }: Fiel
                     <span className="block truncate text-[13.5px] font-medium">
                       {row.fieldLabel}
                     </span>
-                    {/* The bar is the quantity; the number beside it is the
-                        same value for anyone who can't compare lengths. */}
                     <span className="mt-1.5 flex items-center gap-2">
                       <span
                         className="h-1.5 flex-1 overflow-hidden"
@@ -207,7 +193,6 @@ function FieldAnswersDialog({
 }) {
   const [query, setQuery] = useState("");
 
-  // Close on Escape, and restore the page's scroll lock on unmount.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -222,13 +207,10 @@ function FieldAnswersDialog({
     return answers.filter((a) => a.text.toLowerCase().includes(q));
   }, [answers, query]);
 
-  // Repeated answers are the useful signal on choice fields, so tally them.
   const tally = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of answers) counts.set(a.text, (counts.get(a.text) ?? 0) + 1);
     const list = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-    // Only worth showing when answers actually repeat — on a free-text field
-    // every value is unique and a tally is just the list again.
     return list.length > 0 && list.length < answers.length ? list.slice(0, 6) : [];
   }, [answers]);
 

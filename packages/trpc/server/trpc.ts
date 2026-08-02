@@ -39,16 +39,11 @@ export const authenticatedProcedure = tRPCContext.procedure.use(async (options) 
   });
   const tInnerMs = Date.now() - tInner;
 
-  // Server-Timing header lets us read these from the browser DevTools
-  // without trying to read the dev-server's TUI. Comma-separated entries
-  // per the W3C spec.
   try {
     const h = new Headers();
     h.set("Server-Timing", `auth;dur=${tSession}, inner;dur=${tInnerMs}`);
     (ctx as any).setHeaders?.(h);
-  } catch {
-    /* noop — header may already be sent */
-  }
+  } catch {}
 
   return result;
 });

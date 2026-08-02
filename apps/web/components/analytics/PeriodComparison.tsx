@@ -10,14 +10,6 @@ interface PeriodComparisonProps {
   trend90d: number;
 }
 
-/**
- * Responses per 30-day window over the last quarter.
- *
- * The server returns cumulative totals (`trend60d` includes the last 30 days),
- * so the older buckets are differences. Charting the cumulative figures
- * directly would show three bars that can only ever grow, which reads as
- * upward momentum even for a form whose traffic is collapsing.
- */
 export function PeriodComparison({ trend30d, trend60d, trend90d }: PeriodComparisonProps) {
   const buckets = [
     { label: "Last 30d", value: trend30d, colour: SERIES[0] },

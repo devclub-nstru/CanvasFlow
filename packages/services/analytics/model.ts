@@ -9,7 +9,6 @@ export type GetFormAnalyticsInputType = z.infer<typeof getFormAnalyticsInput>;
 
 export const getSubmissionsListInput = z.object({
   formId: z.string().uuid().describe("Form ID"),
-  // Cursor-based pagination — see form-submission/model for the rationale.
   cursor: z
     .string()
     .datetime()
@@ -44,12 +43,8 @@ export const submissionOutput = z.object({
 // ─── Analytics output ─────────────────────────────────────────────────────────
 
 export const getFormAnalyticsOutput = z.object({
-  // Core counts
   totalResponses: z.number(),
 
-  // Device split of submissions (form_submissions.device_type). Rows with no
-  // recorded device are excluded, so these counts can total less than
-  // totalResponses.
   deviceBreakdown: z.array(
     z.object({
       device: z.string(),
@@ -57,31 +52,24 @@ export const getFormAnalyticsOutput = z.object({
     }),
   ),
 
-  // 30-day daily trend (zero-filled)
   dailyTrends: z.array(
     z.object({
-      date: z.string(), // "Jun 1"
+      date: z.string(),
       count: z.number(),
     }),
   ),
 
-  // Derived stats
-  peakDay: z.string().nullable(), // day of week with most submissions
+  peakDay: z.string().nullable(),
   avgSubmissionsPerDay: z.number(),
   avgSubmissionsPerWeek: z.number(),
 });
 export type GetFormAnalyticsOutputType = z.infer<typeof getFormAnalyticsOutput>;
 
-// ─── Submissions list output ──────────────────────────────────────────────────
-
 export const getSubmissionsListOutput = z.object({
   submissions: z.array(submissionOutput),
-  // null when there are no more pages
   nextCursor: z.string().nullable(),
 });
 export type GetSubmissionsListOutputType = z.infer<typeof getSubmissionsListOutput>;
-
-// ─── Record field answer ──────────────────────────────────────────────────────
 
 export const recordFieldAnswerInput = z.object({
   formId: z.string().uuid(),
@@ -95,10 +83,8 @@ export const recordFieldAnswerOutput = z.object({
 });
 export type RecordFieldAnswerOutputType = z.infer<typeof recordFieldAnswerOutput>;
 
-// ─── Pro analytics ────────────────────────────────────────────────────────────
-
 export const getDetailedAnalyticsInput = z.object({
-  formId: z.string().uuid().describe("Form ID"),
+  formId: z.string().uuid(),
 });
 export type GetDetailedAnalyticsInputType = z.infer<typeof getDetailedAnalyticsInput>;
 
@@ -107,7 +93,6 @@ export const questionDistributionOutput = z.object({
   fieldLabel: z.string(),
   fieldType: z.string(),
   totalAnswered: z.number(),
-  // For SELECT/CHECKBOX/RADIO: answer → count
   optionCounts: z
     .array(
       z.object({
@@ -117,9 +102,7 @@ export const questionDistributionOutput = z.object({
       }),
     )
     .optional(),
-  // For RATING: average score
   averageRating: z.number().optional(),
-  // For RATING: distribution per star value (1–5)
   ratingDistribution: z
     .array(
       z.object({
@@ -152,12 +135,8 @@ export const getDetailedAnalyticsOutput = z.object({
       rate: z.number(),
     }),
   ),
-  // Avg time to complete (ms), from timeSpentMs column
   avgTimeSpentMs: z.number().nullable(),
-  // Top referrers (domain → count), from form_submissions.referrer — so this
-  // is attribution for people who submitted, not everyone who arrived.
   topReferrers: z.array(z.object({ referrer: z.string(), count: z.number() })),
-  // UTM source breakdown, also from form_submissions
   utmSources: z.array(z.object({ source: z.string(), count: z.number() })),
 });
 export type GetDetailedAnalyticsOutputType = z.infer<typeof getDetailedAnalyticsOutput>;

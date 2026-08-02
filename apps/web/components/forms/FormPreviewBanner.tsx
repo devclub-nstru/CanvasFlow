@@ -3,15 +3,6 @@
 import React from "react";
 import { Eye } from "lucide-react";
 
-/**
- * Sticky notice shown when a form is opened with `?preview=1`.
- *
- * Deliberately loud and un-dismissable. Preview lets the author fill the form
- * and press Submit, and the one thing they must not conclude from a working
- * Submit button is that a response was recorded. A quiet note at the top of a
- * long form would be scrolled past long before then, so this stays pinned for
- * the whole session.
- */
 export function FormPreviewBanner() {
   return (
     <div

@@ -24,12 +24,6 @@ export interface FormPermissions {
   };
 }
 
-// Sanitisation: every string input gets `.trim()` so leading/trailing
-// whitespace doesn't pollute storage or produce duplicates that differ
-// only by whitespace. Length caps prevent abuse of varchar columns.
-// `slug` is regex-constrained to URL-safe characters since it lives in
-// the public form URL.
-
 export const createFormInput = z.object({
   title: z.string().trim().min(1).max(150).describe("Title of the form"),
   description: z.string().trim().max(2000).optional().describe("Description of the form"),
@@ -80,7 +74,6 @@ export const formPermissionsSchema = z.object({
 
 export type FormPermissionsType = z.infer<typeof formPermissionsSchema>;
 
-/** Mirrors `questionLayoutEnum` in packages/database/models/form.ts. */
 export const questionLayoutZodEnum = z.enum([
   "AUTO",
   "ONE_PER_PAGE",
@@ -102,10 +95,6 @@ export const getFormOutput = z.object({
     .optional()
     .describe("How many questions a respondent sees at once"),
 
-  /* Access rules. On the public payload too, because the form page has to know
-   * before the respondent starts — asking someone to fill in fifty questions
-   * and only then telling them to sign in is the version of this that wastes
-   * their time. */
   requireSignIn: z.boolean().optional(),
   collectRespondentEmail: z.boolean().optional(),
   oneResponsePerRespondent: z.boolean().optional(),
@@ -124,11 +113,6 @@ export type GetFormOutputType = z.infer<typeof getFormOutput>;
 
 export const getFormByIdOutput = getFormOutput.extend({
   fields: z.array(getFormFieldOutput),
-  // The renderer needs the segment list to know page boundaries and titles,
-  // and the rule list to know where each answer leads. Both are sent with
-  // the form so traversal never has to round-trip mid-flow — a respondent
-  // clicking "Next" must not wait on the network to find out which question
-  // comes next.
   segments: z.array(getFormSegmentOutput),
   logicRules: z.array(getLogicRuleOutput),
 });

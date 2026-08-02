@@ -61,60 +61,27 @@
   html {
     scroll-behavior: smooth;
   }
-  /* Anchored landing sections offset themselves so the fixed nav doesn't
-     overlap their top when scrolled to via in-page links. */
   section[id] {
     scroll-margin-top: 96px;
   }
+  button {
+    cursor: pointer;
+  }
 }
 
-/* ============================================================
-   CanvasFlow — app theme (dashboard, builder, analytics, public
-   form filling)
-   ------------------------------------------------------------
-   These `--cf-*` tokens are referenced about a thousand times across
-   app/dashboard, components/builder, components/analytics and
-   components/forms. Rather than rewrite those call sites to the
-   `hex-*` names the landing and auth screens use, the tokens are
-   repointed at the same palette here. One edit re-skins the whole app
-   surface and the two themes cannot drift apart, because they now
-   resolve to the same values.
-
-   The names are kept deliberately — `--cf-orange` is no longer orange.
-   Renaming it would touch every one of those call sites for no visual
-   gain, so the misnomer is the cheaper trade. It is the accent role:
-   primary fill, accent text, and emphasis.
-   ============================================================ */
 :root {
-  /* Paper stock. Cool grey rather than the warm cream the marketing site
-     uses: the app is a working surface, and a neutral ground keeps the blue
-     accent and the data-viz hues honest instead of pulling them yellow.
-     The token names stay `cream` — see the note above about renaming. */
   --cf-cream: #f0f0f0;
   --cf-cream-2: #e8e8e8;
 
-  /* Ink ramp, matching --hex-ink / --hex-ink-soft. */
   --cf-ink: #1a1d29;
   --cf-ink-soft: #5b6070;
 
-  /* Hairline vs structural edge. `--cf-line-strong` goes near-black for
-     the same reason the landing did: inputs, cards and buttons should
-     read as drawn boxes rather than soft panels. */
   --cf-line: rgba(26, 29, 41, 0.16);
   --cf-line-strong: #1a1d29;
 
-  /* Accent. The app keeps a coloured primary where the marketing site uses
-     plain ink — a dashboard of black-on-cream with no accent has nothing to
-     lead the eye.
-
-     This is the same blue the footer wordmark already used, rather than a
-     second near-identical one. Two blues a few degrees apart read as a
-     mistake; one reads as a system. */
   --cf-orange: #2d5cf6;
   --cf-orange-hover: #2449d0;
 
-  /* Destructive. Was hardcoded as #c1281d at every call site; named here so
-     delete buttons across the app can't drift apart. */
   --cf-danger: #c1281d;
 }
 
@@ -136,9 +103,6 @@
   color: var(--cf-ink);
 }
 
-/* Headings. Was Fraunces at 400 — a serif display face. Now the same
-   tight-tracked Inter semibold the landing and auth headlines use, so a
-   heading reads the same on the dashboard as it does on the way in. */
 .cf-display {
   font-family:
     var(--font-inter),
@@ -158,18 +122,6 @@
   font-weight: 500;
 }
 
-/* ---- Boxy app chrome ----------------------------------------------
-   The same radius reset the landing gets, applied to the app surface so
-   the two match. Squares the corner-radius utilities in one place
-   instead of rewriting ~134 `rounded-*` call sites across the
-   dashboard, builder, analytics and form-filling screens.
-
-   `rounded-full` is deliberately absent: avatars, status dots, radio
-   marks, toggle pills and spinners all rely on it, and flattening those
-   would read as a bug rather than a style.
-
-   Two class selectors outrank Tailwind's single-class utility, which is
-   what lets this win without `!important`. */
 .cf-landing .rounded,
 .cf-landing .rounded-sm,
 .cf-landing .rounded-md,
@@ -183,30 +135,17 @@
   border-radius: var(--hex-radius);
 }
 
-/* ============================================================
-   App surface recipes
-   ------------------------------------------------------------
-   The dashboard chrome: drawn boxes with a hard offset shadow that
-   collapses on interaction, so a card behaves like a physical tile being
-   pressed flat rather than fading. Declared here because the pattern
-   repeats across the overview, the forms list and the empty states.
-   ============================================================ */
 @layer components {
-  /* Panel with a black edge and a hard drop. */
   .cf-panel {
     background: var(--cf-cream-2);
     border: 1px solid var(--cf-line-strong);
     border-radius: var(--hex-radius);
   }
 
-  /* Adds the offset shadow. Split from `.cf-panel` because some panels are
-     flush inside another box and must not cast one. */
   .cf-raised {
     box-shadow: 4px 4px 0 0 var(--cf-line-strong);
   }
 
-  /* Interactive tile: the shadow closes as the tile slides into it, so the
-     travel and the shadow loss cancel out and nothing below reflows. */
   .cf-press {
     transition:
       box-shadow 0.15s ease,
@@ -239,8 +178,6 @@
     background: var(--cf-orange-hover);
   }
 
-  /* Secondary action: transparent so the paper reads through, inverting to
-     ink on hover the same way the landing's outlined buttons do. */
   .cf-btn-outline {
     display: inline-flex;
     align-items: center;
@@ -261,9 +198,6 @@
     color: var(--cf-cream);
   }
 
-  /* Underlined tab, as in the analytics mock. The active rule sits on the
-     container's bottom border rather than beside it, so the strip reads as
-     one ruled line with a segment inked in. */
   .cf-tab {
     position: relative;
     padding: 0 0 10px;
@@ -290,7 +224,6 @@
     background: var(--cf-ink);
   }
 
-  /* Mono field label / count, matching the landing's eyebrow scale. */
   .cf-meta {
     font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 10px;
@@ -300,24 +233,10 @@
     color: var(--cf-ink-soft);
   }
 
-  /* ---- Builder panes -------------------------------------------------
-     The builder is a light surface, so these are the light counterparts of
-     the `.cf-dark-*` recipes. They exist because the `--cfd-*` tokens are
-     declared inside `.cf-dark` and therefore resolve to nothing out here:
-     an undefined custom property makes the declaration invalid at
-     computed-value time, so `border-color` silently becomes `currentColor`
-     and `background` becomes transparent. That is how a border goes
-     missing without anything erroring. */
-
-  /* A builder side pane. Edges are owned by its neighbours (the field
-     sidebar's border-r and the canvas's border-r) so panes never draw two
-     lines against each other. */
   .cf-rail {
     background: var(--cf-cream-2);
   }
 
-  /* Chrome row at the top of a pane. Fixed height so the rule lines up
-     across the sidebar, canvas and inspector. */
   .cf-pane-bar {
     display: flex;
     height: 40px;
@@ -330,7 +249,6 @@
     border-bottom: 1px solid var(--cf-line-strong);
   }
 
-  /* Destructive action. Outlined until hover, then it commits to red. */
   .cf-btn-danger {
     display: inline-flex;
     align-items: center;
@@ -429,18 +347,6 @@
   background-size: 20px 20px;
 }
 
-/* ============================================================
-   Dark popups
-   ------------------------------------------------------------
-   Dialogs invert to near-black instead of sitting on the same paper as
-   the page. On a light working surface a light modal has to fight the
-   backdrop to read as "on top"; going dark separates it instantly and
-   lets the scrim stay light enough that the page behind is still legible
-   as context.
-
-   Tokens are local to the dark surface so the components inside can be
-   written once against `--cfd-*` and not care which ground they land on.
-   ============================================================ */
 .cf-dark {
   --cfd-bg: #101014;
   --cfd-bg-2: #16161c;
@@ -506,8 +412,6 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  /* Card inside a dark popup. The crop marks are drawn with two gradient
-     pairs rather than four child elements, so a card stays a single node. */
   .cf-dark-card {
     position: relative;
     background: var(--cfd-bg-2);
@@ -584,19 +488,6 @@
   }
 }
 
-/* ============================================================
-   Dialogs
-   ------------------------------------------------------------
-   Light, squared and black-edged, matching the share panel in the landing
-   mock: a chrome bar naming the dialog, mono section labels, bordered
-   rows for settings, and a ruled footer for counts.
-
-   These replaced an earlier dark treatment. A dark dialog separates
-   itself from the page instantly, but it also means the app has two
-   visual languages — every control inside needs a second set of tokens,
-   and a settings row looks nothing like the same row on the page behind
-   it. Staying on the paper keeps one language and one set of controls.
-   ============================================================ */
 
 .cf-dialog {
   position: relative;
@@ -680,8 +571,6 @@
   }
 }
 
-/* Toggle. Rounded on purpose — it is one of the few controls that should
-   stay a pill, because a squared switch reads as a checkbox. */
 .cf-toggle {
   position: relative;
   flex: none;
@@ -719,8 +608,6 @@
   }
 }
 
-/* Scrim behind a dialog. Light enough that the page stays readable as
-   context, which is the point of a modal rather than a new screen. */
 .cf-scrim {
   position: fixed;
   inset: 0;
@@ -733,68 +620,22 @@
   backdrop-filter: blur(2px);
 }
 
-/* Film grain is the shared <Noise /> canvas (components/Noise.tsx), mounted
-   once per page surface. The CSS turbulence sheet that used to live here was
-   removed so the site has exactly one grain implementation rather than two
-   that drift apart. */
-
-/* ============================================================
-   CanvasFlow — "paper studio" landing system
-   ------------------------------------------------------------
-   Design tokens + component classes consumed by app/page.tsx and the
-   landing mockups in components/landing/. Those files reference
-   `hex-*` class names and `--hex-*` / `--c-*` custom properties, so
-   they are all declared here.
-   ============================================================ */
-
 :root {
   /* Ink ramp */
   --hex-ink: #1a1d29;
   --hex-ink-soft: #5b6070;
   --hex-ink-muted: #8f95a3;
 
-  /* Two rules, two jobs.
-
-     `--hex-line-strong` is the structural edge — the outline of a button,
-     a field, a card, a crop mark. It is near-black so those shapes read
-     as drawn boxes rather than as soft panels.
-
-     `--hex-line` is the internal hairline: row dividers, sub-panel
-     splits, the fine grid inside the mockups. It stays light on purpose.
-     Promoting it to black as well would turn every mockup into a dense
-     black lattice and bury the type inside them. */
   --hex-line: rgba(26, 29, 41, 0.16);
   --hex-line-strong: #1a1d29;
 
-  /* Radius for the landing chrome. Square by default — see the
-     `.hex-theme` radius reset further down. */
   --hex-radius: 0px;
 
-  /* Paper surfaces. `--hex-paper` is the pale warm page stock and
-     `--hex-nav` the translucent band that floats on top of it.
-
-     The stock is light on purpose. Each of the page's three backgrounds
-     is an image layer painted *normally* over it, so the sheet needs
-     headroom for them to read — see .hex-hero-paper / .hex-section-paper.
-     `--hex-surface` is the near-white fill for insets inside cards.
-
-     The nav sits a shade *below* the paper rather than above it: a band
-     lighter than the sheet reads as a bright strip across the top, so
-     this is a duller greige that settles into the page instead. Alpha is
-     higher than the old near-white value to keep text contrast while the
-     tone comes down. */
   --hex-paper: #f5f3ee;
   --hex-nav: rgba(231, 229, 221, 0.82);
   --hex-surface: #fdfdfb;
 
-  /* Bone: a warm off-white for outlined buttons. Kept a touch yellower
-     and lighter than the paper stock so a button reads as a panel laid on
-     the sheet, and clearly lighter than the dull nav band it sits in.
-     Pure white would be a cold hole in a page that has no pure white
-     anywhere else in its chrome. */
   --hex-bone: #faf8f1;
-
-  /* Data-viz palette (multi-line chart, scatter, stacked bars) */
   --c-orange: #e0834a;
   --c-yellow: #e3b23c;
   --c-teal: #3aa793;
@@ -810,15 +651,9 @@
     background: #fff;
     border: 1px solid var(--hex-line-strong);
     border-radius: var(--hex-radius);
-    /* A hard offset rather than a blur. Once the card has a black outline
-       a diffuse shadow reads as a smudge behind a drawn edge; an opaque
-       step keeps the whole shape crisp and sits better on the textured
-       paper. */
     box-shadow: 5px 5px 0 0 rgba(26, 29, 41, 0.08);
   }
 
-  /* Border-colour helpers. These are paired with Tailwind width
-     utilities (`border`, `border-b`, `border-r`, ...) in the mockups. */
   .hex-line-soft {
     border-color: var(--hex-line);
   }
@@ -832,11 +667,6 @@
     background: var(--hex-line);
   }
 
-  /* Tab in the landing mockups' ruled tab strip. Mirrors `.cf-tab` (the
-     real dashboard control) but keys off `.active`, because the mockups
-     are non-interactive chrome and set a class rather than the
-     `aria-selected` a real tablist carries. Without this the mockup tabs
-     rendered as undifferentiated plain text with no selected state. */
   .hex-tab {
     position: relative;
     padding: 0 0 10px;
@@ -903,10 +733,6 @@
     background: rgba(26, 29, 41, 0.02);
   }
 
-  /* Fine blueprint grid used behind the builder canvas.
-     The background-size is essential: without it each gradient stretches
-     to fill the element and paints a single line down its left edge and
-     across its top instead of a repeating grid. */
   .hex-grid-fine {
     background-image:
       linear-gradient(to right, var(--hex-ink) 1px, transparent 1px),
@@ -914,7 +740,6 @@
     background-size: 24px 24px;
   }
 
-  /* Slim scrollbars inside the mockups so they read as real UI. */
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(26, 29, 41, 0.16) transparent;
@@ -932,9 +757,6 @@
   }
 }
 
-/* ---- Mockup motion ---------------------------------------------- */
-
-/* Line-chart stroke draw-on. `--len` is supplied inline per path. */
 @keyframes hex-draw {
   from {
     stroke-dashoffset: var(--len, 600);
@@ -948,7 +770,6 @@
   animation: hex-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Scatter dots pop in, staggered by inline animation-delay. */
 @keyframes hex-pop {
   from {
     transform: scale(0);
@@ -979,15 +800,12 @@
   animation: hex-grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
-/* Dashed connector flow in the routing graph (used via
-   `animate-[dash_20s_linear_infinite]`). */
 @keyframes dash {
   to {
     stroke-dashoffset: -200;
   }
 }
 
-/* CRT scanline sweep for the dark comparison matrix. */
 @keyframes scanlines {
   from {
     background-position: 0 0;
@@ -1005,8 +823,6 @@
   .hex-dot,
   .hex-bar-x,
   .animate-scanlines,
-  /* Tailwind's own looping utilities aren't covered by its reset, so the
-     live-feed indicators get listed here explicitly. */
   .animate-ping,
   .animate-pulse {
     animation: none !important;
@@ -1016,7 +832,6 @@
   }
 }
 
-/* Small mono figure caption ("FIG.01"). */
 .hex-fig {
   font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
@@ -1025,15 +840,7 @@
   color: var(--hex-ink-muted);
 }
 
-/* ============================================================
-   Landing page chrome referenced directly by app/page.tsx
-   (hex-theme / hex-paper / hex-hero-paper / hex-section-paper /
-   hex-corner / hex-vignette, the button + link recipes, and the FAQ
-   disclosure rows).
-   ============================================================ */
-
 :root {
-  /* Ruler/scale strips: border colour and the diagonal hatch stroke. */
   --pattern: rgba(26, 29, 41, 0.18);
   --pattern-hatch: #d4d4d4;
 }
@@ -1049,20 +856,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---- Boxy landing chrome -----------------------------------------
-   Squares off the corner-radius utilities inside the landing theme in
-   one place, instead of rewriting ~47 `rounded-*` call sites across
-   page.tsx, Navbar.tsx and the mockups — and, more importantly, so the
-   rule can't drift out of step as those files change.
-
-   `rounded-full` is deliberately absent from this list. Avatars, status
-   dots, radio marks and the toggle pills inside the mockups are meant to
-   be circular; flattening those would read as a bug, not a style.
-
-   The selectors are scoped under `.hex-theme` rather than global so the
-   dashboard, auth and form-filling screens keep their own rounding. Two
-   class selectors also outrank Tailwind's single-class utility, which is
-   what lets this win without `!important`. */
 .hex-theme .rounded,
 .hex-theme .rounded-sm,
 .hex-theme .rounded-md,
@@ -1076,18 +869,6 @@
   border-radius: var(--hex-radius);
 }
 
-/* ---- The page stock ----------------------------------------------
-   A pale warm sheet with a fine tooth. The tooth is two dot grids at
-   3px and 7px, offset from one another so the beat between them reads
-   as paper fibre rather than as a visible dot pattern.
-
-   Nothing here is sized to the document. This element is the page root,
-   so its height is the whole scroll length — any layer measured in `%`
-   vertically would stretch across every section at once and lay a
-   top-to-bottom tonal ramp over the page, tinting the hero one shade and
-   the footer another. The page's three backgrounds are section-scoped
-   layers instead (.hex-hero-paper, .hex-section-paper), which is what
-   keeps them independently tunable. */
 .hex-paper {
   background-color: var(--hex-paper);
   background-image:
@@ -1101,25 +882,6 @@
     1px 2px;
 }
 
-/* ---- The three section backgrounds ------------------------------
-   The landing page runs three distinct sheets, each scoped to the
-   sections that use it rather than painted page-wide:
-
-     1 · Hero      — .hex-hero-paper, a tiled crack network
-     2 · Mid page  — nothing; the bare stock above
-     3 · Analytics — .hex-section-paper, one large plate
-
-   Both image layers paint at normal blend, *not* multiply. That is the
-   whole mechanism: the source art has a white ground, so painting it
-   normally lays down its dark structure and lifts the cream a step
-   toward white at the same time. The hero ends up the lightest of the
-   three and the bare mid-page sections the deepest, which is the tonal
-   rhythm the design is after. Multiplying would drop the white ground
-   out — white is the identity for multiply — and every section would
-   collapse back to the same tone. */
-
-/* 1 · Hero. Tiled small enough that the cells read at page scale, and
-   capped in vw so the tile doesn't dominate a narrow viewport. */
 .hex-hero-paper {
   position: absolute;
   inset: 0;
@@ -1131,9 +893,6 @@
   background-repeat: repeat;
 }
 
-/* 3 · Analytics. A single plate scaled to cover, so the section reads
-   as one continuous sheet rather than a repeat. Held much fainter than
-   the hero tile because it carries far more structure. */
 .hex-section-paper {
   position: absolute;
   inset: 0;
@@ -1157,8 +916,6 @@
   }
 }
 
-/* Crop-mark corner bracket. Callers zero out two sides inline to pick
-   which corner it represents. */
 .hex-corner {
   position: absolute;
   width: 18px;
@@ -1168,11 +925,6 @@
   z-index: 2;
 }
 
-/* Worn-paper vignette. Two radials that shade only the top and bottom
-   edges of a section, so a long band of stock doesn't read as flat.
-   Deliberately darkening rather than tinting with the paper colour: a
-   paper-coloured wash would cover the tooth and leave a visible dead
-   ring at the section edges. */
 .hex-vignette::after {
   content: "";
   position: absolute;
@@ -1217,13 +969,7 @@
     background: var(--hex-bone);
     color: var(--hex-ink);
     font-size: 14px;
-    /* 600, not 500. On a transparent ground the animated grain sits behind
-       the glyphs as well as around them, and a medium weight loses
-       definition against it. */
     font-weight: 600;
-    /* 1.5px reads as a drawn edge and roughly matches the stem weight of
-       the label beside it. A hairline looks incidental at this scale, and
-       a full 2px starts to feel like a frame rather than an outline. */
     border: 1.5px solid var(--hex-line-strong);
     transition:
       background 0.2s ease,
@@ -1253,8 +999,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Tighter on phones. A 24px gap plus 22px of vertical padding costs a
-     lot of width and height when six of these stack on a 375px screen. */
   gap: 14px;
   padding: 16px 2px;
   cursor: pointer;
@@ -1267,7 +1011,7 @@
     padding: 22px 4px;
   }
 }
-/* Hide the native disclosure marker in both engines. */
+
 .hex-faq-row > summary::-webkit-details-marker {
   display: none;
 }

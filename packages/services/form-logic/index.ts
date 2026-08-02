@@ -1,8 +1,8 @@
-import { db, eq, inArray, max } from "@repo/database";
+import { db, eq, and, inArray, max } from "@repo/database";
 import { formLogicRulesTable, formLogicConditionsTable } from "@repo/database/models/form-logic";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formSegmentsTable } from "@repo/database/models/form-segment";
-import { requireEditor } from "../form";
+import { invalidateFormCache, requireEditor } from "../form";
 import {
   createLogicRuleInput,
   type CreateLogicRuleInputType,
@@ -21,20 +21,12 @@ import {
   type LogicMatch,
 } from "./model";
 
-/** A rule row with its conditions attached, ordered for display. */
 type RuleWithConditions = typeof formLogicRulesTable.$inferSelect & {
   conditions: Array<typeof formLogicConditionsTable.$inferSelect>;
 };
 
 class FormLogicService {
-  /**
-   * Attach conditions to rule rows.
-   *
-   * One `IN (...)` query for the whole batch rather than one per rule: a form
-   * with twenty branches would otherwise turn a single list into twenty-one
-   * round-trips, and this runs on the public form read that every respondent
-   * pays for.
-   */
+  // Attach conditions to rules
   private async withConditions(
     rules: Array<typeof formLogicRulesTable.$inferSelect>,
   ): Promise<RuleWithConditions[]> {
@@ -61,17 +53,7 @@ class FormLogicService {
     return rules.map((rule) => ({ ...rule, conditions: byRuleId.get(rule.id) ?? [] }));
   }
 
-  /**
-   * Every question and segment a rule points at — as a condition source or as
-   * a destination — has to live in the same form as the rule.
-   *
-   * The FK columns guarantee the rows exist; only this guarantees they're in
-   * scope. Without it an editor with access to form A could read an answer
-   * from form B, leaking B's structure into A's routing.
-   *
-   * Both id sets are checked in one query each, so adding a fifth condition
-   * doesn't add a fifth round-trip.
-   */
+  // Verify referenced elements belong to the same form
   private async assertReferencesBelongToForm(
     formId: string,
     fieldIds: Array<string | null | undefined>,
@@ -103,8 +85,7 @@ class FormLogicService {
     }
   }
 
-  /** Normalise a condition for storage: SQL NULL (not JSON null) when the
-   *  operator takes no operand, since the CHECK tests `value IS NULL`. */
+  // Normalise condition values
   private conditionValues(ruleId: string, conditions: LogicConditionInputType[]) {
     return conditions.map((condition, i) => ({
       ruleId,
@@ -132,9 +113,6 @@ class FormLogicService {
 
     await requireEditor(formId, payload.userId);
 
-    // Pairing rules live here rather than in the Zod schema — a refined input
-    // schema breaks OpenAPI generation for the whole API. See the note on
-    // assertConditionShape.
     assertRuleShape({
       fieldId,
       action,
@@ -162,10 +140,7 @@ class FormLogicService {
       index = String(current ? parseFloat(current) + 1 : 1);
     }
 
-    // Rule and conditions are one unit. A rule that committed without its
-    // conditions would be a branch that never matches, silently changing the
-    // form's routing — worse than the create failing outright.
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const insertResult = await tx
         .insert(formLogicRulesTable)
         .values({
@@ -193,6 +168,10 @@ class FormLogicService {
 
       return { id: created.id, index: created.index };
     });
+
+    await invalidateFormCache(formId);
+
+    return result;
   }
 
   public async updateLogicRule(payload: UpdateLogicRuleInputType & { userId: string }) {
@@ -225,9 +204,6 @@ class FormLogicService {
       );
     }
 
-    /* Merge the patch onto the stored row before validating. A partial update
-     * only carries what the author touched, so the then/else pairings are only
-     * meaningful once applied on top of what's already there. */
     const nextMatch: LogicMatch = (match ?? existing.match) as LogicMatch;
     const nextAction: LogicAction = (action ?? existing.action) as LogicAction;
     const nextElseAction: LogicAction | null =
@@ -243,9 +219,6 @@ class FormLogicService {
     let nextElseTargetSegmentId =
       elseTargetSegmentId !== undefined ? elseTargetSegmentId : existing.elseTargetSegmentId;
 
-    // Switching a side's action invalidates the target the other kind of
-    // action used. Clearing it here rather than erroring keeps the editor's
-    // flow simple: pick a different action, pick its target, save.
     if (nextAction === "JUMP_TO_FIELD") nextTargetSegmentId = null;
     if (nextAction === "JUMP_TO_SEGMENT") nextTargetFieldId = null;
     if (nextAction === "SUBMIT" || nextAction === "CONTINUE") {
@@ -287,7 +260,7 @@ class FormLogicService {
       [nextTargetSegmentId, nextElseTargetSegmentId],
     );
 
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const updateResult = await tx
         .update(formLogicRulesTable)
         .set({
@@ -307,10 +280,6 @@ class FormLogicService {
       const updated = updateResult[0];
       if (!updated?.id) throw new Error("Update raced with another change — please retry");
 
-      /* Conditions are replaced wholesale rather than diffed. The set is small
-       * and always edited as a group, and delete-then-insert inside the
-       * transaction is both simpler and immune to the ordering bugs a
-       * three-way diff invites. Omitting `conditions` leaves them alone. */
       if (parsedConditions !== undefined) {
         await tx.delete(formLogicConditionsTable).where(eq(formLogicConditionsTable.ruleId, id));
 
@@ -323,6 +292,10 @@ class FormLogicService {
 
       return { id: updated.id, version: updated.version };
     });
+
+    await invalidateFormCache(existing.formId);
+
+    return result;
   }
 
   public async deleteLogicRule(payload: DeleteLogicRuleInputType & { userId: string }) {
@@ -337,7 +310,6 @@ class FormLogicService {
 
     await requireEditor(existing.formId, payload.userId);
 
-    // Conditions go with it via ON DELETE CASCADE on `rule_id`.
     const deleteResult = await db
       .delete(formLogicRulesTable)
       .where(eq(formLogicRulesTable.id, id))
@@ -346,6 +318,8 @@ class FormLogicService {
     if (!deleteResult[0]?.id) {
       throw new Error("Failed to delete branching rule or rule not found");
     }
+
+    await invalidateFormCache(existing.formId);
 
     return { success: true };
   }
@@ -364,9 +338,7 @@ class FormLogicService {
     return this.withConditions(rules);
   }
 
-  /** Unauthenticated read for the public form renderer, which needs the rules
-   *  to know where each answer leads. Access control is the caller's job —
-   *  `getFormById` is already public. */
+  // Get rules for public form
   public async listRulesForPublicForm(formId: string) {
     const rules = await db
       .select()

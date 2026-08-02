@@ -380,11 +380,6 @@ export default function ProfilePage() {
                 >
                   Cancel
                 </button>
-                {/* Red, not the accent blue. `--cf-danger` is the repo's named
-                    destructive token — the same one `cf-btn-danger` uses — so
-                    this can't drift from the other destructive buttons. The
-                    border matches the fill; `cf-btn` would otherwise outline it
-                    in near-black, which reads as a shadow on a dark panel. */}
                 <button
                   type="button"
                   onClick={handleSignOut}

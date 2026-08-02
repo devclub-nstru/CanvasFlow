@@ -28,6 +28,17 @@ function SignUpForm() {
   const { createUserWithEmailAndPassword, isPending } = useSignUp();
   const [isSocialPending, setIsSocialPending] = React.useState(false);
 
+  const switchAccount = searchParams.get("switch") === "1";
+
+  React.useEffect(() => {
+    if (switchAccount) {
+      authClient.signOut().then(() => {
+        document.cookie =
+          "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
+      });
+    }
+  }, [switchAccount]);
+
   /** Set when someone arrived from a sign-in-gated form and had no account. */
   const redirectTo = safeRedirect(searchParams.get("redirect"));
 
@@ -157,8 +168,8 @@ function SignUpForm() {
         <Link
           href={
             redirectTo === "/dashboard"
-              ? "/signIn"
-              : `/signIn?redirect=${encodeURIComponent(redirectTo)}`
+              ? `/signIn${switchAccount ? "?switch=1" : ""}`
+              : `/signIn?redirect=${encodeURIComponent(redirectTo)}${switchAccount ? "&switch=1" : ""}`
           }
           className="text-[13px] font-semibold underline underline-offset-2 transition-opacity hover:opacity-70"
         >
@@ -185,7 +196,6 @@ function SignUpForm() {
 }
 
 export default function SignUpPage() {
-  // Suspense boundary for `useSearchParams` — see the note on SignInPage.
   return (
     <Suspense fallback={null}>
       <SignUpForm />

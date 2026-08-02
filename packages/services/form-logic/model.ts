@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** Mirrors `logicOperatorEnum` in packages/database/models/form-logic.ts. */
 export const logicOperatorZodEnum = z.enum([
   "EQUALS",
   "NOT_EQUALS",
@@ -17,11 +16,9 @@ export const logicOperatorZodEnum = z.enum([
 ]);
 export type LogicOperator = z.infer<typeof logicOperatorZodEnum>;
 
-/** Mirrors `logicMatchEnum`. ALL = every condition, ANY = at least one. */
 export const logicMatchZodEnum = z.enum(["ALL", "ANY"]);
 export type LogicMatch = z.infer<typeof logicMatchZodEnum>;
 
-/** Mirrors `logicActionEnum`. */
 export const logicActionZodEnum = z.enum([
   "JUMP_TO_FIELD",
   "JUMP_TO_SEGMENT",
@@ -30,17 +27,11 @@ export const logicActionZodEnum = z.enum([
 ]);
 export type LogicAction = z.infer<typeof logicActionZodEnum>;
 
-/** Operators that test presence and therefore take no operand. */
 export const VALUELESS_OPERATORS: readonly LogicOperator[] = ["IS_EMPTY", "IS_NOT_EMPTY"];
-
-/** Operators whose operand is a list of choices rather than a single value. */
 export const MULTI_VALUE_OPERATORS: readonly LogicOperator[] = ["IS_ANY_OF", "IS_NONE_OF"];
-
-/** Actions that carry no destination. */
 export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE"];
 
-/* ─── Conditions ──────────────────────────────────────────────────────── */
-
+// Conditions
 export const logicConditionInput = z.object({
   fieldId: z
     .string()
@@ -72,21 +63,7 @@ export const logicConditionOutput = z.object({
 });
 export type LogicConditionOutputType = z.infer<typeof logicConditionOutput>;
 
-/* ─── Validation ──────────────────────────────────────────────────────── */
-
-/**
- * Check one condition's operator/value pairing.
- *
- * A plain function, not a Zod `.superRefine()`. It has to be: the tRPC layer
- * feeds every procedure's input schema to `trpc-to-openapi`, which calls
- * `.omit()` on it to build the request body, and zod 4 rejects `.omit()` on
- * any schema carrying a refinement — so one refined input schema takes down
- * the whole API at startup, not just its own route.
- *
- * The CHECK constraints in Postgres are what actually guarantee no bad row can
- * exist. This exists so the author gets "pick at least one option" rather than
- * `violates check constraint "form_logic_conditions_value_matches_operator"`.
- */
+// Check condition operator and value
 export function assertConditionShape(condition: {
   operator: LogicOperator;
   value?: unknown;
@@ -114,14 +91,7 @@ export function assertConditionShape(condition: {
   }
 }
 
-/**
- * Check a branch's then/else sides.
- *
- * `elseAction` is optional throughout: a rule without one is a guard clause
- * ("if they said no, skip ahead") that stays out of the way when its
- * conditions don't hold, and the next rule gets a turn. A rule with one is a
- * fork that always decides.
- */
+// Check branching targets
 export function assertRuleShape(rule: {
   fieldId?: string;
   action: LogicAction;
@@ -180,11 +150,7 @@ export function assertRuleShape(rule: {
   }
 }
 
-/* ─── Rules ───────────────────────────────────────────────────────────── */
-
-/* Both input schemas are plain objects with no refinements — see the note on
- * `assertConditionShape` for why. The service validates after parsing. */
-
+// Rules
 export const createLogicRuleInput = z
   .object({
     formId: z.string().uuid().describe("ID of the parent form"),
@@ -221,9 +187,6 @@ export const updateLogicRuleInput = z
   .object({
     id: z.string().uuid().describe("ID of the rule to update"),
     match: logicMatchZodEnum.optional(),
-    // Supplying this replaces the rule's whole condition set. Omitting it
-    // leaves the conditions untouched, so a rename-only edit doesn't have to
-    // round-trip them.
     conditions: z
       .array(logicConditionInput)
       .optional()

@@ -4,6 +4,7 @@ import FormSegmentService from "@repo/services/form-segment";
 import FormLogicService from "@repo/services/form-logic";
 import FormDraftService from "@repo/services/form-draft";
 import FormSubmissionService from "@repo/services/form-submission";
+import FormUploadService from "@repo/services/form-upload";
 import AnalyticsService from "@repo/services/analytics";
 import FeedbackService from "@repo/services/feedback";
 
@@ -13,5 +14,6 @@ export const formSegmentService = new FormSegmentService();
 export const formLogicService = new FormLogicService();
 export const formDraftService = new FormDraftService();
 export const formSubmissionService = new FormSubmissionService();
+export const formUploadService = new FormUploadService();
 export const analyticsService = new AnalyticsService();
 export const feedbackService = new FeedbackService();

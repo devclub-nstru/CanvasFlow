@@ -11,15 +11,6 @@ import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 import { useGetMe } from "~/hooks/api/user";
 import { avatarSeed, GlyphAvatar, resolvePreset } from "~/components/profile/GlyphAvatar";
 
-/**
- * Dashboard top navigation.
- *
- * Replaces the previous fixed sidebar. The reference puts the whole app on a
- * single centred column under one horizontal bar, which gives the forms grid
- * the full page width instead of surrendering 256px of it to a rail that only
- * ever held four links.
- */
-
 const LINKS = [
   { href: "/dashboard", label: "Studio", icon: Compass },
   { href: "/dashboard/sketches", label: "Forms", icon: PencilRuler },
@@ -30,15 +21,9 @@ export default function DashboardNav() {
   const pathname = usePathname();
   const { openCreateFormModal } = useDashboard();
   const { userInfo } = useGetLoggedInUserInfo();
-  // The avatar preset lives on the user row, which the better-auth session
-  // doesn't carry. Cached for 5 minutes and shared with the profile page
-  // through the react-query cache, so this is not a second network trip.
   const { me } = useGetMe();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // `getMe` reads the user row and wins where the two disagree: the session's
-  // `name` is blank for social sign-ups, and it never reflects a rename made on
-  // the profile page until the session is refreshed.
   const fullName = me?.name || userInfo?.fullName || "";
   const email = me?.email || userInfo?.email || "";
 
@@ -50,13 +35,7 @@ export default function DashboardNav() {
 
   return (
     <>
-      {/* Slim black rule across the very top — the printed edge of the sheet,
-          and what visually separates the app from the browser chrome. */}
       <div aria-hidden className="h-2 w-full" style={{ background: "var(--cf-ink)" }} />
-
-      {/* The bar itself is near-white rather than the page grey. In the
-          reference it reads as a separate strip laid over the sheet, and
-          matching the page tone would lose that edge. */}
       <nav
         className="sticky top-0 z-40 border-b"
         style={{
@@ -99,13 +78,6 @@ export default function DashboardNav() {
               New form
             </button>
 
-            {/* Way into the profile, carrying the same generated mark the
-                profile page shows. Initials were the obvious thing here, but
-                the session's `name` comes back empty for social sign-ups,
-                which left this rendering a bare "?".
-
-                The avatar draws its own edge, so the wrapper contributes only
-                the active-state ring. */}
             <Link
               href="/dashboard/profile"
               aria-label="Your profile"
@@ -122,8 +94,6 @@ export default function DashboardNav() {
             </Link>
           </div>
 
-          {/* Mobile: the primary action stays reachable, everything else folds
-              into the panel. */}
           <div className="flex items-center gap-2 lg:hidden">
             <button
               onClick={openCreateFormModal}
@@ -171,8 +141,6 @@ export default function DashboardNav() {
                 );
               })}
 
-              {/* Signing out lives on the profile page now, so this row is
-                  purely the way there — full width, no trailing action. */}
               <div className="mt-4 border-t pt-4" style={{ borderTopColor: "var(--cf-line)" }}>
                 <Link
                   href="/dashboard/profile"

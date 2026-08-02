@@ -10,11 +10,6 @@ interface MobileFieldEditorSheetProps extends FieldInspectorProps {
   onClose: () => void;
 }
 
-/**
- * Bottom-sheet editor used in place of the right-hand FieldInspector on
- * mobile. Re-uses the same body (`FieldInspectorBody`) so the per-type
- * editors stay in lockstep with the desktop inspector.
- */
 export function MobileFieldEditorSheet({
   open,
   onClose,

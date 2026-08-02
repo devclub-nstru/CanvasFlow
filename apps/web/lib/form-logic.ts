@@ -1,13 +1,3 @@
-/**
- * Turning branch rules into words, and finding the ones that are broken.
- *
- * Both jobs belong together and belong outside the components: the sentence a
- * rule reads as and the problems it has are properties of the rule, not of the
- * dialog that happens to show them. Keeping them here means the inspector
- * summary, the dialog, and any future publish-time check all say the same
- * thing, and it can all be exercised without rendering anything.
- */
-
 import {
   type Flow,
   type FlowRule,
@@ -20,7 +10,6 @@ import {
 
 /* ─── Vocabulary ──────────────────────────────────────────────────────── */
 
-/** Reads as the middle of a sentence: "Plan **is** Pro". */
 export const OPERATOR_LABELS: Record<LogicOperator, string> = {
   EQUALS: "is",
   NOT_EQUALS: "is not",
@@ -43,9 +32,6 @@ export const ACTION_LABELS: Record<LogicAction, string> = {
   CONTINUE: "Continue in order",
 };
 
-/** Operators worth offering for a given question type. Showing "is more than"
- *  on a checkbox question invites a rule that can never match, so the list is
- *  narrowed rather than explained. */
 export function operatorsForFieldType(type: string | undefined): LogicOperator[] {
   const presence: LogicOperator[] = ["IS_EMPTY", "IS_NOT_EMPTY"];
 
@@ -66,7 +52,6 @@ export function operatorsForFieldType(type: string | undefined): LogicOperator[]
     case "TOGGLE":
       return ["EQUALS", ...presence];
     default:
-      // Free text and everything unrecognised.
       return [
         "EQUALS",
         "NOT_EQUALS",
@@ -81,8 +66,6 @@ export function operatorsForFieldType(type: string | undefined): LogicOperator[]
   }
 }
 
-/** The fixed choices a question offers, if it has any. Mirrors how the builder
- *  and renderer both read `options`. */
 export function choicesForField(field: { options?: unknown } | undefined): string[] {
   if (!field) return [];
   const options = field.options;
@@ -97,7 +80,6 @@ export function choicesForField(field: { options?: unknown } | undefined): strin
 /* ─── Describing ──────────────────────────────────────────────────────── */
 
 export interface FlowLabels {
-  /** Display name for a question, already numbered by the caller. */
   fieldLabel: (fieldId: string) => string;
   segmentLabel: (segmentId: string) => string;
 }
@@ -141,15 +123,6 @@ function describeSide(
   }
 }
 
-/**
- * A rule as one sentence, e.g.
- * "If all of: Plan is “Pro”, Team size is more than “50” → go to Q7,
- *  otherwise finish the form".
- *
- * The summary exists so the inspector can show what a branch does without
- * enough room to show its controls, and so the dialog can label a collapsed
- * rule. It's the same text in both places on purpose.
- */
 export function describeRule(rule: FlowRule, labels: FlowLabels): string {
   const joiner = rule.match === "ANY" ? "any of" : "all of";
 
@@ -175,9 +148,7 @@ export type FlowIssueLevel = "error" | "warning";
 export interface FlowIssue {
   level: FlowIssueLevel;
   message: string;
-  /** The rule this is about, when it is about one. */
   ruleId?: string;
-  /** The question this is about, for issues that aren't rule-specific. */
   fieldId?: string;
 }
 
@@ -199,7 +170,6 @@ function sideIsComplete(
   return true;
 }
 
-/** Whether a rule is finished enough to be saved and to have any effect. */
 export function isRuleComplete(rule: FlowRule): boolean {
   if (rule.conditions.length === 0) return false;
   if (!rule.conditions.every(isConditionComplete)) return false;
@@ -224,16 +194,6 @@ function firstFieldOfSegmentForLint(flow: Flow, segmentId: string): string | nul
   return null;
 }
 
-/**
- * Problems worth showing the author before they publish.
- *
- * Reachability is computed over the union of every edge any answer could
- * follow, which deliberately over-approximates: a question this says is
- * reachable might still be hard to reach, but a question it calls unreachable
- * genuinely cannot be shown to anyone. Erring that way matters because the
- * alternative — enumerating answer combinations — is exponential, and a lint
- * that cries wolf gets ignored.
- */
 export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
   const issues: FlowIssue[] = [];
   const allRules = [...flow.rulesByFieldId.values()].flat();
@@ -284,9 +244,6 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
       });
     }
 
-    // A jump backwards is legal but almost always a mistake: the respondent
-    // has already answered that question, and the visited-set guard will end
-    // the form rather than ask it again.
     const from = flow.positionById.get(rule.fieldId);
     for (const target of [rule.targetFieldId, rule.elseTargetFieldId]) {
       if (!target) continue;
@@ -301,8 +258,6 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
     }
   }
 
-  // Any rule after one that always decides can never be reached, because the
-  // earlier rule returns on both its branches.
   for (const [fieldId, rules] of flow.rulesByFieldId) {
     const decisive = rules.findIndex((r) => !!r.elseAction && isRuleComplete(r));
     if (decisive === -1) continue;
@@ -315,7 +270,6 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
     }
   }
 
-  /* Reachability over the union of possible edges. */
   const edges = new Map<string, Set<string>>();
   const addEdge = (from: string, to: string | null | undefined) => {
     if (!to) return;
@@ -328,8 +282,6 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
     const rules = flow.rulesByFieldId.get(field.id) ?? [];
     const next = flow.order[i + 1]?.id;
 
-    // The linear edge survives unless every rule here decides both ways —
-    // in which case nothing ever simply falls through.
     const alwaysDecided =
       rules.length > 0 && rules.some((r) => !!r.elseAction && isRuleComplete(r));
     const anyContinue = rules.some((r) => r.action === "CONTINUE" || r.elseAction === "CONTINUE");

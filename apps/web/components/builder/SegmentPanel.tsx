@@ -13,10 +13,7 @@ export interface SegmentLike {
 
 interface SegmentPanelProps {
   segments: SegmentLike[];
-  /** How many questions sit in each segment, keyed by segment id. */
   questionCounts: Record<string, number>;
-  /** Questions not yet filed under any segment. Only non-zero on forms that
-   *  have never been segmented. */
   unassignedCount: number;
   selectedSegmentId: string | null;
   onSelectSegment: (id: string | null) => void;
@@ -26,17 +23,6 @@ interface SegmentPanelProps {
   onDeleteSegment: (id: string) => void;
 }
 
-/**
- * Segment list for the builder — the form's pages, in order.
- *
- * Selecting a segment filters the canvas/outline to its questions, which is
- * what makes segments usable at all: a twenty-question form spread over four
- * pages is unreadable as one flat canvas.
- *
- * Reordering uses up/down buttons rather than drag, matching `FieldOutline`.
- * Segment order decides which page follows which, so it needs to be
- * adjustable without the precision a drag target demands.
- */
 export function SegmentPanel({
   segments,
   questionCounts,
@@ -64,8 +50,6 @@ export function SegmentPanel({
       </div>
 
       <div className="max-h-64 space-y-2 overflow-y-auto px-3 py-3">
-        {/* "All questions" resets the filter. Shown only when there's a
-            filter to reset, so an unsegmented form gains no extra chrome. */}
         {segments.length > 0 && (
           <button
             type="button"
@@ -151,19 +135,6 @@ function SegmentRow({
   onDelete: () => void;
 }) {
   return (
-    /* The card is the click target, not a control inside it.
-     *
-     * Selection used to hang off two things only: the 28px number badge, and
-     * focusing the rename input. Clicking the card anywhere else — its body,
-     * the padding around the title, the row with the question count — did
-     * nothing, which reads as a broken segment list rather than as a small hit
-     * area. `onMouseDown` on the wrapper catches all of it, and runs before
-     * focus moves so clicking straight into the rename field selects the
-     * segment first.
-     *
-     * The buttons and the input stop propagation instead of relying on the
-     * wrapper ignoring them: reordering segment 2 while viewing segment 1
-     * shouldn't quietly change what the canvas is showing. */
     <div
       onMouseDown={onSelect}
       className={`cursor-pointer border-2 bg-(--cf-cream-2) transition-shadow ${
@@ -184,9 +155,6 @@ function SegmentRow({
         >
           {position}
         </span>
-
-        {/* Rename in place. A separate dialog for one text field is more
-            clicks than the edit is worth. */}
         <input
           value={segment.title}
           onChange={(e) => onRename(e.target.value)}
@@ -201,8 +169,6 @@ function SegmentRow({
         className="flex items-center justify-between border-t px-2 py-1.5"
         style={{ borderTopColor: "var(--cf-line)" }}
       >
-        {/* Announces the filter state, which the border alone can't convey to
-            a screen reader. */}
         <button
           type="button"
           onClick={onSelect}

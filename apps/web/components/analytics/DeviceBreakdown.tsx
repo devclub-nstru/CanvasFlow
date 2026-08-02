@@ -13,14 +13,6 @@ interface DeviceBreakdownProps {
   deviceData: DeviceData[];
 }
 
-/**
- * Device split of submissions.
- *
- * The total is summed from `deviceData` rather than taken from the response
- * count, because submissions recorded before device tracking existed carry no
- * device and are excluded upstream. Totalling locally keeps the slices and the
- * percentages consistent with each other.
- */
 export function DeviceBreakdown({ deviceData }: DeviceBreakdownProps) {
   const total = deviceData.reduce((sum, d) => sum + d.value, 0);
 

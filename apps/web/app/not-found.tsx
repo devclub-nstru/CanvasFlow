@@ -24,7 +24,6 @@ export default function NotFound() {
       <main className="relative flex flex-1 items-center overflow-hidden">
         <div className="hex-hero-paper" aria-hidden />
 
-        {/* Crop marks, matching the hero on every other public page. */}
         <div
           className="hex-corner top-6 left-4 hidden sm:block md:left-6"
           style={{ borderRight: 0, borderBottom: 0 }}

@@ -1,8 +1,5 @@
 import * as React from "react";
 
-// This app ships `sonner` rather than the Radix toast primitives, so there is
-// no `components/ui/toast` to import from. The shapes this hook relies on are
-// declared locally instead.
 type ToastProps = {
   variant?: "default" | "destructive";
   open?: boolean;
@@ -30,8 +27,6 @@ function genId() {
   return count.toString();
 }
 
-// The reducer only ever needs the action names as types, so this is declared
-// as a type rather than a runtime object.
 type ActionType = {
   ADD_TOAST: "ADD_TOAST";
   UPDATE_TOAST: "UPDATE_TOAST";
@@ -96,8 +91,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId);
       } else {

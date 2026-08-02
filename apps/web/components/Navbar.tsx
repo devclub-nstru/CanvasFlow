@@ -7,11 +7,6 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 
-/* ── Nav content ───────────────────────────────────────────────────────
-   Held as data rather than inline JSX so the desktop dropdowns and the
-   mobile panel render from one source. Inlining it twice is how the two
-   drift apart. */
-
 type NavLinkItem = { title: string; desc: string; href: string };
 
 const PLATFORM_GROUPS: { heading: string; items: NavLinkItem[] }[] = [
@@ -193,10 +188,6 @@ const SimpleDropdown = ({ items }: { items: NavLinkItem[] }) => (
 const PROMO_NOISE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`;
 
 const PlatformMegaMenu = () => (
-  /* Capped against the viewport as well as at a fixed width. At exactly
-     1024px — where this menu first appears — a hard 700px panel anchored
-     under "Platform" runs past the right edge once the page gutter is
-     accounted for. */
   <div className="flex w-[min(43.75rem,calc(100vw-3rem))] flex-col gap-8 p-8">
     <div className="grid grid-cols-2 gap-x-16 gap-y-8">
       {PLATFORM_GROUPS.map((group) => (
@@ -237,11 +228,6 @@ const PlatformMegaMenu = () => (
     </Link>
   </div>
 );
-
-/* ── Mobile panel ──────────────────────────────────────────────────────
-   The desktop dropdowns open on hover, which has no equivalent on touch,
-   so small screens get a disclosure list instead of the same menus
-   crammed into a narrower box. */
 
 const MobileSection = ({
   label,
@@ -291,7 +277,6 @@ const MobileSection = ({
   );
 };
 
-/** Scallop shape for the strip beneath the nav bar, used as a mask. */
 const WAVE_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10'%3E%3Cpath d='M0,0 C5,10 15,10 20,0 Z' fill='%23000'/%3E%3C/svg%3E")`;
 
 const Navbar = () => {
@@ -299,8 +284,6 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
 
-  // Reaching a desktop width while the panel is open would otherwise leave
-  // it mounted underneath the restored desktop nav.
   useEffect(() => {
     if (!menuOpen) return;
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -313,9 +296,6 @@ const Navbar = () => {
 
   return (
     <div className="sticky top-0 z-50 w-full">
-      {/* Blur without a saturation boost. `backdrop-saturate` lifts the
-          chroma of whatever scrolls under the bar, which works against
-          the muted band the design wants. */}
       <nav
         className="relative w-full h-16 backdrop-blur-md"
         style={{
@@ -324,9 +304,6 @@ const Navbar = () => {
         }}
       >
         <div className="max-w-300 mx-auto px-4 sm:px-6 h-full flex items-center justify-between relative z-10">
-          {/* Left Navigation — desktop only. The hover dropdowns it hosts
-              have no touch equivalent, so below lg the whole group is
-              replaced by the disclosure panel. */}
           <div className="hidden lg:flex items-center gap-8 h-full flex-1">
             <NavItem label="Platform" dropdownAlign="left">
               <PlatformMegaMenu />
@@ -345,8 +322,6 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Logo. Centred on desktop between the two nav groups; flush
-              left on mobile, where the hamburger takes the right. */}
           <div className="flex items-center justify-start lg:justify-center">
             <Link
               href="/"
@@ -377,9 +352,6 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Hamburger — mobile only. The CTA lives inside the panel rather
-              than beside this button: at 320px a 117px outlined button, the
-              logo and the toggle do not fit on one line. */}
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -441,11 +413,6 @@ const Navbar = () => {
           )}
         </AnimatePresence>
 
-        {/* Wave bottom decoration */}
-        {/* Scalloped edge under the bar. The wave is applied as a mask and
-            filled with the nav token rather than baked into the SVG, so it
-            tracks `--hex-nav` instead of drifting out of step with it the
-            way a hardcoded fill does. */}
         <div
           className="absolute top-[calc(100%-1px)] left-0 right-0 h-2.5 w-full pointer-events-none"
           style={{

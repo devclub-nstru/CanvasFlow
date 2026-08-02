@@ -12,6 +12,7 @@ import {
 } from "~/hooks/api/form";
 import { useSearchUsers } from "~/hooks/api/user";
 import { useDebounce } from "~/hooks/useDebounce";
+import { CustomSelect } from "~/components/ui/CustomSelect";
 
 interface ShareCollaboratorsDialogProps {
   show: boolean;
@@ -193,7 +194,6 @@ export function ShareCollaboratorsDialog({
             </div>
           </div>
 
-          {/* QR + access, mirroring the reference's two-column split */}
           <div className="grid gap-5 sm:grid-cols-[148px_1fr]">
             <div>
               <p className="cf-meta mb-2">QR code</p>
@@ -215,13 +215,88 @@ export function ShareCollaboratorsDialog({
               </button>
             </div>
 
-            <div className="min-w-0">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
+            <div className="min-w-0 flex flex-col gap-3">
+              <div className="flex items-baseline justify-between gap-3">
                 <p className="cf-meta">Access</p>
                 <span className="cf-meta">{accessCount}</span>
               </div>
 
-              <div className="custom-scrollbar max-h-59 space-y-2 overflow-y-auto">
+              {/* Invite collaborator input inside the access block */}
+              {isOwner && !confirmTransferUserId && (
+                <form onSubmit={handleAdd} className="mb-1">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="relative min-w-0 flex-1" ref={suggestionsRef}>
+                      <label htmlFor="invite-email" className="sr-only">
+                        Collaborator email
+                      </label>
+                      <input
+                        id="invite-email"
+                        type="email"
+                        required
+                        placeholder="Add people by email..."
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="cf-input h-9 px-3 text-[13px]"
+                      />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div
+                          className="custom-scrollbar absolute top-full right-0 left-0 z-350 mt-1 max-h-48 overflow-y-auto border"
+                          style={{
+                            borderColor: "var(--cf-line-strong)",
+                            background: "var(--cf-cream)",
+                            boxShadow: "4px 4px 0 0 rgba(26, 29, 41, 0.14)",
+                          }}
+                        >
+                          {suggestions.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setEmail(u.email);
+                                setShowSuggestions(false);
+                              }}
+                              className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-(--cf-cream-2)"
+                            >
+                              <span className="font-medium">{u.name}</span>
+                              <span className="text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
+                                {u.email}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <label htmlFor="invite-role" className="sr-only">
+                      Invite role
+                    </label>
+                    <CustomSelect
+                      value={inviteRole}
+                      onChange={(val) => setInviteRole(val as "viewer" | "editor")}
+                      options={[
+                        { value: "viewer", label: "Viewer" },
+                        { value: "editor", label: "Editor" },
+                      ]}
+                      className="w-28 shrink-0"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={addPending}
+                      className="cf-btn shrink-0 h-9 px-4 text-[12.5px] disabled:opacity-50"
+                    >
+                      <Plus className="size-4" />
+                      Add
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="space-y-2">
                 {/* Owner */}
                 <div className="cf-row">
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -285,17 +360,15 @@ export function ShareCollaboratorsDialog({
                             <label htmlFor={`role-${c.id}`} className="sr-only">
                               Role for {c.email}
                             </label>
-                            <select
-                              id={`role-${c.id}`}
+                            <CustomSelect
                               value={c.role}
-                              onChange={(e) =>
-                                handleUpdateRole(c.id, e.target.value as "viewer" | "editor")
-                              }
-                              className="cf-input cursor-pointer px-2 py-1 text-[11.5px]"
-                            >
-                              <option value="viewer">Viewer</option>
-                              <option value="editor">Editor</option>
-                            </select>
+                              onChange={(val) => handleUpdateRole(c.id, val as "viewer" | "editor")}
+                              options={[
+                                { value: "viewer", label: "Viewer" },
+                                { value: "editor", label: "Editor" },
+                              ]}
+                              className="w-28"
+                            />
                             <button
                               onClick={() => {
                                 setConfirmTransferUserId(c.id);
@@ -327,112 +400,38 @@ export function ShareCollaboratorsDialog({
             </div>
           </div>
 
-          {/* Invite, or the transfer confirmation that replaces it */}
-          {isOwner &&
-            (confirmTransferUserId ? (
-              <div
-                className="border p-4"
-                style={{ borderColor: "var(--c-red)", background: "var(--cf-cream-2)" }}
-              >
-                <p className="cf-meta" style={{ color: "var(--c-red)" }}>
-                  Transfer ownership
-                </p>
-                <p className="mt-2 text-[12.5px] leading-relaxed">
-                  Make <span className="font-semibold">{confirmTransferUserEmail}</span> the new
-                  owner? You become an editor and cannot undo this yourself.
-                </p>
-                <div className="mt-4 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmTransferUserId(null)}
-                    className="cf-btn-outline px-3 py-1.5 text-[12px]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTransferOwnership}
-                    className="cf-btn px-4 py-1.5 text-[12px]"
-                    style={{ background: "var(--c-red)" }}
-                  >
-                    Transfer
-                  </button>
-                </div>
+          {/* Transfer confirmation that replaces invite block if active */}
+          {isOwner && confirmTransferUserId && (
+            <div
+              className="border p-4"
+              style={{ borderColor: "var(--c-red)", background: "var(--cf-cream-2)" }}
+            >
+              <p className="cf-meta" style={{ color: "var(--c-red)" }}>
+                Transfer ownership
+              </p>
+              <p className="mt-2 text-[12.5px] leading-relaxed">
+                Make <span className="font-semibold">{confirmTransferUserEmail}</span> the new
+                owner? You become an editor and cannot undo this yourself.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmTransferUserId(null)}
+                  className="cf-btn-outline px-3 py-1.5 text-[12px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTransferOwnership}
+                  className="cf-btn px-4 py-1.5 text-[12px]"
+                  style={{ background: "var(--c-red)" }}
+                >
+                  Transfer
+                </button>
               </div>
-            ) : (
-              <form onSubmit={handleAdd}>
-                <p className="cf-meta mb-2">Invite collaborator</p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <div className="relative min-w-0 flex-1" ref={suggestionsRef}>
-                    <label htmlFor="invite-email" className="sr-only">
-                      Collaborator email
-                    </label>
-                    <input
-                      id="invite-email"
-                      type="email"
-                      required
-                      placeholder="email@example.com"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setShowSuggestions(true);
-                      }}
-                      onFocus={() => setShowSuggestions(true)}
-                      className="cf-input px-3 py-2 text-[13px]"
-                    />
-                    {showSuggestions && suggestions.length > 0 && (
-                      <div
-                        className="custom-scrollbar absolute top-full right-0 left-0 z-350 mt-1 max-h-48 overflow-y-auto border"
-                        style={{
-                          borderColor: "var(--cf-line-strong)",
-                          background: "var(--cf-cream)",
-                          boxShadow: "4px 4px 0 0 rgba(26,29,41,0.14)",
-                        }}
-                      >
-                        {suggestions.map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => {
-                              setEmail(u.email);
-                              setShowSuggestions(false);
-                            }}
-                            className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-(--cf-cream-2)"
-                          >
-                            <span className="font-medium">{u.name}</span>
-                            <span className="text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
-                              {u.email}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <label htmlFor="invite-role" className="sr-only">
-                    Invite role
-                  </label>
-                  <select
-                    id="invite-role"
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "viewer" | "editor")}
-                    className="cf-input shrink-0 cursor-pointer px-2.5 py-2 text-[12px] sm:w-auto"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                  </select>
-
-                  <button
-                    type="submit"
-                    disabled={addPending}
-                    className="cf-btn shrink-0 px-4 py-2 text-[12.5px] disabled:opacity-50"
-                  >
-                    <Plus className="size-4" />
-                    Add
-                  </button>
-                </div>
-              </form>
-            ))}
+            </div>
+          )}
         </div>
 
         <div className="cf-dialog-foot">

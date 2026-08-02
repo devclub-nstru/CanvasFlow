@@ -10,24 +10,7 @@ const TAGS = ["Feedback"];
 const getPath = generatePath("/feedback");
 
 export const feedbackRouter = router({
-  /**
-   * POST /feedback/submit
-   *
-   * Files a report from the in-app widget. Public on purpose: the widget is
-   * reachable from the marketing pages, and requiring an account to report a
-   * bug on the signup flow would be circular.
-   *
-   * Identity is resolved here from the session cookie rather than taken from
-   * the input. `publicProcedure` doesn't populate `ctx.user`, so the session is
-   * read directly — the same call `authenticatedProcedure` makes, minus the
-   * throw when it's absent. A signed-in reporter gets attributed; everyone else
-   * files anonymously. This is the whole reason the input schema has no
-   * `userId`/`email`: otherwise anyone could file a report as anyone.
-   *
-   * Abuse is handled in two places, since neither is sufficient alone:
-   *   · `publicWriteLimiter` in apps/api/src/server.ts — per IP
-   *   · MAX_PER_IDENTITY_PER_HOUR in the service — per account
-   */
+  // POST /feedback/submit
   submitFeedback: publicProcedure
     .meta({
       openapi: {
@@ -49,10 +32,7 @@ export const feedbackRouter = router({
         if (session?.user) {
           identity = { userId: session.user.id, email: session.user.email };
         }
-      } catch {
-        // A failed session lookup must not sink the report — fall through and
-        // file it anonymously.
-      }
+      } catch {}
 
       try {
         return await feedbackService.submitFeedback({

@@ -14,8 +14,6 @@ export const useCreateForm = () => {
     isSuccess,
     status,
   } = trpc.form.createForm.useMutation({
-    // Optimistic update: add a placeholder form immediately so the UI
-    // feels instant. The server response replaces it on success.
     onMutate: async (input) => {
       await utils.form.listFormsByUserId.cancel();
       const previous = utils.form.listFormsByUserId.getData();
@@ -83,11 +81,6 @@ export const useListFormsByUserId = () => {
     isLoading,
     refetch,
   } = trpc.form.listFormsByUserId.useQuery(undefined, {
-    // My Forms list is read on the sketches page and the analytics
-    // sidebar; both pages get hit on back-nav. Same caching policy
-    // as the dashboard — 60s freshness, no refetch-on-focus.
-    // Mutations (create/update/delete form) already invalidate this
-    // key, so stale data can't survive a real change.
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -119,19 +112,13 @@ export const useCreateFormField = () => {
     status,
   } = trpc.form.createFormField.useMutation({
     onMutate: async (input) => {
-      // Cancel any in-flight refetches for this form's fields
       await utils.form.listFormFields.cancel({ formId: input.formId });
       const previous = utils.form.listFormFields.getData({ formId: input.formId });
 
-      // Optimistically add the new field so the canvas updates instantly
       utils.form.listFormFields.setData({ formId: input.formId }, (old) => {
         const optimistic = {
           id: `optimistic-${Date.now()}`,
           formId: input.formId,
-          // Carried through from the request rather than defaulted. Dropping it
-          // put the optimistic row outside every segment, so a form filtered to
-          // one segment showed nothing appear until the server reply landed and
-          // the cache was replaced.
           segmentId: input.segmentId ?? null,
           label: input.label ?? "",
           labelKey: input.label?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? "field",
@@ -141,8 +128,6 @@ export const useCreateFormField = () => {
           type: input.type,
           options: input.options ?? null,
           description: input.description ?? null,
-          // Optimistic baseline — the real version is set when
-          // the server reply lands and the cache is refreshed.
           version: 0,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -158,7 +143,6 @@ export const useCreateFormField = () => {
       }
     },
     onSettled: (_data, _err, input) => {
-      // Only refetch fields for this specific form — not the entire router
       void utils.form.listFormFields.invalidate({ formId: input.formId });
     },
   });

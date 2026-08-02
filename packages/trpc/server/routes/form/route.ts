@@ -285,21 +285,12 @@ export const formRouter = router({
     .input(submitFormInputModel)
     .output(submitFormOutputModel)
     .mutation(async ({ input, ctx }) => {
-      /* Still a public procedure — most forms accept anonymous answers — but it
-       * reads the session when there is one, so a form that requires signing in
-       * can be enforced without a second endpoint.
-       *
-       * The respondent's identity is taken from the session here and passed
-       * separately from `input`. That is the point: an email in the request body
-       * is an email the sender chose, which would make the domain restriction
-       * decorative. */
+      // Read the session if present
       const session = await auth.api.getSession({
         headers: new Headers(ctx.req.headers as Record<string, string>),
       });
 
-      const respondent = session?.user
-        ? { id: session.user.id, email: session.user.email }
-        : null;
+      const respondent = session?.user ? { id: session.user.id, email: session.user.email } : null;
 
       return formSubmissionService.submitForm({ ...input, respondent });
     }),
@@ -394,7 +385,7 @@ export const formRouter = router({
       return formService.updateFormSettings({ ...input, requesterId: ctx.user.id });
     }),
 
-  /* ─── Segments ──────────────────────────────────────────────────────── */
+  // Segments
 
   createFormSegment: authenticatedProcedure
     .meta({
@@ -456,7 +447,7 @@ export const formRouter = router({
       return formSegmentService.listFormSegments({ ...input, userId: ctx.user.id });
     }),
 
-  /* ─── Conditional branching ─────────────────────────────────────────── */
+  // Conditional branching
 
   createLogicRule: authenticatedProcedure
     .meta({
@@ -518,12 +509,7 @@ export const formRouter = router({
       return formLogicService.listLogicRules({ ...input, userId: ctx.user.id });
     }),
 
-  /* ─── Drafts ─────────────────────────────────────────────────────────
-   *
-   * Authenticated, and scoped to `ctx.user.id` rather than to anything in the
-   * input — a draft is personal, and the caller can only ever reach their own.
-   * An anonymous respondent has no stable identity between sessions, so there
-   * is deliberately no public equivalent. */
+  // Drafts
 
   saveDraft: authenticatedProcedure
     .meta({

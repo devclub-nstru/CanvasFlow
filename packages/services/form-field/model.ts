@@ -62,9 +62,6 @@ export const updateFormFieldInput = z.object({
     .transform((val) => String(val))
     .optional()
     .describe("Fractional index for sorting"),
-  // Optimistic-lock version. When supplied, the service must match it
-  // against the row's current version (see form-field service for the
-  // conditional update).
   expectedVersion: z
     .number()
     .int()
@@ -114,15 +111,6 @@ export const getFormFieldInput = z.object({
 export const getFormFieldOutput = z.object({
   id: z.string().uuid().describe("ID of the form field"),
   formId: z.string().uuid().describe("ID of the parent form"),
-  /* Nullable but not optional, unlike the inputs above.
-   *
-   * On the way in, an absent `segmentId` means "don't change it". On the way out
-   * there is no such thing: the row always has a value, even if that value is
-   * null. Making the property required is what stops a client building a
-   * field-shaped object and forgetting the segment — which is exactly how a
-   * question added from the outline came to land outside every segment, where
-   * the segment filter hid it and the editor saw an Add button that appeared to
-   * do nothing. The type system can catch that; a reviewer reliably can't. */
   segmentId: z
     .string()
     .uuid()

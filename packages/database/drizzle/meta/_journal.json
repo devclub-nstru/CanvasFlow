@@ -141,6 +141,13 @@
       "when": 1785535481933,
       "tag": "0019_dashing_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785538940570,
+      "tag": "0020_dashing_santa_claus",
+      "breakpoints": true
     }
   ]
 }

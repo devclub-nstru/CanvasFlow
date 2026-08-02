@@ -1,4 +1,5 @@
 import { db, eq, and, desc, gte, lt, count } from "@repo/database";
+import { enqueueFieldAnswer, isQueueAvailable } from "@repo/queue";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
@@ -19,10 +20,6 @@ import {
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 class AnalyticsService {
-  /**
-   * Returns all summary analytics for a single form in one call.
-   * Ownership is verified before querying.
-   */
   public async getFormAnalytics(payload: GetFormAnalyticsInputType & { ownerId: string }) {
     const { formId } = await getFormAnalyticsInput.parseAsync(payload);
     const { ownerId: userId } = payload;
@@ -61,12 +58,6 @@ class AnalyticsService {
     ]);
 
     const totalResponses = Number(totalResponseRow[0]?.value ?? 0);
-
-    // ─── Device breakdown ─────────────────────────────────────────────────
-    // Sourced from form_submissions.device_type, so this counts the devices
-    // people submitted from — not everyone who opened the form. Rows with a
-    // null device_type (submitted before the column existed) are skipped
-    // rather than bucketed into desktop, which would fabricate a reading.
     const deviceMap: Record<string, number> = { desktop: 0, mobile: 0, tablet: 0 };
     deviceRows.forEach((r) => {
       if (!r.deviceType) return;
@@ -124,11 +115,6 @@ class AnalyticsService {
       avgSubmissionsPerWeek,
     };
   }
-
-  /**
-   * Detailed analytics: per-question distributions, day-of-week breakdown,
-   * 30/60/90d totals, and response velocity (first 24h after publish).
-   */
   public async getDetailedAnalytics(payload: GetDetailedAnalyticsInputType & { ownerId: string }) {
     const { formId } = await getDetailedAnalyticsInput.parseAsync(payload);
     const { ownerId: userId } = payload;
@@ -263,16 +249,11 @@ class AnalyticsService {
       }).length;
     }
 
-    // ─── Per-question distribution ─────────────────────────────────────────
-    // Primary source: rawFieldViewRows (every Next click with the answer value)
-    // This includes partial fills — people who answered but didn't submit.
-    // Falls back to allSubmissions for any field that has no field view records yet.
     const TEXT_TYPES = ["TEXT", "TEXTAREA", "EMAIL", "NUMBER", "PHONE", "URL", "DATE", "TIME"];
     const CHOICE_TYPES_SET = ["SELECT", "RADIO", "CHECKBOX"];
 
     const totalSubmissions = allSubmissions.length;
 
-    // Group rawFieldViewRows by fieldId
     const fieldViewsByField = new Map<string, Array<{ value: unknown; createdAt: Date }>>();
     rawFieldViewRows.forEach((r) => {
       if (!fieldViewsByField.has(r.fieldId)) fieldViewsByField.set(r.fieldId, []);
@@ -399,7 +380,6 @@ class AnalyticsService {
     }
 
     // ─── Returning rate ────────────────────────────────────────────────────
-    // Find the first EMAIL field (fallback: first TEXT field)
     const emailField =
       fields.find((f) => f.type === "EMAIL") ?? fields.find((f) => TEXT_TYPES.includes(f.type));
     let returningRate = 0;
@@ -435,16 +415,6 @@ class AnalyticsService {
       { count: 0, idx: 0 },
     );
     const peakDay = peakEntry.count > 0 ? (fullDayNames[peakEntry.idx] ?? null) : null;
-
-    // ─── Field completion rates ────────────────────────────────────────────
-    // Source: form_field_views — one row per field per visitor who answered it
-    // and clicked Next. Denominator: the most-answered field, which stands in
-    // for "people who started the form" now that page views aren't tracked.
-    // The first question is almost always the most answered, so this gives
-    // relative drop-off: e.g. 4 answered field A, 2 answered field B →
-    // A=100%, B=50%. Falls back to total submissions when no field
-    // interactions have been recorded.
-    // Build a map of fieldId → answer count from form_field_views
     const fieldViewMap = new Map<string, number>(
       fieldViewRows.map((r) => [r.fieldId, Number(r.value)]),
     );
@@ -458,14 +428,12 @@ class AnalyticsService {
       return { fieldId: field.id, fieldLabel: field.label, rate };
     });
 
-    // ─── Avg time spent (from timeSpentMs column) ─────────────────────────
     const timings = allSubmissions
       .map((s) => s.timeSpentMs)
       .filter((t): t is number => t !== null && t !== undefined && t > 0);
     const avgTimeSpentMs =
       timings.length > 0 ? Math.round(timings.reduce((s, t) => s + t, 0) / timings.length) : null;
 
-    // ─── Top referrers ─────────────────────────────────────────────────────
     const topReferrers = referrerRows
       .filter((r) => r.referrer !== null && r.referrer !== undefined && r.referrer !== "")
       .map((r) => {
@@ -521,15 +489,6 @@ class AnalyticsService {
     };
   }
 
-  /**
-   * Returns submissions for the UI table with cursor-based pagination.
-   *
-   * The cursor is the `createdAt` ISO timestamp of the last row from the
-   * previous page. The server returns up to `limit` rows older than that
-   * timestamp, plus a `nextCursor` if more rows exist. Cursor pagination
-   * is stable under inserts (offset pagination would shift as new rows
-   * arrive — the next page could repeat or skip rows).
-   */
   public async getSubmissionsList(payload: GetSubmissionsListInputType & { ownerId: string }) {
     const { formId, cursor, limit } = await getSubmissionsListInput.parseAsync(payload);
     const { ownerId: userId } = payload;
@@ -542,8 +501,6 @@ class AnalyticsService {
       ? and(eq(formSubmissionsTable.formId, formId), lt(formSubmissionsTable.createdAt, cursorDate))
       : eq(formSubmissionsTable.formId, formId);
 
-    // Fetch pageSize+1 to peek at whether another page exists without a
-    // separate COUNT round-trip.
     const rows = await db
       .select()
       .from(formSubmissionsTable)
@@ -560,20 +517,50 @@ class AnalyticsService {
     return { submissions, nextCursor };
   }
 
-  /**
-   * Records that a visitor answered a specific field and clicked Next.
-   * Stores the actual answer value for use in question distribution analytics.
-   * Called by the public form page on each Next click — no auth required.
-   * Powers accurate per-field completion rates in Pro analytics.
-   */
   public async recordFieldAnswer(payload: RecordFieldAnswerInputType) {
     const { formId, fieldId, value } = await recordFieldAnswerInput.parseAsync(payload);
-    await db.insert(formFieldViewsTable).values({
-      formId,
-      fieldId,
-      value: value ?? null,
-    });
+
+    if (isQueueAvailable()) {
+      enqueueFieldAnswer({ formId, fieldId, value: value ?? null });
+      return { success: true };
+    }
+
+    await db.insert(formFieldViewsTable).values({ formId, fieldId, value: value ?? null });
     return { success: true };
+  }
+
+  public async recordFieldAnswersBatch(
+    answers: Array<{ formId: string; fieldId: string; value: unknown }>,
+    chunkSize = 500,
+  ): Promise<number> {
+    if (answers.length === 0) return 0;
+
+    let written = 0;
+
+    for (let offset = 0; offset < answers.length; offset += chunkSize) {
+      const chunk = answers.slice(offset, offset + chunkSize).map((answer) => ({
+        formId: answer.formId,
+        fieldId: answer.fieldId,
+        value: answer.value ?? null,
+      }));
+
+      try {
+        await db.insert(formFieldViewsTable).values(chunk);
+        written += chunk.length;
+      } catch (err: unknown) {
+        const code =
+          (err as { code?: string })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
+
+        if (code !== "23503") throw err;
+
+        const settled = await Promise.allSettled(
+          chunk.map((row) => db.insert(formFieldViewsTable).values(row)),
+        );
+        written += settled.filter((result) => result.status === "fulfilled").length;
+      }
+    }
+
+    return written;
   }
 }
 

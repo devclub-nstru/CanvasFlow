@@ -150,9 +150,6 @@ export function BuilderHeader({
 
       {/* right: actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* View switcher. Desktop only: the canvas needs pointer
-            drag-and-drop plus room for three panes, so below lg the list is
-            the only surface and offering a choice would be a dead end. */}
         <div
           role="group"
           aria-label="Builder view"
@@ -206,11 +203,6 @@ export function BuilderHeader({
           </span>
         </button>
 
-        {/* Preview / Share / Delete — visible on sm+ */}
-        {/* `?preview=1` makes the public form fillable and submittable without
-            writing anything: no response, no draft, no answer tracking. Without
-            it, an author testing their own form would record a response to it
-            and burn their one-per-visitor slot. */}
         <Link
           href={`/forms/${formId}?preview=1`}
           target="_blank"

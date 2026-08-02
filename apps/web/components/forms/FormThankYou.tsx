@@ -14,30 +14,12 @@ interface SummaryField {
 interface FormThankYouProps {
   siteRating: number | null;
   setSiteRating: (rating: number) => void;
-  /** Fields in display order, for the response summary. */
   fields?: SummaryField[];
   answers?: Record<string, any>;
-  /** The author's own note, shown in addition to the app's confirmation rather
-   *  than replacing it — the respondent still needs to know it landed. */
   customMessage?: string | null;
-  /** Offered when the form accepts more than one response. */
   onRespondAgain?: () => void;
 }
 
-/**
- * Post-submit screen.
- *
- * The response summary is lifted from the reference's "YOUR RESPONSE SUMMARY"
- * block — the one genuinely new thing in that file that needs no schema
- * changes, since the answers are already in the page's state. It gives a
- * respondent a record of what they just sent, which is the most common thing
- * people want from a confirmation screen and previously wasn't available
- * anywhere.
- *
- * The reference's social-share row and quiz breakdown are absent: sharing
- * needs a `socialLinks` column and quizzes need per-question points and
- * correct answers, none of which exist on this schema.
- */
 export function FormThankYou({
   siteRating,
   setSiteRating,
@@ -46,19 +28,23 @@ export function FormThankYou({
   customMessage,
   onRespondAgain,
 }: FormThankYouProps) {
-  /** Render an answer of any supported field type as a readable string. */
   const display = (field: SummaryField): string => {
     const value = answers[field.id];
 
     if (value === undefined || value === null || value === "") return "—";
+
+    if (field.type === "FILE_UPLOAD") {
+      const refs = (Array.isArray(value) ? value : [value]) as Array<{ name?: string }>;
+      const names = refs.map((ref) => ref?.name).filter(Boolean);
+      return names.length ? names.join(", ") : "—";
+    }
+
     if (Array.isArray(value)) return value.length ? value.join(", ") : "—";
     if (typeof value === "boolean") return value ? "Yes" : "No";
     if (field.type === "RATING") return `${value} / 5`;
     return String(value);
   };
 
-  // Only fields the respondent actually answered. Listing skipped optional
-  // questions as "—" pads the summary with rows that carry no information.
   const answered = fields.filter((f) => {
     const v = answers[f.id];
     if (typeof v === "boolean") return true;
@@ -112,12 +98,6 @@ export function FormThankYou({
           Your response has been recorded. You can close this tab whenever you&apos;re ready.
         </p>
 
-        {/* The author's note, below the app's confirmation rather than instead
-            of it. Whatever they wrote — "we'll email you Monday", a link to the
-            next step — is additional context; the respondent still needs the
-            plain fact that the submission landed, and that isn't the author's
-            job to remember to say. `whitespace-pre-line` so the paragraph breaks
-            they typed survive. */}
         {customMessage && customMessage.trim() !== "" && (
           <div
             className="mx-auto mt-6 max-w-md border-l-2 px-4 py-3 text-left"
@@ -142,7 +122,6 @@ export function FormThankYou({
         )}
       </div>
 
-      {/* ── what you sent ── */}
       {answered.length > 0 && (
         <details
           className="border"

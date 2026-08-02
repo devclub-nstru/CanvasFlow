@@ -9,8 +9,6 @@ import { canRenderOnOnePage } from "~/lib/form-flow";
 
 type QuestionLayout = "AUTO" | "ONE_PER_PAGE" | "SEGMENT_PER_PAGE" | "ALL_AT_ONCE";
 
-/** Matches the service's cap, so the author is stopped here rather than by a
- *  validation error after pressing Save. */
 const MAX_DOMAINS = 20;
 const MAX_THANK_YOU = 2000;
 
@@ -29,18 +27,11 @@ interface FormSettingsDialogProps {
     allowedEmailDomains?: string[] | null;
     thankYouMessage?: string | null;
   } | null;
-  /** Drives the sentence explaining what AUTO resolves to for this form. */
   segmentCount?: number;
-  /** Active branching rules. A form that branches can't be shown on one page. */
   ruleCount?: number;
   onClose: () => void;
 }
 
-/**
- * The four layouts, worded from the respondent's side rather than the
- * schema's — an author is choosing what filling the form feels like, not
- * naming an enum.
- */
 const LAYOUT_CHOICES: Array<{ value: QuestionLayout; title: string; hint: string }> = [
   {
     value: "AUTO",
@@ -73,10 +64,6 @@ const toDatetimeLocal = (d?: string | Date | null) => {
   return localDate.toISOString().slice(0, 16);
 };
 
-/* The three booleans here all gate behaviour, so they all read as switches.
-   Two of them used to be bare `accent-color` checkboxes sitting beside a
-   custom switch, which made the same kind of decision look like two
-   different kinds of control. */
 function Toggle({
   on,
   onChange,
@@ -86,9 +73,6 @@ function Toggle({
   on: boolean;
   onChange: (v: boolean) => void;
   label: string;
-  /** Used for a switch another setting is holding on. Left visibly on and
-   *  inert, rather than hidden: the author needs to see that the requirement
-   *  applies, and why turning it off here wouldn't work. */
   disabled?: boolean;
 }) {
   return (
@@ -168,9 +152,6 @@ export function FormSettingsDialog({
       setRequireSignIn(!!form.requireSignIn);
       setCollectRespondentEmail(!!form.collectRespondentEmail);
       setOneResponsePerRespondent(!!form.oneResponsePerRespondent);
-      // The toggle is derived from whether any domains are stored rather than
-      // kept as its own column — an empty allow-list and no restriction are the
-      // same thing, and storing both invites them to disagree.
       setDomains(form.allowedEmailDomains ?? []);
       setRestrictDomains((form.allowedEmailDomains?.length ?? 0) > 0);
       setDomainInput("");
@@ -180,9 +161,6 @@ export function FormSettingsDialog({
 
   if (!show || !form) return null;
 
-  /* Whether "everything on one page" is still on the table, decided by the same
-     function the renderer uses so the dialog can't offer a layout the renderer
-     would override. */
   const onePageAllowed = canRenderOnOnePage(segmentCount, ruleCount);
   const onePageBlockedReason =
     ruleCount > 0 && segmentCount > 1
@@ -191,13 +169,6 @@ export function FormSettingsDialog({
         ? "This form uses branching, which needs a next page to send people to."
         : "This form is split into segments, which are its pages.";
 
-  /* The dependency, stated once.
-   *
-   * Recording an email, holding someone to one response, and restricting by
-   * domain all need an account to read, so each of them turns sign-in on
-   * whether or not the author ticked it. Showing that here — rather than only
-   * applying it server-side — is the difference between a switch that looks
-   * off while behaving as on, and one the author can see is being held. */
   const activeDomains = restrictDomains ? domains : [];
   const signInImplied =
     collectRespondentEmail || oneResponsePerRespondent || activeDomains.length > 0;
@@ -216,9 +187,6 @@ export function FormSettingsDialog({
       setDomainInput("");
       return;
     }
-    // A domain needs a dot and a plausible TLD. Without the check a typo like
-    // "gmail" would save happily and then match nothing, which reads as the
-    // restriction rejecting everyone for no reason.
     if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(candidate)) {
       toast.error(`"${domainInput.trim()}" doesn't look like a domain`);
       return;
@@ -241,8 +209,7 @@ export function FormSettingsDialog({
     setDomainInput("");
   };
 
-  const removeDomain = (domain: string) =>
-    setDomains((prev) => prev.filter((d) => d !== domain));
+  const removeDomain = (domain: string) => setDomains((prev) => prev.filter((d) => d !== domain));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,10 +231,6 @@ export function FormSettingsDialog({
         isOpen,
         questionLayout,
         expiresAt: enableExpiration && expiresAt ? new Date(expiresAt).toISOString() : null,
-
-        // The effective value, not the raw switch. The service derives the same
-        // thing, but sending what the dialog displayed means a reopened dialog
-        // shows the state the author left rather than one shifting under them.
         requireSignIn: signInEffective,
         collectRespondentEmail,
         oneResponsePerRespondent,
@@ -281,8 +244,6 @@ export function FormSettingsDialog({
     }
   };
 
-  // Footer summary, built from the pending state rather than the saved form,
-  // so it previews what Save will actually do.
   const summary = [
     isOpen ? "Accepting" : "Closed",
     enableExpiration && expiresAt ? "expires" : "no expiry",
@@ -322,9 +283,6 @@ export function FormSettingsDialog({
             </button>
           </div>
         </div>
-
-        {/* The form is the flex column so the body scrolls and the actions in
-            the footer stay pinned. */}
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="cf-dialog-body space-y-5">
             <div>
@@ -361,10 +319,6 @@ export function FormSettingsDialog({
               <div className="space-y-1.5">
                 {LAYOUT_CHOICES.map((choice) => {
                   const on = questionLayout === choice.value;
-                  /* Offered only while it would actually be honoured. A
-                     branching or segmented form is paginated by the renderer
-                     whatever this says, and a switch that silently does nothing
-                     is worse than one that explains why it can't. */
                   const blocked = choice.value === "ALL_AT_ONCE" && !onePageAllowed;
 
                   return (
@@ -415,10 +369,6 @@ export function FormSettingsDialog({
                   );
                 })}
               </div>
-
-              {/* Names what AUTO has actually chosen for this form. Without it
-                  the default is the one option whose behaviour the author
-                  can't see. */}
               {questionLayout === "AUTO" && (
                 <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-ink-soft)">
                   {segmentCount > 1
@@ -426,16 +376,10 @@ export function FormSettingsDialog({
                     : "This form has one segment, so respondents get one question per page."}
                 </p>
               )}
-
-              {/* The form was set to one page before it branched or was split.
-                  The setting is kept rather than rewritten — remove the
-                  branching and the author's choice comes back — so the honest
-                  thing is to say it isn't in force right now. */}
               {questionLayout === "ALL_AT_ONCE" && !onePageAllowed && (
                 <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-orange)">
                   Saved as one page, but not in use: {onePageBlockedReason} Respondents currently
-                  get{" "}
-                  {segmentCount > 1 ? "one segment per page" : "one question per page"}.
+                  get {segmentCount > 1 ? "one segment per page" : "one question per page"}.
                 </p>
               )}
             </div>
@@ -472,10 +416,6 @@ export function FormSettingsDialog({
               </div>
             </div>
 
-            {/* ── Who can respond ─────────────────────────────────────────
-                Ordered so the requirement everything else depends on comes
-                first, and each dependent setting sits below the thing it
-                switches on. */}
             <div>
               <p className="cf-meta mb-2">Who can respond</p>
               <div className="space-y-2">
@@ -540,10 +480,6 @@ export function FormSettingsDialog({
                           type="text"
                           value={domainInput}
                           onChange={(e) => setDomainInput(e.target.value)}
-                          /* Enter adds the domain rather than submitting the
-                             dialog, which is what a text input inside a form
-                             does by default — and saving on Enter would strand
-                             the domain the author had just typed. */
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === ",") {
                               e.preventDefault();
@@ -593,15 +529,8 @@ export function FormSettingsDialog({
                           Add at least one domain, or turn the restriction off.
                         </p>
                       )}
-
-                      {/* Subdomain behaviour, spelled out. It's the part an
-                          author would otherwise have to discover by testing —
-                          and the part that decides whether they need to list
-                          every department separately. */}
                       <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">
-                        Subdomains are included. <span className="font-mono">rishihood.edu.in</span>{" "}
-                        accepts both <span className="font-mono">kamlesh@rishihood.edu.in</span> and{" "}
-                        <span className="font-mono">dittya@nst.rishihood.edu.in</span>.
+                        Subdomains are included.
                       </p>
                     </div>
                   )}

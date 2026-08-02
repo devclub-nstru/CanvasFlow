@@ -1,39 +1,4 @@
-/**
- * Form traversal: which question comes next.
- *
- * Without branching this was `currentQuestionIndex + 1`. With segments and
- * conditional rules the order is no longer a property of the form alone — it
- * depends on what the respondent has answered so far. Everything here is pure
- * so the renderer stays a thin shell over it, the builder can describe and
- * lint rules with the same code the renderer obeys, and the whole thing can be
- * exercised without a browser.
- *
- * Three ideas carry the module:
- *
- *  1. A form is a flat list of questions ordered by (segment, question).
- *     Segments are groups, not a second traversal layer — "jump to segment 3"
- *     is really "jump to the first question of segment 3", which keeps one
- *     code path instead of two.
- *
- *  2. A rule is an if/else attached to the question that triggers it. Its
- *     conditions can read *any* question's answer, combined with ALL or ANY.
- *     When they hold it takes its `action`; when they don't it takes
- *     `elseAction` if it has one, and otherwise stands aside for the next rule.
- *
- *  3. Rules are checked in `index` order and the first decision wins. No
- *     decision means fall through to the next question in the flat list, which
- *     is what makes an un-branched form behave exactly as it did before.
- */
-
 import { parseIndex } from "./fractional-index";
-
-/* ─── Shapes ──────────────────────────────────────────────────────────────
- *
- * Structural types rather than imports from the server models: this module
- * only needs the properties it actually reads, and staying structural means
- * the builder's in-progress local rows (temp ids, no timestamps) satisfy it
- * too.
- */
 
 export interface FlowField {
   id: string;
@@ -70,18 +35,14 @@ export type LogicMatch = "ALL" | "ANY";
 
 export type LogicAction = "JUMP_TO_FIELD" | "JUMP_TO_SEGMENT" | "SUBMIT" | "CONTINUE";
 
-/** Operators that test presence and take no operand. */
 export const VALUELESS_OPERATORS: readonly LogicOperator[] = ["IS_EMPTY", "IS_NOT_EMPTY"];
 
-/** Operators whose operand is a list of choices. */
 export const MULTI_VALUE_OPERATORS: readonly LogicOperator[] = ["IS_ANY_OF", "IS_NONE_OF"];
 
-/** Actions that carry no destination. */
 export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE"];
 
 export interface FlowCondition {
   id: string;
-  /** The question whose answer this condition reads. Any question in the form. */
   fieldId: string;
   operator: LogicOperator;
   value?: unknown;
@@ -90,7 +51,6 @@ export interface FlowCondition {
 
 export interface FlowRule {
   id: string;
-  /** The question after which this rule is evaluated. */
   fieldId: string;
   match: LogicMatch;
   conditions: FlowCondition[];
@@ -108,22 +68,13 @@ export interface FlowRule {
 
 export type Answers = Record<string, unknown>;
 
-/** Where the respondent goes next. `end` covers both "ran out of questions"
- *  and "a branch said finish here". */
 export type NextStep = { kind: "field"; fieldId: string } | { kind: "end" };
-
-/** A form flattened into traversal order, with the lookups the resolver needs.
- *  Build once per form and pass it around. */
 export interface Flow {
-  /** Every question in traversal order. */
   order: FlowField[];
-  /** Position of each question id within `order`. */
   positionById: Map<string, number>;
   fieldById: Map<string, FlowField>;
   segmentById: Map<string, FlowSegment>;
-  /** Segments in display order. Excludes the implicit segment. */
   segments: FlowSegment[];
-  /** Rules grouped by their trigger question, each list in `index` order. */
   rulesByFieldId: Map<string, FlowRule[]>;
 }
 
@@ -132,19 +83,9 @@ export interface Flow {
 function byIndex<T extends { index: string | number; id: string }>(a: T, b: T): number {
   const d = parseIndex(a.index) - parseIndex(b.index);
   if (d !== 0 && Number.isFinite(d)) return d;
-  // Stable tiebreak. Two rows can share an index while a reorder is mid-save,
-  // and an unstable sort there would make questions visibly swap.
   return a.id.localeCompare(b.id);
 }
 
-/**
- * Flatten a form into traversal order.
- *
- * Questions with no `segmentId` come first. They exist only on forms that were
- * never segmented (where they are the whole form) or, briefly, on a form whose
- * last segment was just deleted — in both cases "before every real segment" is
- * the intuitive place for them.
- */
 export function buildFlow(
   fields: readonly FlowField[],
   segments: readonly FlowSegment[] = [],
@@ -161,9 +102,6 @@ export function buildFlow(
     if (bucket) {
       bucket.push(field);
     } else {
-      // Either genuinely unassigned, or assigned to a segment absent from the
-      // list we were handed. Treating an unknown segment as unassigned keeps
-      // the question reachable instead of silently dropping it.
       unassigned.push(field);
     }
   }
@@ -196,13 +134,6 @@ export function buildFlow(
 
 /* ─── Condition matching ──────────────────────────────────────────────── */
 
-/**
- * Whether an answer counts as "not given".
- *
- * `false` is deliberately NOT empty: an unchecked toggle is an answer, and
- * treating it as missing would make IS_EMPTY fire on a question the respondent
- * did answer. `0` is an answer for the same reason.
- */
 export function isAnswerEmpty(answer: unknown): boolean {
   if (answer === undefined || answer === null) return true;
   if (typeof answer === "string") return answer.trim() === "";
@@ -216,9 +147,6 @@ function toBoolean(v: unknown): boolean {
   return s === "true" || s === "yes" || s === "1";
 }
 
-/** Case- and whitespace-insensitive scalar comparison. Choice labels are free
- *  text typed twice — once on the question, once on the condition — so exact
- *  matching would fail on invisible differences. */
 function scalarEquals(a: unknown, b: unknown): boolean {
   if (typeof a === "boolean" || typeof b === "boolean") return toBoolean(a) === toBoolean(b);
   return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
@@ -228,9 +156,6 @@ function normalise(v: unknown): string {
   return String(v).trim().toLowerCase();
 }
 
-/** Numeric comparison that also understands dates, so GREATER_THAN works on
- *  DATE/DATETIME answers. Returns null when either side isn't comparable —
- *  callers treat that as "no match" rather than guessing an ordering. */
 function compareOrdered(answer: unknown, value: unknown): number | null {
   const a = Number(answer);
   const b = Number(value);
@@ -243,22 +168,12 @@ function compareOrdered(answer: unknown, value: unknown): number | null {
   return null;
 }
 
-/** The operand as a list, for IS_ANY_OF / IS_NONE_OF. Tolerates a single
- *  scalar so a rule authored before the operator changed still behaves. */
 function asList(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null || value === "") return [];
   return [value];
 }
 
-/**
- * Does one condition hold for the given answer?
- *
- * Multi-select answers arrive as arrays, which is why EQUALS has an
- * array-specific reading: "is X" on a checkbox question means X is the only
- * thing selected. An author who means "X is among the selections" reaches for
- * `contains`, and the two stay distinguishable.
- */
 export function matchesCondition(condition: FlowCondition, answer: unknown): boolean {
   const empty = isAnswerEmpty(answer);
 
@@ -271,9 +186,6 @@ export function matchesCondition(condition: FlowCondition, answer: unknown): boo
       break;
   }
 
-  // Every remaining operator compares against something. An unanswered
-  // question matches none of them — except the negative ones, where "no
-  // answer" genuinely is "not equal to X".
   if (empty) {
     return (
       condition.operator === "NOT_EQUALS" ||
@@ -336,21 +248,10 @@ export function matchesCondition(condition: FlowCondition, answer: unknown): boo
     }
 
     default:
-      // Unknown operator — an older client meeting a newer rule. Not matching
-      // is the safe reading: the respondent continues linearly rather than
-      // being sent somewhere arbitrary.
       return false;
   }
 }
 
-/**
- * Does a rule's condition set hold?
- *
- * A rule with no conditions returns false, never true. It's an incomplete rule
- * the author hasn't finished, and the safe reading of "no tests" is "does not
- * apply" — treating it as vacuously true would silently turn it into an
- * unconditional jump and reroute the whole form.
- */
 export function ruleMatches(rule: FlowRule, answers: Answers): boolean {
   if (rule.conditions.length === 0) return false;
 
@@ -361,11 +262,6 @@ export function ruleMatches(rule: FlowRule, answers: Answers): boolean {
   return rule.match === "ANY" ? results.some(Boolean) : results.every(Boolean);
 }
 
-/* ─── Resolution ──────────────────────────────────────────────────────── */
-
-/** The first question of a segment, skipping empty segments so a jump to a
- *  segment with no questions yet lands on the next real one instead of
- *  dead-ending. */
 function firstFieldOfSegment(flow: Flow, segmentId: string): string | null {
   const start = flow.segments.findIndex((s) => s.id === segmentId);
   if (start === -1) return null;
@@ -379,22 +275,12 @@ function firstFieldOfSegment(flow: Flow, segmentId: string): string | null {
   return null;
 }
 
-/** The next question in plain document order. */
 function linearNext(flow: Flow, fromFieldId: string): string | null {
   const position = flow.positionById.get(fromFieldId);
   if (position === undefined) return null;
   return flow.order[position + 1]?.id ?? null;
 }
 
-/**
- * Where does the respondent go after answering `fromFieldId`?
- *
- * `visited` is the path taken so far and exists to break cycles. Rules can
- * describe a loop no single-row constraint can catch (A jumps to B, B jumps
- * back to A); the database rejects the one-hop case and this rejects the rest.
- * Landing on an already-visited question ends the form rather than trapping
- * the respondent — a wrong ending is recoverable, an infinite loop is not.
- */
 export function resolveNextStep(args: {
   flow: Flow;
   answers: Answers;
@@ -409,8 +295,6 @@ export function resolveNextStep(args: {
   return guardStep(flow, linearNext(flow, fromFieldId), visited);
 }
 
-/** Shared by the question-level and page-level walks so there is exactly one
- *  implementation of "is this destination usable". */
 function guardStep(
   flow: Flow,
   fieldId: string | null | undefined,
@@ -422,15 +306,6 @@ function guardStep(
   return { kind: "field", fieldId };
 }
 
-/**
- * The decision a question's rules reach, or `null` when none of them decides.
- *
- * Split out from `resolveNextStep` because the page-level walk needs to tell
- * "a rule sent them somewhere" apart from "nothing matched, carry on" — the
- * two are the same outcome for one question at a time, but on a multi-question
- * page only the first is a reason to leave. Keeping it as one function means
- * the two layouts can't drift on which rule wins.
- */
 export function resolveRuleDecision(args: {
   flow: Flow;
   answers: Answers;
@@ -439,8 +314,6 @@ export function resolveRuleDecision(args: {
 }): NextStep | null {
   const { flow, answers, fromFieldId, visited = [] } = args;
 
-  /** Turn one side of a rule into a step. `null` means the side declined to
-   *  decide, so the next rule gets a turn. */
   const applySide = (
     action: LogicAction | null | undefined,
     targetFieldId: string | null | undefined,
@@ -460,7 +333,6 @@ export function resolveRuleDecision(args: {
           visited,
         );
       default:
-        // No action set, or one from a newer schema this client doesn't know.
         return null;
     }
   };
@@ -472,8 +344,6 @@ export function resolveRuleDecision(args: {
       continue;
     }
 
-    // Conditions failed. A rule with an otherwise-branch is a fork and decides
-    // here; a rule without one is a guard clause and stands aside.
     if (rule.elseAction) {
       const step = applySide(rule.elseAction, rule.elseTargetFieldId, rule.elseTargetSegmentId);
       if (step) return step;
@@ -483,22 +353,11 @@ export function resolveRuleDecision(args: {
   return null;
 }
 
-/** The question a respondent starts on. */
 export function resolveFirstStep(flow: Flow): NextStep {
   const first = flow.order[0];
   return first ? { kind: "field", fieldId: first.id } : { kind: "end" };
 }
 
-/**
- * How many questions are still ahead, following current answers where they
- * exist and the linear fallback where they don't.
- *
- * Only used for the progress bar, which is why an estimate is acceptable:
- * with branching there is no single "total questions" to divide by, and a bar
- * that shifts as branches resolve beats one measured against a total the
- * respondent will never reach. Bounded by the question count, which also
- * bounds the walk.
- */
 export function estimateRemaining(args: {
   flow: Flow;
   answers: Answers;
@@ -522,15 +381,6 @@ export function estimateRemaining(args: {
   return remaining;
 }
 
-/**
- * The answers that belong to a completed run.
- *
- * A respondent who answers a question, goes back, and takes a different branch
- * leaves an answer behind for a question no longer on their path. Submitting it
- * would record a response to a question they were never asked, quietly
- * corrupting every per-question analytic. Only answers for questions actually
- * visited are kept.
- */
 export function answersOnPath(
   answers: Answers,
   visitedFieldIds: readonly string[],
@@ -548,10 +398,6 @@ export function answersOnPath(
   return result;
 }
 
-/**
- * Position of a question's segment for the "Segment 2 of 3" caption.
- * Returns null for the implicit segment, which has no title to show.
- */
 export function segmentProgress(
   flow: Flow,
   fieldId: string,
@@ -568,75 +414,25 @@ export function segmentProgress(
   return { segment, position: position + 1, total: flow.segments.length };
 }
 
-/* ─── Pages ───────────────────────────────────────────────────────────────
- *
- * Everything above answers "which question comes next". A respondent, though,
- * sees a *page* at a time, and a page may hold one question or twenty. These
- * turn the question-level flow into the page-level one the renderer walks,
- * without duplicating any of the routing rules — a page's next step is still
- * decided by the same rules, just asked once per page instead of once per
- * question.
- */
-
-/** What the author picked. AUTO defers to the form's shape. */
 export type QuestionLayout = "AUTO" | "ONE_PER_PAGE" | "SEGMENT_PER_PAGE" | "ALL_AT_ONCE";
 
-/** What AUTO actually became. The renderer only ever deals in these. */
 export type ResolvedLayout = "ONE_PER_PAGE" | "SEGMENT_PER_PAGE" | "ALL_AT_ONCE";
 
 export interface FlowPage {
-  /** Stable across renders: the segment id, or a synthetic id for the pages
-   *  that don't correspond to one. */
   id: string;
-  /** Present when the page is a segment, so the renderer can show its title. */
   segment?: FlowSegment;
   fieldIds: string[];
 }
 
-/**
- * Can this form be shown on a single page?
- *
- * No, once it branches or once it has been split into segments.
- *
- * Branching is the hard one. A rule decides what comes *next*, which only means
- * anything if there is a next page to decide. Put every question on one page and
- * the routing has nowhere to apply: `buildPages` recomputes from the current
- * answers, so questions would appear and disappear under the respondent's cursor
- * as they filled the form in, and a branch that jumps forward would silently
- * delete the questions it skipped from a page already on screen.
- *
- * Segments are the softer one, and it's about intent. Splitting a form into
- * segments is an instruction to paginate it; flattening it back into one scroll
- * throws away both that instruction and the segment headings, which have nowhere
- * to render on a page that has no segment of its own.
- */
 export function canRenderOnOnePage(segmentCount: number, ruleCount: number): boolean {
   return ruleCount === 0 && segmentCount <= 1;
 }
 
-/**
- * Turn the author's setting into a concrete layout.
- *
- * AUTO reads the form's shape rather than defaulting to a fixed mode. A form
- * with no segments — or one — is a single run of questions and reads best one
- * at a time. A form with several segments has already been divided into pages
- * by its author, and showing those pages is what dividing it was for. So
- * adding a second segment switches the form to page-per-segment on its own,
- * which is the behaviour an author expects without having to find a setting.
- *
- * ALL_AT_ONCE is overridden rather than trusted, because the setting and the
- * thing that invalidates it are edited independently: an author can choose one
- * page for a flat form and add branching to it a week later. Enforcing the rule
- * here means every consumer gets a layout that actually works, instead of each
- * one having to remember to check. The stored setting is deliberately left
- * alone, so removing the branching brings the author's choice back.
- */
 export function resolveLayout(
   layout: QuestionLayout | undefined,
   segmentCount: number,
   ruleCount = 0,
 ): ResolvedLayout {
-  /** What the form's own shape asks for. Also the fallback. */
   const paged: ResolvedLayout = segmentCount > 1 ? "SEGMENT_PER_PAGE" : "ONE_PER_PAGE";
 
   if (!layout || layout === "AUTO") return paged;
@@ -645,14 +441,6 @@ export function resolveLayout(
   return layout;
 }
 
-/**
- * Group a flow's questions into pages.
- *
- * ALL_AT_ONCE takes `answers` because with branching on, "everything" means
- * everything the respondent's answers actually lead to — a question on a road
- * not taken has no business being on the page. With no rules this collapses to
- * the full list, which is the plain Google-Forms reading.
- */
 export function buildPages(flow: Flow, layout: ResolvedLayout, answers: Answers = {}): FlowPage[] {
   if (flow.order.length === 0) return [];
 
@@ -664,9 +452,6 @@ export function buildPages(flow: Flow, layout: ResolvedLayout, answers: Answers 
     return [{ id: "all", fieldIds: reachablePath(flow, answers) }];
   }
 
-  /* SEGMENT_PER_PAGE. Questions with no segment lead, in their own page: they
-   * only exist on forms that were never segmented, where they are the whole
-   * form, so "one page" is right for them too. */
   const pages: FlowPage[] = [];
 
   const unassigned = flow.order.filter((f) => !f.segmentId || !flow.segmentById.has(f.segmentId));
@@ -676,8 +461,6 @@ export function buildPages(flow: Flow, layout: ResolvedLayout, answers: Answers 
 
   for (const segment of flow.segments) {
     const fieldIds = flow.order.filter((f) => f.segmentId === segment.id).map((f) => f.id);
-    // Empty segments are skipped rather than shown as a blank page with a
-    // Next button, which is what an author mid-edit would otherwise publish.
     if (fieldIds.length === 0) continue;
     pages.push({ id: segment.id, segment, fieldIds });
   }
@@ -685,13 +468,6 @@ export function buildPages(flow: Flow, layout: ResolvedLayout, answers: Answers 
   return pages;
 }
 
-/**
- * The questions the current answers actually lead through, from the start.
- *
- * Used by ALL_AT_ONCE, where there is no "next" to resolve but the same
- * routing still has to decide what belongs on the page. Bounded by the
- * question count, which also bounds the walk if rules describe a cycle.
- */
 export function reachablePath(flow: Flow, answers: Answers): string[] {
   const first = flow.order[0];
   if (!first) return [];
@@ -709,28 +485,12 @@ export function reachablePath(flow: Flow, answers: Answers): string[] {
   return path;
 }
 
-/** The page holding a question, or -1. */
 export function pageIndexOfField(pages: readonly FlowPage[], fieldId: string): number {
   return pages.findIndex((page) => page.fieldIds.includes(fieldId));
 }
 
 export type NextPage = { kind: "page"; pageIndex: number } | { kind: "end" };
 
-/**
- * Where does the respondent go after finishing a page?
- *
- * Each question on the page is asked, in order, whether one of its rules
- * decides — the same first-match-wins evaluation used one question at a time.
- * The first decision that leads *off this page* wins.
- *
- * Decisions that land back on the same page are skipped rather than obeyed,
- * and that's the one genuinely page-specific rule here: "jump to question 3"
- * means nothing when question 3 is already on screen and already answerable.
- * Obeying it would either re-show the page or, worse, skip the rest of it.
- *
- * No decision at all means the next page in order, which keeps an unbranched
- * multi-page form behaving exactly as its author laid it out.
- */
 export function resolveNextPage(args: {
   flow: Flow;
   pages: readonly FlowPage[];
@@ -747,8 +507,6 @@ export function resolveNextPage(args: {
 
   const guard = (pageIndex: number): NextPage => {
     if (pageIndex < 0 || pageIndex >= pages.length) return { kind: "end" };
-    // Same cycle protection as the question-level walk: a page already visited
-    // ends the form rather than trapping the respondent in a loop.
     if (seen.has(pageIndex)) return { kind: "end" };
     return { kind: "page", pageIndex };
   };
@@ -769,7 +527,6 @@ export function resolveNextPage(args: {
   return guard(currentPageIndex + 1);
 }
 
-/** Remaining pages ahead, following current answers. Progress only. */
 export function estimateRemainingPages(args: {
   flow: Flow;
   pages: readonly FlowPage[];

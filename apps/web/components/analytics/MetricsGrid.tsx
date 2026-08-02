@@ -7,19 +7,6 @@ interface MetricsGridProps {
   avgPerDay: number;
 }
 
-/**
- * KPI row, laid out like the analytics mock: a large figure, its label, and a
- * mono supporting line.
- *
- * The supporting line carries a real derived number rather than a
- * "↑ 9.7% vs last week" style delta — the summary analytics payload has no
- * previous-period figures to compare against, and inventing one would be
- * worse than omitting it.
- *
- * This row used to also show total views and a completion rate. Both were
- * derived from page-view tracking, which no longer exists — peak day and
- * weekly average live in StatsRow, so they're not repeated here.
- */
 export function MetricsGrid({ totalResponses, avgPerDay }: MetricsGridProps) {
   const stats = [
     {

@@ -6,12 +6,6 @@ import { AVAILABLE_FIELDS } from "./FormFieldNode";
 
 interface FieldSidebarProps {
   onDragStart: (event: React.DragEvent, type: string) => void;
-  /**
-   * Click-to-append. Supplied by the outline surface, where dragging has
-   * nowhere meaningful to land — the sequence is the layout, so a new field
-   * goes on the end and gets moved from there. When omitted the palette is
-   * drag-only, which is what the canvas wants.
-   */
   onPick?: (type: string) => void;
 }
 
@@ -21,6 +15,7 @@ const CATEGORIES = [
   { label: "Choice", types: ["SELECT", "CHECKBOX"] },
   { label: "Interactive", types: ["RATING", "TOGGLE"] },
   { label: "Date & time", types: ["DATE", "TIME"] },
+  { label: "Files", types: ["FILE_UPLOAD"] },
 ];
 
 export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
@@ -39,9 +34,6 @@ export function FieldSidebar({ onDragStart, onPick }: FieldSidebarProps) {
       className="flex w-64 shrink-0 flex-col border-r bg-(--cf-cream-2)"
       style={{ borderRightColor: "var(--cf-line-strong)" }}
     >
-      {/* Chrome row. Fixed at h-10 to match the canvas and inspector rows so
-          the top rule runs unbroken across all three panes; the search gets
-          its own band below rather than growing this one out of alignment. */}
       <div className="cf-pane-bar">
         <p className="cf-meta">Fields</p>
         {filtered && (
@@ -121,9 +113,6 @@ function FieldItem({
 }) {
   const Icon = field.icon;
 
-  // A real <button> when clicking is the interaction, so the palette is
-  // keyboard reachable on the outline surface. Still draggable either way:
-  // the canvas needs the drag, and it costs nothing here.
   const Tag = onPick ? "button" : "div";
 
   return (

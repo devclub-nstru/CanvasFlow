@@ -10,17 +10,6 @@ interface FormHeaderProps {
   formTitle?: string;
 }
 
-/**
- * Sticky header for the public form: brand, form code, and progress.
- *
- * Restyled from the supplied reference. The progress bar is the reference's
- * `border-2 border-current h-4` block rather than the 1px pill this used to
- * be — at 4px inside a drawn box it reads as a gauge from across the room,
- * which is the point of putting it above a one-question-at-a-time flow.
- *
- * Square corners and hard edges throughout, matching the `--hex-radius: 0`
- * rule the rest of the app follows.
- */
 export function FormHeader({ progressPercent, submitted, formCode, formTitle }: FormHeaderProps) {
   const pct = submitted ? 100 : progressPercent;
 
@@ -54,8 +43,6 @@ export function FormHeader({ progressPercent, submitted, formCode, formTitle }: 
         </div>
       </div>
 
-      {/* Progress. `aria-*` on the track so a screen reader gets the number
-          without having to infer it from a decorative div. */}
       <div
         role="progressbar"
         aria-valuenow={pct}

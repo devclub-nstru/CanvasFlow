@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import React from "react";
 
 import Noise from "~/components/Noise";
-import {
-  HorizontalScale,
-  HorizontalScaleDark,
-  VerticalScaleDark,
-} from "~/components/Scale";
+import { HorizontalScale, HorizontalScaleDark, VerticalScaleDark } from "~/components/Scale";
 
 const PANEL_POINTS: [string, string][] = [
   ["01", "Twelve field types, drag to reorder"],

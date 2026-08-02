@@ -3,6 +3,8 @@
 import React from "react";
 import { ArrowLeft, ArrowUpRight, Calendar, Clock, Star } from "lucide-react";
 
+import { FileUploadField } from "./FileUploadField";
+
 interface FormField {
   id: string;
   type: string;
@@ -14,18 +16,7 @@ interface FormField {
 }
 
 interface FormQuestionProps {
-  /**
-   * The questions on this page.
-   *
-   * Was a single `currentField`. A page holds one question when the form is
-   * laid out one-at-a-time and a whole segment's worth when it isn't, and
-   * those differ only in how many cards are stacked above the same Next
-   * button — not enough to justify a second component that would then have to
-   * be kept in step with this one's sixteen input types.
-   */
   fields: FormField[];
-  /** Position of each question within the whole form, for the Q01 eyebrow.
-   *  Page-relative numbering would restart at 1 on every page. */
   questionNumbers: Record<string, number>;
   totalQuestions: number;
   answers: Record<string, any>;
@@ -33,55 +24,17 @@ interface FormQuestionProps {
   handleFieldChange: (fieldId: string, value: any) => void;
   handleNext: () => void;
   handleBack: () => void;
-  /* ── Branching-aware navigation ──────────────────────────────────────
-   *
-   * These used to be derived here: `isLast` was `index === total - 1` and
-   * Back showed whenever `index > 0`. Neither survives conditional logic.
-   * A branch can finish the form on question 2 of 6, and after a jump the
-   * question you came from is whatever the path says, not `index - 1`. Both
-   * answers now come from the resolver, which is the only thing that knows
-   * the route this respondent actually took. */
   isLast: boolean;
   canGoBack: boolean;
-  /** e.g. "Segment 2 of 3 · Your details". Absent on unsegmented forms. */
   segmentLabel?: string | null;
-  /** The segment's own description, shown once above its questions. */
   segmentDescription?: string | null;
-  /** Overrides the forward button's text. A multi-question page says "Next"
-   *  about a page, not a question. */
   nextLabel?: string;
+  formId: string;
+  isPreview?: boolean;
 }
-
-/* ── Restyled from the supplied reference ───────────────────────────────
-   The logic is untouched — same props, same handlers, same validation path
-   in the parent. What changed is the surface:
-
-   · Drawn boxes instead of soft rings. The reference is all `border-2` and
-     square corners with hard offset shadows; so is this app's own design
-     system (`--hex-radius: 0`, `cf-panel`'s `5px 5px 0` shadow, and the
-     "a drawn edge beats a soft panel" rule). The old `ring-1 rounded-lg`
-     inputs were the odd ones out.
-
-   · The question sits in a card with a mono `Q01` eyebrow, rather than
-     floating as centred text.
-
-   · Selected choices invert to solid ink instead of tinting 10% orange,
-     which is both a stronger signal and legible for anyone who can't
-     separate the tint from the unselected state.
-
-   · TOGGLE renders as the reference's two side-by-side `yes_no` buttons
-     rather than a 12px switch. In a one-question-at-a-time flow the switch
-     was the smallest target on a screen with nothing else competing for
-     the space.
-
-   Left alone deliberately: the reference's all-caps option labels. These
-   are author-written strings, and shouting them back distorts content the
-   form owner wrote — `uppercase` on a sentence-case option looks like a
-   bug. Only the app's own furniture is set in caps. */
 
 const FIELD_BOX_STYLE: React.CSSProperties = { borderColor: "var(--cf-line-strong)" };
 
-/** Text-ish inputs. Square, drawn, and focus-ringed with the accent. */
 const INPUT_CLS =
   "w-full border bg-white px-4 h-13 text-[16px] text-(--cf-ink) placeholder:text-(--cf-ink-soft)/55 focus:outline-none focus:shadow-[3px_3px_0_0_var(--cf-line-strong)]";
 
@@ -102,16 +55,13 @@ export function FormQuestion({
   segmentLabel,
   segmentDescription,
   nextLabel,
+  formId,
+  isPreview = false,
 }: FormQuestionProps) {
   if (fields.length === 0) return null;
 
   return (
-    /* Keyed on the page's first field rather than a position. Two different
-       pages can occupy the same position on different branches, and keying on
-       the number would skip the entry animation when that happens. */
     <div key={fields[0]?.id} className="cf-animate-card w-full max-w-xl space-y-6">
-      {/* Segment caption. Only rendered for segmented forms, so a plain
-          linear form looks exactly as it did before. */}
       {segmentLabel && (
         <div className="space-y-1.5">
           <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-(--cf-ink-soft) uppercase">
@@ -406,10 +356,19 @@ export function FormQuestion({
                     </div>
                   )}
 
-                  {/* Two drawn buttons rather than a switch — the reference's
-                `yes_no` treatment. `value` is a real boolean here, so the
-                comparison is explicit to keep `undefined` from lighting up
-                the "No" side before the default is applied. */}
+                  {currentField.type === "FILE_UPLOAD" && (
+                    <FileUploadField
+                      formId={formId}
+                      fieldId={currentField.id}
+                      inputId={inputId}
+                      placeholder={currentField.placeholder}
+                      options={currentField.options as any}
+                      value={value}
+                      onChange={(next) => handleFieldChange(currentField.id, next)}
+                      disabled={isPreview}
+                    />
+                  )}
+
                   {currentField.type === "TOGGLE" && (
                     <div role="radiogroup" aria-labelledby={inputId} className="flex gap-3">
                       {[
@@ -440,8 +399,6 @@ export function FormQuestion({
         );
       })}
 
-      {/* ── actions ── */}
-      {/* Next is the wide one and sits right, so the thumb lands on it. */}
       <div className="flex items-center gap-3">
         {canGoBack && (
           <button

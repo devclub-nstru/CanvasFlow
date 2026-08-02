@@ -9,23 +9,20 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-dev}
 
-    # Host port 5434, not the usual 5432. Other Postgres containers on this
-    # machine already claim 5432 (chatapp) and 5433 (jobcrawler), and a
-    # collision there fails the container at start with "address already in
-    # use". Override with POSTGRES_PORT in .env if 5434 is taken too — just
-    # remember to update DATABASE_URL to match.
+    # Raised max_connections to support API process pooling
+    command:
+      - postgres
+      - -c
+      - max_connections=300
+
+    # Host port 5434 to avoid collision with standard 5432
     ports:
       - "${POSTGRES_PORT:-5434}:5432"
 
     volumes:
       - pg_data:/var/lib/postgresql/data
 
-    # `docker compose up -d` returns as soon as the container is *running*,
-    # but Postgres needs a few more seconds before it accepts connections.
-    # Without this, `pnpm db:migrate` immediately after `up` loses the race
-    # with ECONNREFUSED. `--host` + `-p` force pg_isready over TCP (matching
-    # how the app connects) rather than the local unix socket, which comes
-    # up earlier and would report ready too soon.
+    # Healthcheck to verify Postgres accepts TCP connections
     healthcheck:
       test:
         [
@@ -36,6 +33,31 @@ services:
       timeout: 5s
       retries: 15
       start_period: 10s
+
+  # Redis server for caching, rate limiting, and queue backing
+  redis:
+    image: redis:7-alpine
+    container_name: canvasflow-redis
+    restart: unless-stopped
+
+    command:
+      - redis-server
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - "no"
+
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 3s
 
 volumes:
   pg_data:

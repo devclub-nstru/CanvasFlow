@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "dev": "dotenv -- tsx watch ./src/index.ts",
     "build": "tsup",
-    "lint": "eslint src/*"
+    "lint": "eslint src/*",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
@@ -17,6 +18,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^1.4.12",
     "@types/node": "^22.15.3",
     "dotenv-cli": "^11.0.0",
     "tsup": "^8.5.1",
@@ -25,7 +27,11 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.20",
+    "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
+    "@repo/queue": "workspace:*",
+    "@repo/redis": "workspace:*",
+    "@repo/services": "workspace:*",
     "@repo/trpc": "workspace:*",
     "@scalar/express-api-reference": "^0.8.30",
     "@trpc/server": "^11.8.1",
@@ -37,7 +43,9 @@
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "multer": "2.0.2",
     "pg": "^8.16.3",
+    "rate-limit-redis": "4.2.0",
     "trpc-to-openapi": "^3.1.0",
     "winston": "^3.19.0",
     "zod": "^4.3.5"

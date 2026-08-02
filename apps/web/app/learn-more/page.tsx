@@ -375,10 +375,6 @@ export default function LearnMorePage() {
         <HorizontalScale className="absolute bottom-0 left-0" />
       </section>
 
-      {/* ── Process — inverted sheet ───────────────────────────────── */}
-      {/* The reference flips to `bg-foreground text-background` here. This
-          app already has a dark treatment (the comparison matrix, and the
-          Dark scale variants), so the flip is in the design language. */}
       <section
         className="relative overflow-hidden py-16 sm:py-20 lg:py-28"
         style={{ background: "var(--hex-ink)", color: "#fff" }}

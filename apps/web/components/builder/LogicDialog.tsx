@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { ModalOverlay } from "~/components/ui/ModalOverlay";
+import { CustomSelect } from "~/components/ui/CustomSelect";
 import {
   MULTI_VALUE_OPERATORS,
   VALUELESS_OPERATORS,
@@ -37,11 +38,9 @@ export interface LogicDialogProps {
   open: boolean;
   onClose: () => void;
 
-  /** The question whose branches are being edited. */
   triggerFieldId: string;
   triggerFieldLabel: string;
 
-  /** Whole-form context: the flow drives labels, pickers and linting. */
   flow: Flow;
   labels: FlowLabels;
 
@@ -59,16 +58,6 @@ export interface LogicDialogProps {
 
 const CONTROL = "cf-input h-9 px-2.5 text-[13px]";
 
-/**
- * Branching editor for one question, in a dialog rather than the inspector.
- *
- * It lives here because it cannot fit anywhere else. A rule is a sentence with
- * up to six interdependent parts per condition plus two outcomes, and the
- * inspector rail is 288px wide — enough to clip the controls and to put a
- * native dropdown on top of the row it belongs to. Giving it a full-width
- * surface is what makes the feature usable at all; the inspector keeps a
- * read-only summary and a button that opens this.
- */
 export function LogicDialog({
   open,
   onClose,
@@ -86,9 +75,6 @@ export function LogicDialog({
   onUpdateCondition,
   onDeleteCondition,
 }: LogicDialogProps) {
-  // Linted across the whole form, not just these rules: the problems worth
-  // reporting (unreachable questions, contradicting branches) are only visible
-  // from the form as a whole.
   const issues = useMemo(() => (open ? lintFlow(flow, labels) : []), [open, flow, labels]);
   const issuesByRule = useMemo(() => {
     const map = new Map<string, FlowIssue[]>();
@@ -438,8 +424,6 @@ function IconButton({
   );
 }
 
-/** ALL vs ANY. Disabled with one condition, where the distinction is
- *  meaningless and offering it only invites the question. */
 function MatchToggle({
   value,
   onChange,
@@ -504,13 +488,6 @@ function ConditionRow({
   const isMulti = MULTI_VALUE_OPERATORS.includes(condition.operator);
 
   return (
-    /* Stacks on a phone, inline from sm up.
-     *
-     * This was a single `flex-wrap` row with min-widths on each control, which
-     * technically wrapped but produced a ragged two-and-a-half-line block where
-     * the operator and its value ended up on different rows from each other.
-     * Below sm the three parts each take the full width, which reads as the
-     * sentence it is. */
     <div
       className="grid gap-2 border p-2 sm:flex sm:flex-wrap sm:items-start"
       style={{ borderColor: "var(--cf-line)", background: "var(--cf-cream)" }}
@@ -519,16 +496,11 @@ function ConditionRow({
         {lead}
       </span>
 
-      {/* which question's answer to read — any question, which is the point */}
-      <select
+      <CustomSelect
         value={condition.fieldId}
-        onChange={(e) => {
-          const fieldId = e.target.value;
+        onChange={(fieldId) => {
           const next = flow.fieldById.get(fieldId);
           const allowed = operatorsForFieldType(next?.type);
-          // Changing the source can invalidate the operator (a date question
-          // has no "contains"), so fall back to the first sensible one rather
-          // than leaving a combination that can never match.
           onChange({
             fieldId,
             ...(allowed.includes(condition.operator)
@@ -536,26 +508,20 @@ function ConditionRow({
               : { operator: allowed[0] as LogicOperator, value: null }),
           });
         }}
-        className={`${CONTROL} w-full sm:min-w-40 sm:flex-1`}
-        aria-label="Question to test"
-      >
-        {questionOptions.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        options={questionOptions.map((option) => ({
+          value: option.id,
+          label: option.label,
+        }))}
+        className="w-full sm:min-w-[160px] sm:flex-1"
+      />
 
-      <select
+      <CustomSelect
         value={condition.operator}
-        onChange={(e) => {
-          const operator = e.target.value as LogicOperator;
+        onChange={(operator) => {
           const wasMulti = MULTI_VALUE_OPERATORS.includes(condition.operator);
           const nowMulti = MULTI_VALUE_OPERATORS.includes(operator);
           onChange({
-            operator,
-            // The operand's shape changes with the operator, so a stale value
-            // would be rejected by the CHECK constraint on save.
+            operator: operator as LogicOperator,
             ...(VALUELESS_OPERATORS.includes(operator)
               ? { value: null }
               : wasMulti !== nowMulti
@@ -563,15 +529,12 @@ function ConditionRow({
                 : {}),
           });
         }}
-        className={`${CONTROL} w-full sm:w-auto sm:min-w-32`}
-        aria-label="Comparison"
-      >
-        {operators.map((op) => (
-          <option key={op} value={op}>
-            {OPERATOR_LABELS[op]}
-          </option>
-        ))}
-      </select>
+        options={operators.map((op) => ({
+          value: op,
+          label: OPERATOR_LABELS[op],
+        }))}
+        className="w-full sm:w-auto sm:min-w-[128px]"
+      />
 
       {needsValue && (
         <div className="w-full sm:min-w-40 sm:flex-1">
@@ -585,8 +548,6 @@ function ConditionRow({
         </div>
       )}
 
-      {/* Right-aligned on its own row when stacked, so it doesn't sit beneath a
-          full-width control looking like part of it. */}
       <div className="flex justify-end sm:block">
         <IconButton label="Remove condition" danger disabled={!canDelete} onClick={onDelete}>
           <Trash2 className="size-3.5" />
@@ -596,14 +557,6 @@ function ConditionRow({
   );
 }
 
-/**
- * The operand. Shape follows the operator and the question:
- *  · a checkbox list for "is any of" on a question with fixed choices, because
- *    typing three option labels by hand is how branching silently stops
- *    matching;
- *  · a dropdown for a single value on a question with choices;
- *  · otherwise a typed input matching the question (number, date, time).
- */
 function ValueControl({
   condition,
   choices,
@@ -674,34 +627,31 @@ function ValueControl({
 
   if (fieldType === "TOGGLE") {
     return (
-      <select
+      <CustomSelect
         value={String(condition.value ?? "")}
-        onChange={(e) => onChange({ value: e.target.value })}
-        className={CONTROL}
-        aria-label="Value"
-      >
-        <option value="">Choose…</option>
-        <option value="true">Yes / on</option>
-        <option value="false">No / off</option>
-      </select>
+        onChange={(val) => onChange({ value: val })}
+        options={[
+          { value: "", label: "Choose…" },
+          { value: "true", label: "Yes / on" },
+          { value: "false", label: "No / off" },
+        ]}
+      />
     );
   }
 
   if (choices.length > 0) {
     return (
-      <select
+      <CustomSelect
         value={String(condition.value ?? "")}
-        onChange={(e) => onChange({ value: e.target.value })}
-        className={CONTROL}
-        aria-label="Value"
-      >
-        <option value="">Choose an answer…</option>
-        {choices.map((choice) => (
-          <option key={choice} value={choice}>
-            {choice}
-          </option>
-        ))}
-      </select>
+        onChange={(val) => onChange({ value: val })}
+        options={[
+          { value: "", label: "Choose an answer…" },
+          ...choices.map((choice) => ({
+            value: choice,
+            label: choice,
+          })),
+        ]}
+      />
     );
   }
 
@@ -726,7 +676,6 @@ function ValueControl({
   );
 }
 
-/** One outcome: what happens, and where it goes. */
 function Outcome({
   heading,
   hint,
@@ -764,60 +713,52 @@ function Outcome({
         <span className="text-[11px] text-(--cf-ink-soft)">{hint}</span>
       </div>
 
-      <select
+      <CustomSelect
         value={action ?? ""}
-        onChange={(e) => {
-          const next = (e.target.value || null) as LogicAction | null;
-          // Clear the targets that no longer apply, so the row can't hold a
-          // destination its action doesn't use.
+        onChange={(val) => {
+          const next = (val || null) as LogicAction | null;
           set({
             [keys.action]: next,
             [keys.field]: next === "JUMP_TO_FIELD" ? (targetFieldId ?? null) : null,
             [keys.segment]: next === "JUMP_TO_SEGMENT" ? (targetSegmentId ?? null) : null,
           });
         }}
-        className={CONTROL}
-        aria-label={`${heading} action`}
-      >
-        {allowNone && <option value="">Nothing — try the next branch</option>}
-        {(Object.keys(ACTION_LABELS) as LogicAction[]).map((option) => (
-          <option key={option} value={option}>
-            {ACTION_LABELS[option]}
-          </option>
-        ))}
-      </select>
+        options={[
+          ...(allowNone ? [{ value: "", label: "Nothing — try the next branch" }] : []),
+          ...(Object.keys(ACTION_LABELS) as LogicAction[]).map((option) => ({
+            value: option,
+            label: ACTION_LABELS[option],
+          })),
+        ]}
+      />
 
       {action === "JUMP_TO_FIELD" && (
-        <select
+        <CustomSelect
           value={targetFieldId ?? ""}
-          onChange={(e) => set({ [keys.field]: e.target.value || null })}
-          className={CONTROL}
-          aria-label={`${heading} target question`}
-        >
-          <option value="">Choose a question…</option>
-          {questionOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => set({ [keys.field]: val || null })}
+          options={[
+            { value: "", label: "Choose a question…" },
+            ...questionOptions.map((option) => ({
+              value: option.id,
+              label: option.label,
+            })),
+          ]}
+        />
       )}
 
       {action === "JUMP_TO_SEGMENT" && (
-        <select
+        <CustomSelect
           value={targetSegmentId ?? ""}
-          onChange={(e) => set({ [keys.segment]: e.target.value || null })}
-          className={CONTROL}
-          aria-label={`${heading} target segment`}
-        >
-          <option value="">Choose a segment…</option>
-          {segmentOptions.length === 0 && <option disabled>No segments yet</option>}
-          {segmentOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => set({ [keys.segment]: val || null })}
+          options={[
+            { value: "", label: "Choose a segment…" },
+            ...(segmentOptions.length === 0 ? [{ value: "", label: "No segments yet" }] : []),
+            ...segmentOptions.map((option) => ({
+              value: option.id,
+              label: option.label,
+            })),
+          ]}
+        />
       )}
     </div>
   );

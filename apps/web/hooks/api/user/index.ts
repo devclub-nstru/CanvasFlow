@@ -1,6 +1,5 @@
 import { trpc } from "~/trpc/client";
 
-/** Fetches the current user's profile. */
 export const useGetMe = () => {
   const { data, isLoading, error } = trpc.user.getMe.useQuery(undefined, {
     staleTime: 5 * 60 * 1000,
@@ -14,13 +13,6 @@ export const useGetMe = () => {
   };
 };
 
-/**
- * Updates the signed-in user's display name and/or avatar preset.
- *
- * Both `getMe` caches are refreshed from the mutation's own return value
- * rather than by invalidating and refetching: the procedure returns the full
- * updated user, so a round trip would only re-fetch what we already hold.
- */
 export const useUpdateMe = () => {
   const utils = trpc.useUtils();
 

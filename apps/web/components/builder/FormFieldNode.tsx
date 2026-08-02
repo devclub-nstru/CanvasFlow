@@ -11,6 +11,7 @@ import {
   Link2,
   List,
   Mail,
+  Paperclip,
   Phone,
   Star,
   ToggleLeft,
@@ -31,6 +32,7 @@ export const AVAILABLE_FIELDS = [
   { type: "DATE", label: "Date", icon: Calendar, description: "Calendar selection" },
   { type: "TIME", label: "Time", icon: Clock, description: "Time selection" },
   { type: "TOGGLE", label: "Toggle", icon: ToggleLeft, description: "Yes / no switch" },
+  { type: "FILE_UPLOAD", label: "File upload", icon: Paperclip, description: "Attach a document" },
 ];
 
 export const getFieldIcon = (type: string) => {
@@ -52,17 +54,12 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
 
   return (
     <div
-      /* Both states carry a 2px border so selecting a node re-inks its edge
-         instead of resizing it — a width change here would shift the node's
-         contents by a pixel on every click. */
       className={`w-72 cursor-pointer border-2 bg-white transition-shadow select-none ${
         selected
           ? "border-(--cf-orange) shadow-[5px_5px_0_0_var(--cf-orange)]"
           : "border-(--cf-line-strong) shadow-[4px_4px_0_0_rgba(26,29,41,0.16)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.32)]"
       }`}
     >
-      {/* Titlebar. Tinted and ruled so the node reads as a drawn card
-          rather than one undivided box. */}
       <div
         className="flex items-center justify-between border-b px-4 py-2"
         style={{ borderBottomColor: "var(--cf-line)", background: "var(--cf-cream)" }}
@@ -237,6 +234,25 @@ function FieldPreview({ field }: { field: any }) {
         >
           {o?.activeLabel || "Yes"}
         </span>
+      </div>
+    );
+  }
+
+  if (field.type === "FILE_UPLOAD") {
+    const o = field.options as any;
+    const accept: string[] = Array.isArray(o?.accept) ? o.accept : [];
+    const limit = o?.maxMb ? `${o.maxMb}MB max` : "";
+    const kinds = accept.length > 0 ? accept.join(", ") : "Any allowed type";
+
+    return (
+      <div className="border border-dashed border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[12px] text-(--cf-ink-soft)">
+          <Paperclip className="size-3.5 shrink-0 text-(--cf-ink-soft)/55" />
+          <span className="truncate">{field.placeholder || "Choose a file"}</span>
+        </div>
+        <p className="mt-1 truncate font-mono text-[10px] text-(--cf-ink-soft)/60">
+          {[kinds, limit].filter(Boolean).join(" · ")}
+        </p>
       </div>
     );
   }

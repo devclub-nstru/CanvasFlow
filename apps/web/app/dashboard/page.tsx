@@ -147,9 +147,7 @@ export default function DashboardPage() {
             <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
               Response trends
             </h3>
-            <p className="mt-1 text-[13px] text-(--cf-ink-soft)">
-              {activeRange.subtitle}
-            </p>
+            <p className="mt-1 text-[13px] text-(--cf-ink-soft)">{activeRange.subtitle}</p>
           </div>
 
           {/* Segmented control, squared and hairlined to match the chrome. */}
@@ -255,9 +253,7 @@ export default function DashboardPage() {
                     const count = Number(payload[0]?.value ?? 0);
                     return (
                       <div className="cf-raised border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2">
-                        <p className="cf-meta">
-                          {label}
-                        </p>
+                        <p className="cf-meta">{label}</p>
                         <p className="mt-1 text-[13px] font-medium text-(--cf-ink) tabular-nums">
                           <span className="text-(--cf-orange)">{count}</span> response
                           {count === 1 ? "" : "s"}
@@ -296,9 +292,7 @@ export default function DashboardPage() {
             </h3>
           </div>
           <div className="flex items-center gap-4">
-            <span className="cf-meta hidden sm:inline">
-              {stats?.recentForms.length ?? 0} shown
-            </span>
+            <span className="cf-meta hidden sm:inline">{stats?.recentForms.length ?? 0} shown</span>
             <Link
               href="/dashboard/sketches"
               className="group inline-flex items-center gap-1 text-[13px] font-medium transition-opacity hover:opacity-70"
@@ -351,9 +345,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 pr-2 font-mono text-[12px] text-(--cf-ink-soft)">
-                  <span className="tabular-nums text-(--cf-ink)">
-                    {item.submissionsCount}
-                  </span>
+                  <span className="tabular-nums text-(--cf-ink)">{item.submissionsCount}</span>
                   <span>resp.</span>
                 </div>
               </Link>
@@ -384,9 +376,7 @@ function SummaryMetric({ label, value, sub }: { label: string; value: string; su
       <p className="mt-1.5 cf-display text-[22px] sm:text-[24px] leading-none tabular-nums truncate">
         {value}
       </p>
-      {sub && (
-        <p className="mt-1 text-[11px] font-mono text-(--cf-ink-soft) truncate">{sub}</p>
-      )}
+      {sub && <p className="mt-1 text-[11px] font-mono text-(--cf-ink-soft) truncate">{sub}</p>}
     </div>
   );
 }

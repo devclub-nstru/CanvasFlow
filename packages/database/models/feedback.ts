@@ -41,11 +41,7 @@ export const feedbackTable = pgTable(
       .notNull(),
   },
   (table) => ({
-    // The triage queue: "open reports, newest first".
     statusCreatedIdx: index("feedback_status_created_idx").on(table.status, table.createdAt),
-    // Both of these serve the per-reporter flood check in FeedbackService,
-    // which counts rows for one identity since a cutoff. Composite rather
-    // than a bare column index so the count is served by the index alone.
     userCreatedIdx: index("feedback_user_created_idx").on(table.userId, table.createdAt),
     emailCreatedIdx: index("feedback_email_created_idx").on(table.email, table.createdAt),
   }),

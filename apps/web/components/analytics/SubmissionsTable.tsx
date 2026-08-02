@@ -31,20 +31,17 @@ interface SubmissionsTableProps {
   setViewingSubmission: (sub: Submission | null) => void;
   viewingSubmission: Submission | null;
   form: { fields: FormField[] } | null | undefined;
-  // Pagination state from useGetSubmissions's underlying useInfiniteQuery
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   fetchNextPage?: () => void;
 }
 
-// Detail modal is only rendered when a row is clicked. Lazy-load it so it
-// stays out of the initial bundle.
 const SubmissionDetailModal = dynamic(
   () => import("./SubmissionDetailModal").then((m) => m.SubmissionDetailModal),
   { ssr: false },
 );
 
-const ROW_HEIGHT = 64; // px — fixed-height rows make virtualization simple
+const ROW_HEIGHT = 64;
 const GRID_COLS =
   "grid grid-cols-[minmax(0,1fr)_110px_160px_56px] sm:grid-cols-[minmax(0,1fr)_120px_180px_56px] gap-3 items-center";
 
@@ -60,25 +57,18 @@ export function SubmissionsTable({
   isFetchingNextPage,
   fetchNextPage,
 }: SubmissionsTableProps) {
-  // Scroll container for the virtualizer
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredSubmissions.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
-    // Render a few rows above/below the viewport so fast scrolls don't
-    // flash empty space.
     overscan: 6,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
-  // Auto-load the next page when the user scrolls within ~3 rows of the
-  // bottom. Pairs with the visible "Load older" button so users can pull
-  // manually if the auto-trigger missed (e.g. they jumped to the bottom
-  // with End key before any rows rendered).
   React.useEffect(() => {
     const last = virtualItems[virtualItems.length - 1];
     if (!last) return;
@@ -87,11 +77,8 @@ export function SubmissionsTable({
     }
   }, [virtualItems, hasNextPage, isFetchingNextPage, filteredSubmissions.length, fetchNextPage]);
 
-  // Cap the scroll area: tall enough to feel like a real table, capped so
-  // it doesn't push the page off the bottom on small viewports.
   const scrollHeight = useMemo(() => {
     if (filteredSubmissions.length === 0) return 0;
-    // ~6 rows visible by default; clamp to 640px max.
     return Math.min(filteredSubmissions.length * ROW_HEIGHT, 640);
   }, [filteredSubmissions.length]);
 
@@ -129,10 +116,7 @@ export function SubmissionsTable({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {/* min-width keeps the header + virtualized rows aligned even
-                  when the viewport is narrow; horizontal scroll on phones */}
               <div className="min-w-160">
-                {/* Header — outside the virtualized scroll area, always visible */}
                 <div className={`${GRID_COLS} px-1 pb-3 border-b border-(--cf-line)`}>
                   <div className="font-mono text-[11px] uppercase tracking-wider text-(--cf-ink-soft) font-medium">
                     Respondent
@@ -147,9 +131,6 @@ export function SubmissionsTable({
                     Action
                   </div>
                 </div>
-
-                {/* Virtualised body — only rows currently in/near the
-                    viewport are rendered. Scales to thousands of rows. */}
                 <div
                   ref={scrollRef}
                   className="overflow-y-auto"
@@ -226,8 +207,6 @@ export function SubmissionsTable({
                   </div>
                 </div>
 
-                {/* Pagination footer — manual fallback for the auto-trigger
-                    above. Surfaces loading state when more rows are coming. */}
                 {(hasNextPage || isFetchingNextPage) && (
                   <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-(--cf-line)">
                     {isFetchingNextPage ? (
@@ -252,7 +231,6 @@ export function SubmissionsTable({
         </div>
       </div>
 
-      {/* Submission detail modal — code-split, only loaded when opened */}
       {viewingSubmission && form && (
         <SubmissionDetailModal
           submission={viewingSubmission}

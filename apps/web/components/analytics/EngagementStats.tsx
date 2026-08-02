@@ -29,10 +29,6 @@ const formatLag = (minutes: number | null) => {
   return `${(h / 24).toFixed(1)}d`;
 };
 
-/**
- * Four engagement figures the Pro payload already returned but nothing rendered
- * after the standalone detailed page was removed.
- */
 export function EngagementStats({
   avgTimeSpentMs,
   medianResponseTime,

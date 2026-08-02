@@ -29,8 +29,6 @@ export const sessionsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
   },
   (table) => ({
-    // FK lookups (`SELECT * FROM sessions WHERE user_id = $1`) ran without
-    // an index until now. Frequently hit on every authenticated request.
     userIdx: index("sessions_user_id_idx").on(table.userId),
     expiresIdx: index("sessions_expires_at_idx").on(table.expiresAt),
   }),

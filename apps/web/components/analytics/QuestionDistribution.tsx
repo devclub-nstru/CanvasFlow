@@ -177,13 +177,6 @@ function TextSamples({ samples, totalAnswered }: { samples: string[]; totalAnswe
   );
 }
 
-/**
- * One-line summary shown while a question is collapsed.
- *
- * The whole point of collapsing is to shorten the section, so a closed row
- * still has to say something useful — otherwise it is a list of labels and you
- * have to open every one to find the interesting question.
- */
 function collapsedSummary(q: QuestionItem): string | null {
   if (q.totalAnswered === 0) return "No answers yet";
   if (CHOICE_TYPES.includes(q.fieldType) && q.optionCounts?.length) {
@@ -257,14 +250,6 @@ function QuestionBody({ q }: { q: QuestionItem }) {
   );
 }
 
-/**
- * Question breakdown as a single-open accordion.
- *
- * Rendering every question's full distribution at once made this the longest
- * block on the page — a ten-field form pushed everything below it off screen.
- * Collapsed rows keep the whole form scannable in one view, and only one opens
- * at a time so the section's height stays roughly constant.
- */
 export function QuestionDistribution({ questionDistribution }: QuestionDistributionProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 

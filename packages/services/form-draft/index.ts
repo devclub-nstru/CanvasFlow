@@ -11,24 +11,11 @@ import {
 } from "./model";
 
 class FormDraftService {
-  /**
-   * Save (or overwrite) the caller's draft for a form.
-   *
-   * Scoped to `userId` throughout, never taking an id from the input, so a
-   * draft can only ever be written to or read from the caller's own row.
-   *
-   * A single upsert on the (form_id, user_id) unique constraint rather than
-   * select-then-insert-or-update: autosave fires repeatedly while someone
-   * types, and the read-then-write version races itself into duplicate-key
-   * errors on the second keystroke burst.
-   */
+  // Saves or updates draft
   public async saveDraft(payload: SaveDraftInputType & { userId: string }) {
     const { formId, values, pagePath } = await saveDraftInput.parseAsync(payload);
     const { userId } = payload;
 
-    // The form has to exist and be live. Without this a draft could be kept
-    // against a deleted or unpublished form, which would then be restored onto
-    // a form the respondent can no longer see.
     const formRows = await db
       .select({ id: formsTable.id, isPublished: formsTable.isPublished })
       .from(formsTable)
@@ -76,14 +63,7 @@ class FormDraftService {
     };
   }
 
-  /**
-   * Discard the caller's draft. Called on a successful submit, and when the
-   * respondent explicitly starts over.
-   *
-   * Deliberately idempotent: submit fires this once, but a retried request or a
-   * double-click would fire it again, and "there was nothing to delete" is not
-   * a failure worth surfacing on a form the person has already completed.
-   */
+  // Discard the draft
   public async deleteDraft(payload: DeleteDraftInputType & { userId: string }) {
     const { formId } = await deleteDraftInput.parseAsync(payload);
     const { userId } = payload;

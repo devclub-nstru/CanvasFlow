@@ -13,6 +13,8 @@ import { auth } from "@repo/trpc/server/auth";
 import { toNodeHandler } from "better-auth/node";
 
 import { env } from "./env";
+import { uploadRouter, uploadErrorHandler } from "./routes/upload";
+import { redisRateLimitStore } from "./lib/rate-limit-store";
 
 export const app = express();
 
@@ -27,9 +29,6 @@ const openApiDocument = generateOpenApiDocument(serverRouter, {
   baseUrl: env.BASE_URL.concat("/api"),
 });
 
-// Origins that may hit the API with credentials. The first three are
-// kept for local dev / legacy previews. Production origins are appended
-// from `TRUSTED_ORIGINS` so we don't need a code change per environment.
 const extraOrigins = (env.TRUSTED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
@@ -42,12 +41,9 @@ const allowedOrigins = [
   ...extraOrigins,
 ];
 
-// CORS must run before every handler, including the better-auth handler.
-// Express v5 note: middleware registered with app.use() runs for ALL routes.
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (server-to-server, curl, etc.)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -55,21 +51,22 @@ app.use(
       }
     },
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "Idempotency-Key"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Cookie",
+      "Idempotency-Key",
+      "X-Upload-Token",
+    ],
     exposedHeaders: ["Set-Cookie", "Server-Timing"],
-    // Cache preflight for 2 hours — eliminates the ~700ms OPTIONS round-trip
-    // on every cross-origin request after the first.
     maxAge: 7200,
   }),
 );
 
-// gzip/brotli responses. Skip for already-compressed assets and small
-// payloads (< 1KB) where compression overhead outweighs the saving.
 app.use(
   compression({
     threshold: 1024,
     filter: (req, res) => {
-      // Respect the standard opt-out header
       if (req.headers["x-no-compression"]) return false;
       return compression.filter(req, res);
     },
@@ -79,48 +76,36 @@ app.use(
 app.use(cookieParser());
 
 const publicWriteLimiter = rateLimit({
-  windowMs: 60_000, // 1 minute
-  max: 60,
-  standardHeaders: "draft-7", // RateLimit-* headers
+  windowMs: 60_000,
+  max: env.RATE_LIMIT_PUBLIC_WRITE_MAX,
+  standardHeaders: "draft-7",
   legacyHeaders: false,
+  store: redisRateLimitStore("public-write"),
   message: { error: "Too many requests — slow down and try again in a minute." },
 });
 
 const authGlobalLimiter = rateLimit({
   windowMs: 60_000,
-  max: 300, // generous for a logged-in tab making lots of small queries
+  max: env.RATE_LIMIT_AUTH_MAX,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  // Key on session cookie if available, fall back to the proxy-aware IP
-  // (ipKeyGenerator normalises IPv6 to a /64 prefix so we don't trivially
-  // bucket every address separately).
   keyGenerator: (req) =>
     req.headers.cookie?.match(/better-auth\.session_token=([^;]+)/)?.[1] ??
     ipKeyGenerator(req.ip ?? "unknown"),
+  store: redisRateLimitStore("auth-global"),
   message: { error: "Request rate exceeded for this session." },
 });
 
-// Apply the public write limiter to the form-side write endpoints. tRPC's
-// HTTP path includes the procedure name, so we can match on it.
 app.use(
-  [
-    "/trpc/analytics.recordFieldAnswer",
-    "/trpc/form.submitForm",
-    // The report widget is reachable without an account, so it needs the same
-    // IP ceiling as the other unauthenticated writes. The service adds a
-    // per-account hourly cap on top, which covers the case one attacker
-    // rotating IPs would otherwise slip through.
-    "/trpc/feedback.submitFeedback",
-  ],
+  ["/trpc/analytics.recordFieldAnswer", "/trpc/form.submitForm", "/trpc/feedback.submitFeedback"],
   publicWriteLimiter,
 );
 
-// Better Auth handler must be mounted BEFORE express.json().
-// Express v5 wildcard syntax: "*splat" (not "{*splat}" which is v4).
-// Per the better-auth Express docs, do NOT use express.json() before this.
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
-app.use(express.json({ limit: "200kb" })); // submission payload cap
+app.use(uploadRouter);
+
+app.use(express.json({ limit: "200kb" }));
 
 app.get("/", (req, res) => {
   return res.json({ message: "CanvasFlow is up and running..." });
@@ -130,7 +115,6 @@ app.get("/health", (req, res) => {
   return res.json({ message: "CanvasFlow server is healthy", healthy: true });
 });
 
-// Diagnostic: confirm which social providers are active (safe — no secrets)
 app.get("/api/auth/providers", (req, res) => {
   const providers = [];
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) providers.push("google");
@@ -161,8 +145,6 @@ app.use(
   }),
 );
 
-// Global limiter sits in front of /trpc as a backstop. Per-procedure
-// limits above already handle the abusable public ones.
 app.use("/trpc", authGlobalLimiter);
 app.use(
   "/trpc",
@@ -170,6 +152,26 @@ app.use(
     router: serverRouter,
     createContext,
   }),
+);
+
+app.use(uploadErrorHandler);
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use(
+  (err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    logger.error("[api] unhandled error", {
+      method: req.method,
+      path: req.path,
+      err: err instanceof Error ? err.stack : err,
+    });
+
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+
+    res.status(500).json({ error: "Internal server error" });
+  },
 );
 
 export default app;

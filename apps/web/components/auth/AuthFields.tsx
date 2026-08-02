@@ -4,15 +4,6 @@ import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 
-/**
- * Form primitives shared by /signIn and /signUp.
- *
- * Both routes render the same field, label and social row, so they live here
- * rather than being copy-pasted per page — which is how the two screens
- * previously drifted apart.
- */
-
-/** Mono uppercase caption above each input. */
 export const FieldLabel = ({
   children,
   htmlFor,
@@ -29,10 +20,6 @@ export const FieldLabel = ({
   </label>
 );
 
-/* A single set of input classes so the text, email and password fields cannot
-   fall out of step. Square with a black edge, matching the landing chrome; the
-   focus state is a hard offset shadow rather than a glow ring for the same
-   reason the cards use one. */
 const INPUT_CLASS =
   "w-full rounded-none border hex-line-strong bg-white px-4 py-3 text-[15px] outline-none transition-shadow placeholder:text-(--hex-ink-muted) focus:shadow-[3px_3px_0_0_rgba(26,29,41,0.14)]";
 
@@ -69,7 +56,6 @@ export const Field = ({
   </div>
 );
 
-/** Password field with a reveal toggle. */
 export const PasswordField = ({
   id,
   label,

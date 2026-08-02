@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
-  ChevronDown,
   Clock,
   Plus,
   Search,
@@ -21,6 +20,7 @@ import { useDebounce } from "~/hooks/useDebounce";
 import { trpc } from "~/trpc/client";
 import { toast } from "sonner";
 import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
+import { CustomSelect } from "~/components/ui/CustomSelect";
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 
@@ -142,8 +142,6 @@ export default function SketchesPage() {
           </p>
         </div>
 
-        {/* Search and the two selects sit on one rule, squared and black-edged
-            like the rest of the chrome. */}
         <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-2xl">
           <div className="relative flex-1">
             <Search
@@ -187,9 +185,7 @@ export default function SketchesPage() {
 
       {/* ───── result count rule ───── */}
       <div className="flex items-end justify-between gap-4 border-b border-(--cf-line-strong) pb-3">
-        <p className="cf-meta">
-          {hasActiveFilters ? "Filtered" : "All forms"}
-        </p>
+        <p className="cf-meta">{hasActiveFilters ? "Filtered" : "All forms"}</p>
         <p className="cf-meta">
           {processedForms.length} {processedForms.length === 1 ? "result" : "results"}
         </p>
@@ -261,35 +257,42 @@ export default function SketchesPage() {
         <div className="cf-scrim z-200">
           <div className="cf-dark cf-crop w-full max-w-md">
             <div className="relative z-1 p-6 sm:p-8">
-            <p className="cf-dark-meta" style={{ color: "var(--c-red)" }}>Permanent action</p>
-            <h3 className="cf-display mt-3 text-[26px] leading-none uppercase sm:text-[32px]">
-              Delete form
-              <span style={{ color: "var(--c-red)" }}>.</span>
-            </h3>
-            <p className="mt-3 text-[13.5px] leading-relaxed" style={{ color: "var(--cfd-text-soft)" }}>
-              <span className="font-medium" style={{ color: "var(--cfd-text)" }}>
-                &ldquo;{confirmDeleteForm.title}&rdquo;
-              </span>{" "}
-              and all its fields and submissions will be permanently removed. This cannot be undone.
-            </p>
+              <p className="cf-dark-meta" style={{ color: "var(--c-red)" }}>
+                Permanent action
+              </p>
+              <h3 className="cf-display mt-3 text-[26px] leading-none uppercase sm:text-[32px]">
+                Delete form
+                <span style={{ color: "var(--c-red)" }}>.</span>
+              </h3>
+              <p
+                className="mt-3 text-[13.5px] leading-relaxed"
+                style={{ color: "var(--cfd-text-soft)" }}
+              >
+                <span className="font-medium" style={{ color: "var(--cfd-text)" }}>
+                  &ldquo;{confirmDeleteForm.title}&rdquo;
+                </span>{" "}
+                and all its fields and submissions will be permanently removed. This cannot be
+                undone.
+              </p>
 
-            <div className="flex justify-end gap-3 pt-6">
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                disabled={isDeleting}
-                className="cf-dark-btn-outline px-4 py-2 text-[13px] disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(confirmDeleteId)}
-                disabled={isDeleting}
-                className="cf-btn px-5 py-2 text-[13px] disabled:opacity-50" style={{ background: "var(--c-red)" }}
-              >
-                <Trash2 className="size-3.5" />
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  disabled={isDeleting}
+                  className="cf-dark-btn-outline px-4 py-2 text-[13px] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(confirmDeleteId)}
+                  disabled={isDeleting}
+                  className="cf-btn px-5 py-2 text-[13px] disabled:opacity-50"
+                  style={{ background: "var(--c-red)" }}
+                >
+                  <Trash2 className="size-3.5" />
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -324,21 +327,11 @@ function ToolbarSelect({
       <label htmlFor={`toolbar-${label}`} className="sr-only">
         {label}
       </label>
-      <select
-        id={`toolbar-${label}`}
+      <CustomSelect
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full cursor-pointer appearance-none border border-(--cf-line-strong) bg-(--cf-cream-2) pr-9 pl-3.5 font-mono text-[11px] font-bold tracking-[0.14em] uppercase transition-shadow focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none sm:w-auto"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2"
-        style={{ color: "var(--cf-ink-soft)" }}
+        onChange={onChange}
+        options={options}
+        className="w-full sm:w-[180px]"
       />
     </div>
   );
@@ -443,7 +436,8 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
               }}
               title="Delete form"
               aria-label="Delete form"
-              className="shrink-0 cursor-pointer border border-transparent p-1.5 transition-colors hover:border-(--cf-line-strong)" style={{ color: "var(--cf-ink-soft)" }}
+              className="shrink-0 cursor-pointer border border-transparent p-1.5 transition-colors hover:border-(--cf-line-strong)"
+              style={{ color: "var(--cf-ink-soft)" }}
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -473,7 +467,8 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         {isPublished ? (
           <Link
             href={`/dashboard/sketches/${form.id}`}
-            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]" style={{ background: "var(--cf-ink)" }}
+            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
+            style={{ background: "var(--cf-ink)" }}
           >
             Open
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
@@ -529,17 +524,11 @@ function EmptyState({
       </p>
       <div className="flex items-center justify-center gap-3 pt-1">
         {hasFilters && (
-          <button
-            onClick={onClearFilters}
-            className="cf-btn-outline px-4 py-2 text-[13px]"
-          >
+          <button onClick={onClearFilters} className="cf-btn-outline px-4 py-2 text-[13px]">
             Clear filters
           </button>
         )}
-        <button
-          onClick={onCreate}
-          className="cf-btn cf-raised cf-press h-10.5 px-6 text-[13px]"
-        >
+        <button onClick={onCreate} className="cf-btn cf-raised cf-press h-10.5 px-6 text-[13px]">
           <Plus className="size-4" />
           New form
         </button>

@@ -13,8 +13,6 @@ const Footer = () => {
   };
 
   return (
-    // Colour comes from the accent token rather than a literal, so the footer
-    // and the app's primary actions can never drift apart.
     <footer className="relative flex flex-col overflow-hidden border-t border-(--cf-orange) bg-white font-sans text-(--cf-orange)">
       <div className="mx-auto w-full max-w-400 border-x border-(--cf-orange) flex flex-col relative">
         {/* Links Section */}

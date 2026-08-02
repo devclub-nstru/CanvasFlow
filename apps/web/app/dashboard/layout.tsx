@@ -139,75 +139,78 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               <div className="relative z-1 p-6 sm:p-8">
-              <p className="cf-dark-meta">New canvas</p>
-              <h3 className="cf-display mt-3 text-[30px] leading-none uppercase sm:text-[38px]">
-                New form
-                <span style={{ color: "var(--cf-orange)" }}>.</span>
-              </h3>
-              <p
-                className="mt-3 text-[13.5px] leading-relaxed"
-                style={{ color: "var(--cfd-text-soft)" }}
-              >
-                Give your form a title and a unique slug. You can rename it later — your data keys
-                stay stable.
-              </p>
+                <p className="cf-dark-meta">New canvas</p>
+                <h3 className="cf-display mt-3 text-[30px] leading-none uppercase sm:text-[38px]">
+                  New form
+                  <span style={{ color: "var(--cf-orange)" }}>.</span>
+                </h3>
+                <p
+                  className="mt-3 text-[13.5px] leading-relaxed"
+                  style={{ color: "var(--cfd-text-soft)" }}
+                >
+                  Give your form a title and a unique slug. You can rename it later — your data keys
+                  stay stable.
+                </p>
 
-              <form onSubmit={handleFormSubmit} className="mt-6 space-y-4">
-                <FieldGroup label="Title">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Quarterly feedback"
-                    value={title}
-                    onChange={handleTitleChange}
-                    className="cf-dark-input h-10.5 px-4 text-[14px]"
-                  />
-                </FieldGroup>
-
-                <FieldGroup label="Slug">
-                  <div className="relative">
-                    <span className="absolute top-1/2 left-3 -translate-y-1/2 font-mono text-[13px]" style={{ color: "var(--cfd-text-muted)" }}>
-                      /
-                    </span>
+                <form onSubmit={handleFormSubmit} className="mt-6 space-y-4">
+                  <FieldGroup label="Title">
                     <input
                       type="text"
                       required
-                      placeholder="quarterly-feedback"
-                      value={slug}
-                      onChange={handleSlugChange}
-                      className="cf-dark-input h-10.5 pr-4 pl-7 font-mono text-[14px]"
+                      placeholder="Quarterly feedback"
+                      value={title}
+                      onChange={handleTitleChange}
+                      className="cf-dark-input h-10.5 px-4 text-[14px]"
                     />
+                  </FieldGroup>
+
+                  <FieldGroup label="Slug">
+                    <div className="relative">
+                      <span
+                        className="absolute top-1/2 left-3 -translate-y-1/2 font-mono text-[13px]"
+                        style={{ color: "var(--cfd-text-muted)" }}
+                      >
+                        /
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        placeholder="quarterly-feedback"
+                        value={slug}
+                        onChange={handleSlugChange}
+                        className="cf-dark-input h-10.5 pr-4 pl-7 font-mono text-[14px]"
+                      />
+                    </div>
+                  </FieldGroup>
+
+                  <FieldGroup label="Description" optional>
+                    <textarea
+                      placeholder="A short note for your team..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
+                      className="cf-dark-input resize-none px-4 py-3 text-[14px]"
+                    />
+                  </FieldGroup>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCreateModalOpen(false)}
+                      className="cf-dark-btn-outline px-4 py-2 text-[13px]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingForm}
+                      className="cf-btn group px-5 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isCreatingForm ? "Creating..." : "Create form"}
+                      <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </button>
                   </div>
-                </FieldGroup>
-
-                <FieldGroup label="Description" optional>
-                  <textarea
-                    placeholder="A short note for your team..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    className="cf-dark-input resize-none px-4 py-3 text-[14px]"
-                  />
-                </FieldGroup>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setCreateModalOpen(false)}
-                    className="cf-dark-btn-outline px-4 py-2 text-[13px]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatingForm}
-                    className="cf-btn group px-5 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isCreatingForm ? "Creating..." : "Create form"}
-                    <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </button>
-                </div>
-              </form>
+                </form>
               </div>
             </div>
           </div>

@@ -27,10 +27,17 @@ function SignInForm() {
   const { signInUserWithEmailAndPassword, isPending } = useSignIn();
   const [isSocialPending, setIsSocialPending] = React.useState(false);
 
-  /* Where to land afterwards. Almost always the dashboard, but a respondent
-   * sent here by a sign-in-gated form needs to come back to that form — landing
-   * on the dashboard would leave them to find the link again themselves.
-   * Sanitised, because an unchecked `redirect` is an open redirect. */
+  const switchAccount = searchParams.get("switch") === "1";
+
+  React.useEffect(() => {
+    if (switchAccount) {
+      authClient.signOut().then(() => {
+        document.cookie =
+          "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
+      });
+    }
+  }, [switchAccount]);
+
   const redirectTo = safeRedirect(searchParams.get("redirect"));
 
   const {
@@ -45,8 +52,6 @@ function SignInForm() {
   const handleSocialSignIn = async (provider: "google" | "github") => {
     setIsSocialPending(true);
     try {
-      // The destination has to survive the round trip through the provider, so
-      // it rides along on the callback URL rather than in local state.
       const callback = new URL("/auth/callback", window.location.origin);
       if (redirectTo !== "/dashboard") callback.searchParams.set("redirect", redirectTo);
 
@@ -60,9 +65,6 @@ function SignInForm() {
     }
   };
 
-  // `useSignIn` reports outcome through callbacks and resolves either way, so
-  // success has to be driven from `onSuccess`. Awaiting it and assuming
-  // success is what previously let a rejected login navigate to the dashboard.
   const onSubmit = (data: SignInValues) =>
     signInUserWithEmailAndPassword(data, {
       onSuccess: () => {
@@ -150,14 +152,11 @@ function SignInForm() {
         <span className="text-[13px]" style={{ color: "var(--hex-ink-soft)" }}>
           Don&rsquo;t have an account?
         </span>
-        {/* Carries the destination across, because a respondent gated out of a
-            form often doesn't have an account yet — dropping it here would send
-            them to the dashboard after signing up and lose the form. */}
         <Link
           href={
             redirectTo === "/dashboard"
-              ? "/signUp"
-              : `/signUp?redirect=${encodeURIComponent(redirectTo)}`
+              ? `/signUp${switchAccount ? "?switch=1" : ""}`
+              : `/signUp?redirect=${encodeURIComponent(redirectTo)}${switchAccount ? "&switch=1" : ""}`
           }
           className="text-[13px] font-semibold underline underline-offset-2 transition-opacity hover:opacity-70"
         >
@@ -184,10 +183,6 @@ function SignInForm() {
 }
 
 export default function SignInPage() {
-  /* `useSearchParams` opts the page out of prerendering unless it sits under a
-   * Suspense boundary — the build fails outright otherwise. Null fallback
-   * because the shell around this comes from the (auth) layout, so a spinner
-   * here would flash inside an already-rendered frame. */
   return (
     <Suspense fallback={null}>
       <SignInForm />

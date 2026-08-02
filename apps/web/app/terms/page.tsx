@@ -12,29 +12,6 @@ export const metadata: Metadata = {
     "The agreement for using CanvasFlow: what you may build, who owns your content, and what you owe the people who answer your forms.",
 };
 
-/* ============================================================
-   BEFORE PUBLISHING — must be filled in by whoever owns the
-   legal side. The copy is written to read correctly while these
-   are unset, but the document is NOT complete without them:
-
-     · CONTACT_EMAIL   — a working address for legal and account
-       notices.
-     · LEGAL_ENTITY    — the contracting party. Until it is set,
-       nothing here names a company, which means there is no
-       identified counterparty to the agreement.
-     · A governing-law and dispute-resolution clause.
-     · Consumer-law carve-outs for your markets. The liability
-       and disclaimer sections below are drafted broadly and are
-       unenforceable as written in several jurisdictions.
-
-   Kept deliberately accurate to the build as of LAST_UPDATED:
-     · The service is free and metered by nothing. There are no
-       plans, no submission or form ceilings, and no payment
-       processor — so there are no billing, renewal, refund, or
-       tax terms here. Add all of the above together if paid
-       tiers are ever introduced; a pricing claim without an
-       enforced limit behind it is a misrepresentation.
-   ============================================================ */
 const CONTACT_EMAIL: string | null = null;
 const LEGAL_ENTITY: string | null = null;
 const LAST_UPDATED = "31 July 2026";
@@ -181,8 +158,6 @@ export default function TermsPage() {
     <div className="hex-theme hex-paper relative min-h-screen">
       <Noise />
 
-      {/* Ruled page margins, md and up only — below that there is no gutter
-          for them to sit in and they would land on the copy. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
         <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />

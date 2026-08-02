@@ -84,9 +84,6 @@ export function AnalyticsPage() {
 
   const selectedFormId = searchParams.get("form");
 
-  // Memoised so the auto-select effect below can depend on it honestly. As a
-  // plain function it was reallocated every render, which is why that effect
-  // needed an exhaustive-deps suppression to avoid firing on every pass.
   const setSelectedFormId = useCallback(
     (id: string) => {
       router.replace(`/dashboard/analytics?form=${id}`, { scroll: false });
@@ -104,11 +101,8 @@ export function AnalyticsPage() {
     isFetchingNextPage,
     fetchNextPage,
   } = useGetSubmissions(selectedFormId || "");
-  // No longer conditional on a subscription tier — every signed-in owner gets
-  // the detailed breakdown, so the query runs whenever a form is selected.
   const { detailedAnalytics } = useGetDetailedAnalytics(selectedFormId || "");
 
-  // Auto-select the first form when none is in the URL.
   useEffect(() => {
     if (forms && forms.length > 0 && !selectedFormId) {
       const firstForm = forms[0];

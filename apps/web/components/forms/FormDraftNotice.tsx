@@ -7,7 +7,6 @@ export type DraftStatus = "idle" | "saving" | "saved";
 
 interface FormDraftNoticeProps {
   status: DraftStatus;
-  /** ISO timestamp of the draft that was restored, if this session resumed one. */
   resumedFrom?: string | null;
   onStartOver: () => void;
 }
@@ -27,15 +26,6 @@ function relativeTime(iso: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-/**
- * Tells a signed-in respondent that their progress is being kept, and that a
- * previous session was picked up.
- *
- * Both halves matter. Silently restoring answers is alarming — the form appears
- * to already know things about you — so the resume is announced with a way to
- * discard it. And an autosave nobody can see is indistinguishable from no
- * autosave, which is what makes people afraid to close the tab.
- */
 export function FormDraftNotice({ status, resumedFrom, onStartOver }: FormDraftNoticeProps) {
   if (status === "idle" && !resumedFrom) return null;
 

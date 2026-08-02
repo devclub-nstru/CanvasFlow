@@ -4,28 +4,13 @@ import React from "react";
 import { MousePointerClick, SlidersHorizontal, Trash2 } from "lucide-react";
 import { GitBranch, Pencil } from "lucide-react";
 import { getFieldIcon } from "./FormFieldNode";
+import { CustomSelect } from "~/components/ui/CustomSelect";
 
-/**
- * Segment assignment and branching for the selected question.
- *
- * Optional as a group: `FieldInspectorBody` is shared with the phone editor
- * (`MobileFieldEditorSheet`), which doesn't carry the form-wide segment and
- * rule state. When they're absent the section simply isn't rendered, so the
- * mobile sheet keeps working unchanged rather than needing a parallel
- * implementation.
- *
- * Branching is represented here only as sentences and a button. The controls
- * themselves need far more room than a 288px rail can give — see
- * `LogicDialog` — and a summary is what the inspector is actually good at:
- * telling you what this question does without you having to open anything.
- */
 export interface FieldFlowProps {
   segmentOptions?: Array<{ id: string; label: string }>;
   currentSegmentId?: string | null;
   onChangeSegment?: (segmentId: string | null) => void;
-  /** One plain-English line per branch, in evaluation order. */
   ruleSummaries?: string[];
-  /** Branches that are saved but incomplete, so the rail can say so. */
   incompleteRuleCount?: number;
   onEditBranching?: () => void;
   isLastInSegment?: boolean;
@@ -49,9 +34,6 @@ export interface FieldInspectorProps extends FieldFlowProps {
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 
-// SELECT/CHECKBOX `choices` live alongside other config (like `position`) on
-// the field's options. Merge the new choices into the existing object so we
-// don't clobber position or any future config when editing the choice list.
 function mergeChoices(currentOptions: any, nextChoices: string[]): Record<string, any> {
   const base =
     currentOptions && typeof currentOptions === "object" && !Array.isArray(currentOptions)
@@ -59,6 +41,31 @@ function mergeChoices(currentOptions: any, nextChoices: string[]): Record<string
       : {};
   return { ...base, choices: nextChoices };
 }
+
+const PRESET_FILE_TYPES = [
+  { label: "Any allowed type", value: "" },
+  { label: "PDF", value: "application/pdf" },
+  { label: "Images", value: "image/*" },
+  { label: "ZIP & Archives", value: "application/zip, application/x-zip-compressed, .zip" },
+  {
+    label: "Word Documents",
+    value:
+      "application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, .doc, .docx",
+  },
+  {
+    label: "Excel Spreadsheets",
+    value:
+      "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv, .xls, .xlsx, .csv",
+  },
+];
+
+const normalizeForMatch = (str: string) =>
+  str
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(",");
 
 /* ─── primitives ─────────────────────────────────────────────────────── */
 
@@ -95,12 +102,6 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   );
 }
 
-/* ─── shared body ────────────────────────────────────────────────────────
- *
- * Form inputs for a selected field. Used both by the desktop aside
- * `FieldInspector` and the mobile `MobileFieldEditorSheet`. Caller is
- * responsible for ensuring `selectedField` is non-null before rendering.
- */
 export function FieldInspectorBody({
   selectedField,
   label,
@@ -236,22 +237,22 @@ export function FieldInspectorBody({
         <Section title="Rating scale">
           <div>
             <Label>Max stars</Label>
-            <select
+            <CustomSelect
               value={(selectedField.options as any)?.max || 5}
-              onChange={(e) =>
+              onChange={(val) =>
                 updateLocal(selectedField.id, {
                   options: {
                     ...((selectedField.options as any) || {}),
-                    max: parseInt(e.target.value),
+                    max: parseInt(val, 10),
                   },
                 })
               }
-              className="cf-input h-9 cursor-pointer px-3 text-[13px]"
-            >
-              <option value={3}>3 — Small</option>
-              <option value={5}>5 — Standard</option>
-              <option value={10}>10 — Detailed</option>
-            </select>
+              options={[
+                { value: 3, label: "3 — Small" },
+                { value: 5, label: "5 — Standard" },
+                { value: 10, label: "10 — Detailed" },
+              ]}
+            />
           </div>
         </Section>
       )}
@@ -387,26 +388,109 @@ export function FieldInspectorBody({
         </Section>
       )}
 
+      {selectedField.type === "FILE_UPLOAD" && (
+        <Section title="File upload">
+          <div>
+            <Label>Files per response</Label>
+            <CustomSelect
+              value={(selectedField.options as any)?.maxFiles || 1}
+              onChange={(val) =>
+                updateLocal(selectedField.id, {
+                  options: {
+                    ...((selectedField.options as any) || {}),
+                    maxFiles: parseInt(val, 10),
+                  },
+                })
+              }
+              options={[1, 2, 3, 4, 5, 8, 10, 15, 20].map((n) => ({
+                value: n,
+                label: n === 1 ? "1 — Single file" : `${n} files`,
+              }))}
+            />
+            <p className="mt-1 text-[11px] text-(--cf-ink-soft)">
+              Respondents upload one at a time, so each file gets its own progress and retry.
+            </p>
+          </div>
+
+          <div>
+            <Label>Max size per file</Label>
+            <CustomSelect
+              value={(selectedField.options as any)?.maxMb || ""}
+              onChange={(val) => {
+                const next = { ...((selectedField.options as any) || {}) };
+                if (val) next.maxMb = parseInt(val, 10);
+                else delete next.maxMb;
+                updateLocal(selectedField.id, { options: next });
+              }}
+              options={[
+                { value: "", label: "Server limit" },
+                ...[1, 2, 5, 10, 25, 50, 100].map((n) => ({
+                  value: n,
+                  label: `${n} MB`,
+                })),
+              ]}
+            />
+            <p className="mt-1 text-[11px] text-(--cf-ink-soft)">
+              Clamped by the server&apos;s own cap, so this can only be stricter.
+            </p>
+          </div>
+
+          <div>
+            <Label>Accepted types</Label>
+            {(() => {
+              const currentAcceptArr = (selectedField.options as any)?.accept || [];
+              const currentAcceptStr = Array.isArray(currentAcceptArr)
+                ? currentAcceptArr.join(", ")
+                : "";
+
+              const matchedPreset = PRESET_FILE_TYPES.find(
+                (preset) => normalizeForMatch(preset.value) === normalizeForMatch(currentAcceptStr),
+              );
+
+              const selectValue = matchedPreset ? matchedPreset.value : "";
+
+              return (
+                <CustomSelect
+                  value={selectValue}
+                  onChange={(val) => {
+                    const next = { ...((selectedField.options as any) || {}) };
+                    if (val) {
+                      next.accept = String(val)
+                        .split(",")
+                        .map((s) => s.trim());
+                    } else {
+                      delete next.accept;
+                    }
+                    updateLocal(selectedField.id, { options: next });
+                  }}
+                  options={PRESET_FILE_TYPES}
+                />
+              );
+            })()}
+            <p className="mt-1 text-[11px] text-(--cf-ink-soft)">
+              Narrow down accepted file types. Leave as Any allowed type to accept everything the
+              server allows.
+            </p>
+          </div>
+        </Section>
+      )}
+
       {/* ── flow: which page this question is on, and where answers lead ── */}
       {segmentOptions && segmentOptions.length > 0 && onChangeSegment && (
         <Section title="Segment">
           <div>
             <Label>This question belongs to</Label>
-            <select
+            <CustomSelect
               value={currentSegmentId ?? ""}
-              onChange={(e) => onChangeSegment(e.target.value || null)}
-              className="cf-input h-9 cursor-pointer px-3 text-[13px]"
-            >
-              {/* Only offered while it's the actual state. Once a form is
-                  segmented, "no segment" isn't a place an author means to put
-                  a question — it would render ahead of segment 1. */}
-              {!currentSegmentId && <option value="">Not in a segment</option>}
-              {segmentOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onChangeSegment(val || null)}
+              options={[
+                ...(!currentSegmentId ? [{ value: "", label: "Not in a segment" }] : []),
+                ...segmentOptions.map((option) => ({
+                  value: option.id,
+                  label: option.label,
+                })),
+              ]}
+            />
           </div>
         </Section>
       )}

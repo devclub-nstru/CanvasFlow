@@ -5,35 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
-/* ── Adapted from the supplied reference ───────────────────────────────
-   Structure kept: the badge on the panel corner, the oversized numeral with
-   a rule under it, the "probable cause" box, the three-up data grid, the
-   two big actions, and the mono meta line at the bottom.
-
-   Changed on the way in:
-
-   1 · Chrome. The reference is Neo-Brutalist and leans on `shadow-brutal`
-       utilities that don't exist here. Restated in the `hex-*` paper-studio
-       language used by /about, /learn-more and /docs.
-
-   2 · Plumbing. `react-router-dom` useLocation/Link → `usePathname` and
-       `next/link`; `framer-motion` → `motion` (this repo's package). The
-       glitch is done with a state swap rather than a motion component, so
-       it can be skipped outright under reduced-motion.
-
-   3 · Voice. The reference is shouting spy-thriller in all-caps — "SYSTEM
-       BREACH", "REBOOT REALITY", "© DEEP DATA SQUAD". This product's voice
-       is dry and lowercase-ish, so the jokes stay and the volume comes down.
-
-   4 · Usefulness. "SECURITY CLEARANCE: ZERO / VOID" is a gag with no
-       information in it. A 404 is a dead end, so the panels and the link row
-       carry the actual routes of this app instead, which is the one thing a
-       lost visitor needs.
-
-   5 · "Reboot reality" reloaded the page, which on a 404 just re-renders the
-       404. It's `router.back()` now, which does something. */
-
-/** Dry, and each one an actual reason a URL here would miss. */
 const CAUSES = [
   "The link was mistyped, or it pointed somewhere that has since moved.",
   "An old bookmark, from before something got renamed.",
@@ -49,10 +20,6 @@ export function NotFoundPanel() {
 
   const [glitch, setGlitch] = useState("404");
 
-  /* `/_not-found` is prerendered at build time, so anything derived from the
-     real URL — or from Math.random — has to land after mount or the static
-     HTML and the first client render disagree and React logs a hydration
-     mismatch. Both start empty/fixed and fill in from this effect. */
   const [mounted, setMounted] = useState(false);
   const [cause, setCause] = useState(CAUSES[0]!);
 
@@ -62,7 +29,6 @@ export function NotFoundPanel() {
   }, []);
 
   useEffect(() => {
-    // Anyone who has asked for less motion gets a numeral that just sits there.
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (reduced.matches) return;
 
@@ -89,8 +55,6 @@ export function NotFoundPanel() {
     <div className="relative mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 sm:py-20">
       {/* ── Main panel ─────────────────────────────────────────────── */}
       <div className="hex-card relative mt-4 p-6 pt-10 sm:p-10 sm:pt-12">
-        {/* Corner badge. Inset on phones so it can't hang off the viewport
-            the way a symmetric negative offset would. */}
         <div
           className="absolute -top-4 left-4 inline-flex items-center gap-2 border px-3 py-1.5 text-[11px] font-semibold sm:-left-4"
           style={{
@@ -109,8 +73,6 @@ export function NotFoundPanel() {
           <div className="relative shrink-0">
             <p
               className="hex-mono text-[92px] leading-none font-bold tracking-tighter select-none sm:text-[128px]"
-              /* The glitch swaps in symbols of differing widths; a tabular
-                 figure keeps the block from reflowing on every tick. */
               style={{ fontVariantNumeric: "tabular-nums" }}
               aria-label="404"
             >

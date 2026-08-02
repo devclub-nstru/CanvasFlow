@@ -16,14 +16,7 @@ const TAGS = ["Analytics"];
 const getPath = generatePath("/analytics");
 
 export const analyticsRouter = router({
-  /**
-   * GET /analytics/getFormAnalytics/{formId}
-   * Returns all summary analytics metrics for a form in a single call:
-   *   - totalResponses
-   *   - deviceBreakdown (desktop / mobile / tablet from submission records)
-   *   - dailyTrends (last 30 days, zero-filled)
-   *   - peakDay, avgSubmissionsPerDay, avgSubmissionsPerWeek
-   */
+  // GET /analytics/getFormAnalytics/{formId}
   getFormAnalytics: authenticatedProcedure
     .meta({
       openapi: {
@@ -42,11 +35,7 @@ export const analyticsRouter = router({
       });
     }),
 
-  /**
-   * GET /analytics/getSubmissions/{formId}
-   * Returns the full submission rows (including values jsonb) for the table view.
-   * Kept separate from getFormAnalytics so the heavy jsonb is only loaded on demand.
-   */
+  // GET /analytics/getSubmissions/{formId}
   getSubmissions: authenticatedProcedure
     .meta({
       openapi: {
@@ -67,11 +56,7 @@ export const analyticsRouter = router({
       });
     }),
 
-  /**
-   * POST /analytics/recordFieldAnswer
-   * Records that a visitor answered a field and clicked Next.
-   * Called by the public form page on each Next click — no auth required.
-   */
+  // POST /analytics/recordFieldAnswer
   recordFieldAnswer: publicProcedure
     .meta({
       openapi: {
@@ -87,16 +72,7 @@ export const analyticsRouter = router({
       return analyticsService.recordFieldAnswer(input);
     }),
 
-  /**
-   * GET /analytics/getDetailedAnalytics/{formId}
-   * Day-of-week breakdown, 30/60/90d trend totals, response velocity (first
-   * 24h after publish), and per-question response distribution for SELECT,
-   * CHECKBOX, RADIO, RATING, TOGGLE fields.
-   *
-   * Available to anyone who can see the form. This was gated behind a
-   * subscription tier; tiers no longer exist, so the ordinary authenticated
-   * procedure is the whole check.
-   */
+  // GET /analytics/getDetailedAnalytics/{formId}
   getDetailedAnalytics: authenticatedProcedure
     .meta({
       openapi: {

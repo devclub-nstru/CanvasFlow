@@ -75,8 +75,6 @@ const FeedbackWidget = () => {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Mirrors the server's minimums so the caller gets told before the round
-    // trip. The server still enforces them — this is convenience, not a check.
     if (subject.trim().length < 3) {
       toast.error("Please add a subject (at least 3 characters)");
       return;
@@ -86,14 +84,6 @@ const FeedbackWidget = () => {
       return;
     }
 
-    // Goes over tRPC like every other write in the app. This previously POSTed
-    // to `${API}/api/complaints`, which was never implemented — so the widget
-    // has been failing silently into a toast.
-    //
-    // `userId`, `userEmail`, `status` and `priority` used to be in this body.
-    // They're gone: identity is read from the session on the server (a client
-    // could otherwise file a report as any address it liked), and status and
-    // priority are triage fields the reporter has no business setting.
     try {
       await submitFeedbackAsync({
         type,
@@ -108,8 +98,6 @@ const FeedbackWidget = () => {
       setType("feedback");
       setIsOpen(false);
     } catch (err) {
-      // Surface the server's message where there is one: it carries the real
-      // reason (too short, over the hourly cap) instead of a generic failure.
       toast.error(
         err instanceof Error && err.message ? err.message : "Failed to submit. Please try again.",
       );
@@ -118,17 +106,8 @@ const FeedbackWidget = () => {
 
   const canSubmit = subject.trim().length >= 3 && message.trim().length >= 10 && !loading;
 
-  // Hidden while someone is filling out a form. `/forms/*` is the respondent's
-  // view of a form somebody else built — they aren't a CanvasFlow user, and a
-  // floating "report a bug in CanvasFlow" button there is both confusing and a
-  // distraction from the form they came to answer.
   if (pathname?.startsWith("/forms/")) return null;
 
-  // Hidden in the builder too. It's a full-bleed workspace whose own canvas
-  // controls (zoom, fit, lock) sit in the bottom-left and whose inspector runs
-  // to the bottom-right edge, so a floating button there covers the tool it
-  // overlaps. `/dashboard/sketches` (the list) keeps the widget; only the
-  // per-form builder loses it.
   if (/^\/dashboard\/sketches\/[^/]+/.test(pathname ?? "")) return null;
 
   return (

@@ -12,43 +12,6 @@ export const metadata: Metadata = {
     "How CanvasFlow protects accounts and responses: the authorisation model, rate limits, and duplicate-submission guards — plus what we haven't built yet.",
 };
 
-/* ============================================================
-   GROUND RULES FOR THIS PAGE
-
-   A security page is a trust document, so every claim below is
-   one that can be pointed at a line of code:
-
-     · Auth model            packages/trpc/server/trpc.ts
-     · Session / cookies     packages/trpc/server/auth.ts
-     · CORS + rate limits    apps/api/src/server.ts
-     · Per-form roles        packages/services/form (require*)
-     · Unique indexes        packages/database/models/form-submission.ts
-     · Cascade deletes       packages/database/models/*
-
-     · Response headers        apps/web/next.config.js (headers())
-
-   Deliberately NOT claimed, because they are not implemented as
-   of LAST_UPDATED. Do not add them to this page before they are
-   true in the code:
-     · An access/audit log of who read which responses.
-     · Any third-party certification (SOC 2, ISO 27001) or an
-       independent penetration test.
-     · Encryption at rest — the managed database provider very
-       likely does this, but "likely" isn't a claim worth making
-       on a security page. Confirm with the provider, then say so
-       specifically.
-   The "Not yet" section below states these openly on purpose.
-
-   Two-factor authentication is intentionally out of scope for
-   this product and is not listed as a gap. If that changes, the
-   "Accounts and sessions" section is where it belongs.
-
-   TO FILL IN:
-     · SECURITY_EMAIL — a monitored address for vulnerability
-       reports. Until it is set, the disclosure section routes
-       people through the in-app feedback widget, which works but
-       is not the convention researchers expect.
-   ============================================================ */
 const SECURITY_EMAIL: string | null = null;
 const LAST_UPDATED = "31 July 2026";
 
@@ -185,8 +148,6 @@ export default function SecurityPage() {
     <div className="hex-theme hex-paper relative min-h-screen">
       <Noise />
 
-      {/* Ruled page margins, md and up only — below that there is no gutter
-          for them to sit in and they would land on the copy. */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
         <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />

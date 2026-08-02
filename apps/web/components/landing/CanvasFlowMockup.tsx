@@ -124,17 +124,6 @@ const SCATTER_GROUPS = [
   { color: "var(--c-yellow)", n: 40, cx: 0.78, cy: 0.62, spread: 0.14 },
 ];
 
-/**
- * Deterministic seeded value in [0, 1) — a mulberry32 finaliser.
- *
- * This deliberately uses only 32-bit integer operations (`Math.imul`, `^`,
- * `>>>`, `| 0`), all of which ECMAScript specifies exactly. The obvious
- * shorthand, `Math.sin(seed) * 10000 % 1`, cannot be used here: the spec
- * lets each engine approximate `Math.sin`, so Node and the browser disagree
- * in the final bits. Scaling by 10000 and taking the fractional part
- * amplifies that into a visible difference, which React then reports as a
- * hydration mismatch on every dot in the scatter plot.
- */
 const rng = (seed: number) => {
   let t = (seed + 0x6d2b79f5) | 0;
   t = Math.imul(t ^ (t >>> 15), 1 | t);
@@ -142,7 +131,6 @@ const rng = (seed: number) => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-/** Fixed-precision rounding, so SSR and client emit the same string. */
 const round = (n: number, dp: number) => {
   const f = 10 ** dp;
   return Math.round(n * f) / f;
@@ -163,9 +151,6 @@ const ScatterChart = ({ w = 480, h = 220 }: { w?: number; h?: number }) => {
       const dx = (rng(seed++) - 0.5) * 2 * g.spread;
       const dy = (rng(seed++) - 0.5) * 2 * g.spread;
       dots.push({
-        // Rounded so the server and the client serialise byte-identical
-        // numbers, and so 118 dots don't each carry a 17-digit coordinate
-        // into the HTML. Sub-pixel precision is invisible on an r=2.6 dot.
         x: round(padL + (g.cx + dx) * innerW, 2),
         y: round(padT + (g.cy + dy) * innerH, 2),
         c: g.color,
@@ -307,8 +292,6 @@ export const DashboardMock = () => {
           Live breakdown of responses across product areas, segments, and time.
         </p>
 
-        {/* Tabs scroll rather than wrap. Wrapping a tab strip onto a second
-            line reads as broken chrome; sliding it is what real UI does. */}
         <div
           className="custom-scrollbar mt-4 flex items-center gap-5 overflow-x-auto border-b hex-line-soft sm:gap-6"
           style={{ borderBottomWidth: 1 }}
@@ -338,9 +321,6 @@ export const DashboardMock = () => {
               >
                 {k.l}
               </div>
-              {/* The delta is the first thing to go: three of these side by
-                  side at phone width leaves no room for a second line of
-                  supporting text under each figure. */}
               <div
                 className="hex-mono mt-1 hidden text-[9px] sm:block"
                 style={{ color: "var(--c-teal)" }}
@@ -368,8 +348,6 @@ export const DashboardMock = () => {
           ))}
         </div>
 
-        {/* Two charts side by side gives each about 150px on a phone, which
-            is narrower than their own axis labels. They stack instead. */}
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <div className="text-[12px] font-medium mb-1">Responses by form · Q1–Q3</div>
@@ -454,7 +432,6 @@ export const FormBuilderMock = () => {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="hex-mono text-[10px] opacity-40">Draft</span>
-          {/* Redundant next to "Draft" once space is tight. */}
           <span
             className="hex-mono hidden text-[10px] sm:inline"
             style={{ color: "var(--hex-ink-muted)" }}
@@ -463,9 +440,6 @@ export const FormBuilderMock = () => {
           </span>
         </div>
       </div>
-      {/* The block palette is a 160px fixed column. Below sm it becomes a
-          horizontal strip above the canvas, so the canvas keeps the full
-          width for the questions that are the point of the mock. */}
       <div className="grid grow grid-cols-1 sm:grid-cols-[160px_1fr]">
         <aside
           className="custom-scrollbar flex gap-1 overflow-x-auto border-b hex-line-soft p-3 text-[11px] sm:block sm:space-y-1 sm:overflow-visible sm:border-r sm:border-b-0 sm:p-4"
@@ -578,9 +552,6 @@ export const ResponseFeedMock = () => (
         className="hex-mono flex items-center gap-1.5 text-[10px]"
         style={{ color: "var(--hex-ink-muted)" }}
       >
-        {/* Two stacked spans: the outer one pulses as a halo while the
-            inner dot stays solid, so the indicator reads as a signal
-            rather than the whole dot fading in and out. */}
         <span className="relative flex h-1.5 w-1.5">
           <span
             className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
@@ -631,9 +602,6 @@ export const ResponseFeedMock = () => (
               </div>
             </div>
           </div>
-          {/* Tinted pill rather than a solid fill. A saturated block of
-              colour with white type fights the muted paper palette; a wash
-              of the same hue keeps the category legible and calm. */}
           <span
             className="hex-mono shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
             style={{
@@ -741,17 +709,12 @@ export const CanvasEditorMock = () => {
           ))}
         </div>
 
-        {/* The stage is a fixed 420px tall on desktop. On a phone the tool
-            rail and inspector are gone, so the canvas alone needs less
-            height and a shorter box avoids a tall band of empty grid. */}
         <div className="relative mt-5 flex h-80 min-h-0 overflow-hidden rounded-lg border hex-line-soft bg-[#fcfbf7] shadow-sm sm:h-105">
           <div
             className="absolute inset-0 opacity-[0.03] hex-grid-fine pointer-events-none"
             style={{ backgroundSize: "24px 24px" }}
           />
 
-          {/* Tool rail: 56px of icons with no labels. Dropping it below sm
-              gives the canvas the room, and nothing it conveys is lost. */}
           <div className="z-10 hidden w-14 shrink-0 flex-col items-center gap-3 border-r hex-line-soft bg-[#fafaf7] py-4 sm:flex">
             {[1, 2, 3, 4, 5].map((i) => (
               <div
@@ -885,9 +848,6 @@ export const CanvasEditorMock = () => {
             </div>
           </div>
 
-          {/* Properties panel: 272px fixed. Kept off until md — at sm the
-              rail and this panel together would leave the canvas narrower
-              than the field cards it is meant to be showing. */}
           <div className="z-10 hidden w-68 shrink-0 transform flex-col border-l hex-line-soft bg-white/95 shadow-[-10px_0_20px_rgba(0,0,0,0.02)] backdrop-blur-sm transition-transform duration-500 min-h-0 min-w-0 md:flex">
             <div className="p-3.5 shrink-0 border-b hex-line-soft bg-[#fafaf7] flex items-center justify-between">
               <div className="text-[9px] font-bold uppercase tracking-widest opacity-40 hex-mono">
