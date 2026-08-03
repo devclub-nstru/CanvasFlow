@@ -2,7 +2,7 @@ import express from "express";
 import { logger } from "@repo/logger";
 import cors from "cors";
 import compression from "compression";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+
 
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
@@ -14,7 +14,7 @@ import { toNodeHandler } from "better-auth/node";
 
 import { env } from "./env";
 import { uploadRouter, uploadErrorHandler } from "./routes/upload";
-import { redisRateLimitStore } from "./lib/rate-limit-store";
+import { leakyBucketRateLimiter } from "./lib/rate-limiter";
 
 export const app = express();
 
@@ -75,29 +75,22 @@ app.use(
 
 app.use(cookieParser());
 
-const publicWriteLimiter = rateLimit({
-  windowMs: 60_000,
+const publicWriteLimiter = leakyBucketRateLimiter({
+  bucketName: "public-write",
   max: env.RATE_LIMIT_PUBLIC_WRITE_MAX,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  store: redisRateLimitStore("public-write"),
+  windowMs: 60_000,
   message: { error: "Too many requests — slow down and try again in a minute." },
 });
 
-const authGlobalLimiter = rateLimit({
-  windowMs: 60_000,
+const authGlobalLimiter = leakyBucketRateLimiter({
+  bucketName: "auth-global",
   max: env.RATE_LIMIT_AUTH_MAX,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  keyGenerator: (req) =>
-    req.headers.cookie?.match(/better-auth\.session_token=([^;]+)/)?.[1] ??
-    ipKeyGenerator(req.ip ?? "unknown"),
-  store: redisRateLimitStore("auth-global"),
+  windowMs: 60_000,
   message: { error: "Request rate exceeded for this session." },
 });
 
 app.use(
-  ["/trpc/analytics.recordFieldAnswer", "/trpc/form.submitForm", "/trpc/feedback.submitFeedback"],
+  ["/trpc/form.submitForm", "/trpc/feedback.submitFeedback"],
   publicWriteLimiter,
 );
 

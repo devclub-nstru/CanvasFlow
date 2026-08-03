@@ -23,6 +23,7 @@ import {
   deleteFormOutputModel,
   submitFormInputModel,
   submitFormOutputModel,
+  getSubmissionsOutputModel,
   listFormFieldsInputModel,
   listFormFieldsOutputModel,
   getDashboardStatsOutputModel,
@@ -554,5 +555,31 @@ export const formRouter = router({
     .output(deleteDraftOutputModel)
     .mutation(async ({ input, ctx }) => {
       return formDraftService.deleteDraft({ ...input, userId: ctx.user.id });
+    }),
+
+  getSubmissions: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getSubmissions/{formId}"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(
+      z.object({
+        formId: z.string().uuid(),
+        cursor: z.string().datetime().optional().nullable(),
+        limit: z.number().int().min(1).max(200).optional().default(50),
+      }),
+    )
+    .output(getSubmissionsOutputModel)
+    .query(async ({ input, ctx }) => {
+      return formSubmissionService.getSubmissions({
+        formId: input.formId,
+        ownerId: ctx.user.id,
+        cursor: input.cursor,
+        limit: input.limit,
+      });
     }),
 });

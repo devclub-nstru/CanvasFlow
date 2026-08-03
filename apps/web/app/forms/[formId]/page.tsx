@@ -24,7 +24,6 @@ import {
   useSaveDraft,
   useDeleteDraft,
 } from "~/hooks/api/form";
-import { useRecordFieldAnswer } from "~/hooks/api/analytics";
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { FormPreviewBanner } from "~/components/forms/FormPreviewBanner";
@@ -32,7 +31,7 @@ import { FormDraftNotice, type DraftStatus } from "~/components/forms/FormDraftN
 import { FormLoadingState } from "~/components/forms/FormLoadingState";
 import { FormErrorState } from "~/components/forms/FormErrorState";
 import { FormThankYou } from "~/components/forms/FormThankYou";
-import { isUploadAnswerComplete, stripUploadSecrets } from "~/lib/upload";
+import { isUploadAnswerComplete } from "~/lib/upload";
 import { FormQuestion } from "~/components/forms/FormQuestion";
 import { FormHeader } from "~/components/forms/FormHeader";
 import { FormFooter } from "~/components/forms/FormFooter";
@@ -75,7 +74,6 @@ export default function PublicFormPage() {
 
   const { form, isLoading, error } = useGetFormById(formId);
   const { submitForm, isPending } = useSubmitForm();
-  const { recordFieldAnswer } = useRecordFieldAnswer();
 
   const { userInfo, isPending: sessionPending } = useGetLoggedInUserInfo();
   const canSaveDraft = !!userInfo && !isPreview;
@@ -219,24 +217,12 @@ export default function PublicFormPage() {
     flush: flushDraftSave,
     cancel: cancelDraftSave,
   } = useDebouncedCallback(persistDraft, 1200);
-
-  const trackAnswer = useCallback(
-    (fieldId: string, value: unknown) => {
-      if (isPreview) return;
-      recordFieldAnswer({ formId, fieldId, value: stripUploadSecrets(value) });
-    },
-    [isPreview, formId, recordFieldAnswer],
-  );
-
-  const { run: queueTrackAnswer } = useDebouncedCallback(trackAnswer, 800);
-
   const handleFieldChange = (fieldId: string, value: any) => {
     setAnswers((prev) => {
       const next = { ...prev, [fieldId]: value };
       queueDraftSave(next, pagePath);
       return next;
     });
-    queueTrackAnswer(fieldId, value);
   };
 
   const flow = useMemo(
@@ -415,19 +401,7 @@ export default function PublicFormPage() {
       }
     }
 
-    if (!isPreview) {
-      for (const field of currentFields) {
-        const value = answers[field.id];
-        const hasAnswer =
-          value !== undefined &&
-          value !== null &&
-          value !== "" &&
-          !(Array.isArray(value) && value.length === 0);
-        if (hasAnswer || field.type === "TOGGLE") {
-          recordFieldAnswer({ formId, fieldId: field.id, value: stripUploadSecrets(value) });
-        }
-      }
-    }
+
 
     if (nextPage.kind === "page") {
       const advanced = [...pagePath, nextPage.pageIndex];

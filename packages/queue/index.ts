@@ -1,16 +1,12 @@
 import "dotenv/config";
-import { Queue, Worker, type ConnectionOptions, type JobsOptions, type Processor } from "bullmq";
+import { Queue, Worker, type ConnectionOptions, type Processor } from "bullmq";
 import { blockingConnection, isRedisConfigured, redisEnv } from "@repo/redis";
 
 import { env as queueEnv } from "./env";
 import {
-  QUEUE_ANALYTICS,
   QUEUE_UPLOADS,
   JOB_PROCESS_UPLOAD,
-  JOB_RECORD_FIELD_ANSWERS,
-  type FieldAnswer,
   type ProcessUploadJob,
-  type RecordFieldAnswersJob,
 } from "./jobs";
 
 export * from "./jobs";
@@ -56,7 +52,6 @@ function getQueue(name: string): Queue {
 }
 
 export const uploadsQueue = () => getQueue(QUEUE_UPLOADS);
-export const analyticsQueue = () => getQueue(QUEUE_ANALYTICS);
 
 /* ── Producers ─────────────────────────────────────────────────────────── */
 
@@ -71,50 +66,6 @@ export async function enqueueUpload(payload: ProcessUploadJob): Promise<void> {
   });
 }
 
-let answerBuffer: FieldAnswer[] = [];
-let flushTimer: NodeJS.Timeout | null = null;
-
-async function flushAnswerBuffer(): Promise<void> {
-  if (flushTimer) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  if (answerBuffer.length === 0) return;
-  const batch = answerBuffer;
-  answerBuffer = [];
-
-  try {
-    await analyticsQueue().add(
-      JOB_RECORD_FIELD_ANSWERS,
-      { answers: batch } satisfies RecordFieldAnswersJob,
-      {
-        priority: 10,
-        attempts: 2,
-      },
-    );
-  } catch (err) {
-    console.error(
-      `[queue:analytics] dropped ${batch.length} field answer(s):`,
-      err instanceof Error ? err.message : err,
-    );
-  }
-}
-export function enqueueFieldAnswer(answer: FieldAnswer): void {
-  if (!isQueueAvailable()) return;
-
-  answerBuffer.push(answer);
-
-  if (answerBuffer.length >= queueEnv.ANALYTICS_BATCH_MAX) {
-    void flushAnswerBuffer();
-    return;
-  }
-
-  if (!flushTimer) {
-    flushTimer = setTimeout(() => void flushAnswerBuffer(), queueEnv.ANALYTICS_BATCH_MS);
-    flushTimer.unref?.();
-  }
-}
-
 export function createUploadWorker(processor: Processor<ProcessUploadJob>): Worker {
   return new Worker<ProcessUploadJob>(QUEUE_UPLOADS, processor, {
     connection: blockingConnection() as unknown as ConnectionOptions,
@@ -126,19 +77,7 @@ export function createUploadWorker(processor: Processor<ProcessUploadJob>): Work
   });
 }
 
-export function createAnalyticsWorker(processor: Processor<RecordFieldAnswersJob>): Worker {
-  return new Worker<RecordFieldAnswersJob>(QUEUE_ANALYTICS, processor, {
-    connection: blockingConnection() as unknown as ConnectionOptions,
-    prefix: bullPrefix,
-    concurrency: queueEnv.ANALYTICS_WORKER_CONCURRENCY,
-    lockDuration: 30_000,
-    maxStalledCount: 2,
-  });
-}
-
 export async function drainProducers(): Promise<void> {
-  await flushAnswerBuffer();
-
   await Promise.allSettled([...queues.values()].map((queue) => queue.close()));
   queues.clear();
 

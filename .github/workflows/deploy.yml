@@ -23,48 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Stage release bundle
+      - name: Create release zip
         run: |
-          set -eux
-          mkdir -p _release/web _release/api _release/db
-
-          # Web: Next.js standalone is self-contained; just copy static + public next to it.
-          cp -r apps/web/.next/standalone/. _release/web/
-          mkdir -p _release/web/apps/web/.next
-          cp -r apps/web/.next/static _release/web/apps/web/.next/static
-          cp -r apps/web/public        _release/web/apps/web/public
-
-          # API: pnpm deploy produces a self-contained dir (dist + node_modules + package.json)
-          pnpm --filter @repo/api      deploy --prod _release/api
-          # DB: same trick, plus the drizzle SQL + migrate.mjs.
-          pnpm --filter @repo/database deploy --prod _release/db
-          cp -r packages/database/drizzle _release/db/drizzle
-          cp    packages/database/migrate.mjs _release/db/migrate.mjs
-
-          cp ecosystem.config.cjs _release/ecosystem.config.cjs
+          zip -r release.zip . -x "node_modules/*" ".git/*" ".next/*" "apps/web/.next/*" "apps/api/dist/*" "stress-tests/*"
 
       - name: Write .env from secret
         env:
           PROD_ENV: ${{ secrets.PROD_ENV }}
         run: |
-          # File is world-readable on the runner so the scp-action's
-          # Docker container can read it. It only lives here for ~10s
-          # before the runner is destroyed. Once it lands on the VM
-          # the next step chmod's it back to 600.
-          printf '%s\n' "$PROD_ENV" > _release/.env
+          printf '%s\n' "$PROD_ENV" > _env
 
       - name: Copy files to VM
         uses: appleboy/scp-action@v0.1.7
@@ -73,12 +40,10 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          source: "_release/*,_release/.env"
+          source: "release.zip,_env"
           target: "/home/dittya/projects/canvasflow"
-          strip_components: 1
-          overwrite: true
 
-      - name: Migrate + reload PM2
+      - name: Deploy via Docker Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -88,30 +53,22 @@ jobs:
           script: |
             set -eu
             cd /home/dittya/projects/canvasflow
+            
+            # Extract release bundle
+            unzip -o release.zip
+            rm release.zip
+            mv _env .env
             chmod 600 .env
 
-            # dotenv reads .env from cwd in each process — symlink so
-            # both api and web (and the migrator) all find it.
-            ln -sf "$PWD/.env" api/.env
-            ln -sf "$PWD/.env" web/apps/web/.env
-            ln -sf "$PWD/.env" db/.env
+            # Build and deploy Docker containers
+            docker compose -f docker-compose.prod.yml up --build -d
 
-            # Apply pending DB migrations. If this fails, pm2 reload is
-            # never reached and the running app keeps serving the old code.
-            set -a; . ./.env; set +a
-            (cd db && node migrate.mjs)
-
-            # Start or reload PM2.
-            if pm2 describe canvasflow-api >/dev/null 2>&1; then
-              pm2 reload ecosystem.config.cjs --update-env
-            else
-              pm2 start  ecosystem.config.cjs
-              pm2 save
-            fi
+            # Cleanup builder artifacts and dangling cache
+            docker image prune -f
 
       - name: Summary
         if: success()
         run: |
-          echo "### ✅ Deployed from \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Deployed from \`${{ github.sha }}\` via Docker Compose" >> "$GITHUB_STEP_SUMMARY"
           echo "- web: https://canvasflow.dittya.dev"     >> "$GITHUB_STEP_SUMMARY"
           echo "- api: https://api.canvasflow.dittya.dev" >> "$GITHUB_STEP_SUMMARY"

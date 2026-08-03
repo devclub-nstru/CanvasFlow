@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Background, BackgroundVariant, Panel, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -22,6 +22,7 @@ import { MobileAddFieldSheet } from "~/components/builder/mobile/MobileAddFieldS
 import { MobileFieldEditorSheet } from "~/components/builder/mobile/MobileFieldEditorSheet";
 import { ShareCollaboratorsDialog } from "~/components/builder/ShareCollaboratorsDialog";
 import { FormSettingsDialog } from "~/components/builder/FormSettingsDialog";
+import { ResponsesView } from "~/components/builder/ResponsesView";
 import { useBuilderState } from "~/components/builder/useBuilderState";
 
 function BuilderCanvas() {
@@ -125,6 +126,10 @@ function BuilderCanvas() {
     deleteFormAsync,
   } = useBuilderState();
 
+  const searchParams = useSearchParams();
+  const activeTabParam = searchParams?.get("tab") || "questions";
+  const activeTab = (activeTabParam === "responses" || activeTabParam === "summary") ? "responses" : "questions";
+
   if (formLoading || fieldsLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-(--cf-cream)">
@@ -167,15 +172,15 @@ function BuilderCanvas() {
             You don&apos;t have access to edit this form
           </h3>
           <p className="text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
-            You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions
-            and analytics, but you cannot make changes to the fields.
+            You only have viewer access to &ldquo;{form.title}&rdquo;. You can view its submissions,
+            but you cannot make changes to the fields.
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <Link
-              href={`/dashboard/analytics?form=${formId}`}
+              href={`/dashboard/sketches/${formId}?tab=responses`}
               className="cf-btn cf-raised cf-press h-10 px-5 text-[13px]"
             >
-              View analytics
+              View responses
             </Link>
             <Link href="/dashboard/sketches" className="cf-btn-outline h-10 px-5 text-[13px]">
               Back to studio
@@ -188,285 +193,300 @@ function BuilderCanvas() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-(--cf-cream) text-(--cf-ink)">
-      <BuilderHeader
-        form={form}
-        formId={formId}
-        isDirty={isDirty}
-        isSaving={isSaving}
-        justSaved={justSaved}
-        publishPending={publishPending}
-        handleSave={handleSave}
-        setShowDeleteConfirm={setShowDeleteConfirm}
-        publishForm={publishForm}
-        pendingNavRef={pendingNavRef}
-        setShowUnsavedDialog={setShowUnsavedDialog}
-        onPublishSuccess={() => {
-          void refetchForm();
-        }}
-        onShare={() => setShowShareDialog(true)}
-        onSettings={() => setShowSettingsDialog(true)}
-        view={view}
-        onViewChange={handleViewChange}
-      />
+      {activeTab === "questions" && (
+        <BuilderHeader
+          form={form}
+          formId={formId}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          justSaved={justSaved}
+          publishPending={publishPending}
+          handleSave={handleSave}
+          setShowDeleteConfirm={setShowDeleteConfirm}
+          publishForm={publishForm}
+          pendingNavRef={pendingNavRef}
+          setShowUnsavedDialog={setShowUnsavedDialog}
+          onPublishSuccess={() => {
+            void refetchForm();
+          }}
+          onShare={() => setShowShareDialog(true)}
+          onSettings={() => setShowSettingsDialog(true)}
+          view={view}
+          onViewChange={handleViewChange}
+        />
+      )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="hidden lg:flex flex-1 overflow-hidden">
-          <VerticalScale className="hidden shrink-0 xl:block" />
-          <div
-            className="flex w-56 shrink-0 flex-col overflow-hidden border-r xl:w-64"
-            style={{ borderRightColor: "var(--cf-line-strong)" }}
-          >
-            <SegmentPanel
-              segments={visibleSegments}
-              questionCounts={segmentQuestionCounts}
-              unassignedCount={unassignedQuestionCount}
-              selectedSegmentId={selectedSegmentId}
-              onSelectSegment={setSelectedSegmentId}
-              onAddSegment={handleAddSegment}
-              onRenameSegment={(id, title) => updateSegmentLocal(id, { title })}
-              onMoveSegment={handleMoveSegment}
-              onDeleteSegment={handleDeleteSegment}
-            />
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              <FieldSidebar
-                onDragStart={onDragStart}
-                onPick={view === "outline" ? appendField : undefined}
+      {activeTab === "questions" ? (
+        <>
+          <div className="flex-1 flex overflow-hidden">
+            <div className="hidden lg:flex flex-1 overflow-hidden">
+              <VerticalScale className="hidden shrink-0 xl:block" />
+              <div
+                className="flex w-56 shrink-0 flex-col overflow-hidden border-r xl:w-64"
+                style={{ borderRightColor: "var(--cf-line-strong)" }}
+              >
+                <SegmentPanel
+                  segments={visibleSegments}
+                  questionCounts={segmentQuestionCounts}
+                  unassignedCount={unassignedQuestionCount}
+                  selectedSegmentId={selectedSegmentId}
+                  onSelectSegment={setSelectedSegmentId}
+                  onAddSegment={handleAddSegment}
+                  onRenameSegment={(id, title) => updateSegmentLocal(id, { title })}
+                  onMoveSegment={handleMoveSegment}
+                  onDeleteSegment={handleDeleteSegment}
+                />
+                <div className="flex min-h-0 flex-1 overflow-hidden">
+                  <FieldSidebar
+                    onDragStart={onDragStart}
+                    onPick={view === "outline" ? appendField : undefined}
+                  />
+                </div>
+              </div>
+
+              {view === "outline" ? (
+                <main
+                  className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
+                  style={{ borderRightColor: "var(--cf-line-strong)" }}
+                >
+                  <FieldOutline
+                    fields={visibleSortedFields}
+                    onTapField={setSelectedNodeId}
+                    onMove={handleMobileMove}
+                    selectedId={selectedNodeId}
+                  />
+                </main>
+              ) : (
+                <main
+                  ref={reactFlowWrapper}
+                  className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
+                  style={{ borderRightColor: "var(--cf-line-strong)" }}
+                  onDragOver={onDragOver}
+                  onDrop={onDrop}
+                >
+                  <div className="cf-pane-bar">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="cf-meta">Canvas</span>
+                      <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
+                        {visibleSortedFields.length}{" "}
+                        {visibleSortedFields.length === 1 ? "field" : "fields"}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setIsLocked(!isLocked)}
+                      aria-pressed={isLocked}
+                      title={isLocked ? "Unlock canvas" : "Lock canvas"}
+                      className={`inline-flex h-5.5 shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${isLocked
+                        ? "border-(--cf-orange) text-(--cf-orange)"
+                        : "border-(--cf-line-strong) text-(--cf-ink-soft) hover:text-(--cf-ink)"
+                        }`}
+                    >
+                      {isLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+                      {isLocked ? "Locked" : "Unlocked"}
+                    </button>
+                  </div>
+
+                  <div className="relative min-h-0 flex-1">
+                    <ReactFlow
+                      nodes={nodes}
+                      edges={edges}
+                      onNodesChange={onNodesChange}
+                      onEdgesChange={onEdgesChange}
+                      nodeTypes={nodeTypes}
+                      onNodeClick={onNodeClick}
+                      onPaneClick={onPaneClick}
+                      onNodeDragStop={onNodeDragStop}
+                      fitView
+                      minZoom={0.5}
+                      maxZoom={1.5}
+                      nodesDraggable={!isLocked}
+                      panOnDrag={!isLocked}
+                      zoomOnScroll={!isLocked}
+                      preventScrolling={isLocked}
+                      proOptions={{ hideAttribution: true }}
+                    >
+                      <Background
+                        variant={BackgroundVariant.Dots}
+                        color="rgba(26, 29, 41, 0.20)"
+                        gap={16}
+                        size={1.5}
+                      />
+
+                      <Panel
+                        position="bottom-left"
+                        className="cf-panel cf-raised flex flex-col gap-0.5 p-1"
+                      >
+                        <button
+                          onClick={() => zoomIn()}
+                          title="Zoom in"
+                          aria-label="Zoom in"
+                          className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => zoomOut()}
+                          title="Zoom out"
+                          aria-label="Zoom out"
+                          className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <Minus className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => fitView({ duration: 400 })}
+                          title="Fit view"
+                          aria-label="Fit view"
+                          className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <Maximize2 className="size-3.5" />
+                        </button>
+                      </Panel>
+                    </ReactFlow>
+                  </div>
+                </main>
+              )}
+
+              <FieldInspector
+                selectedField={selectedField}
+                label={label}
+                setLabel={setLabel}
+                placeholder={placeholder}
+                setPlaceholder={setPlaceholder}
+                description={description}
+                setDescription={setDescription}
+                isRequired={isRequired}
+                handleRequiredChange={handleRequiredChange}
+                optionsList={optionsList}
+                setOptionsList={setOptionsList}
+                updateLocal={updateLocal}
+                handleDeleteField={handleDeleteField}
+                segmentOptions={branchTargetSegments}
+                currentSegmentId={selectedField?.segmentId ?? null}
+                onChangeSegment={(segmentId) => {
+                  if (!selectedField) return;
+                  updateLocal(selectedField.id, { segmentId });
+                  if (segmentId && selectedSegmentId !== null) setSelectedSegmentId(segmentId);
+                }}
+                ruleSummaries={selectedFieldRuleSummaries}
+                incompleteRuleCount={selectedFieldIncompleteRules}
+                onEditBranching={
+                  selectedField ? () => setBranchingFieldId(selectedField.id) : undefined
+                }
+                isLastInSegment={isSelectedFieldLastInSegment}
+              />
+
+              <VerticalScale className="hidden shrink-0 xl:block" />
+            </div>
+
+            <div className="flex flex-1 flex-col overflow-hidden bg-(--cf-cream) lg:hidden">
+              <div className="shrink-0 border-b" style={{ borderBottomColor: "var(--cf-line-strong)" }}>
+                <button
+                  type="button"
+                  onClick={() => setMobileSegmentsOpen((prev) => !prev)}
+                  aria-expanded={mobileSegmentsOpen}
+                  className="flex w-full items-center justify-between px-4 py-2.5 text-left"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Layers className="size-3.5 text-(--cf-orange)" />
+                    <span className="cf-meta">Segments</span>
+                    <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
+                      {visibleSegments.length || "none"}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    {selectedSegmentId && (
+                      <span className="max-w-32 truncate font-mono text-[10px] tracking-wider text-(--cf-orange) uppercase">
+                        {visibleSegments.find((s) => s.id === selectedSegmentId)?.title ?? "filtered"}
+                      </span>
+                    )}
+                    {mobileSegmentsOpen ? (
+                      <ChevronUp className="size-4 text-(--cf-ink-soft)" />
+                    ) : (
+                      <ChevronDown className="size-4 text-(--cf-ink-soft)" />
+                    )}
+                  </span>
+                </button>
+
+                {mobileSegmentsOpen && (
+                  <SegmentPanel
+                    segments={visibleSegments}
+                    questionCounts={segmentQuestionCounts}
+                    unassignedCount={unassignedQuestionCount}
+                    selectedSegmentId={selectedSegmentId}
+                    onSelectSegment={setSelectedSegmentId}
+                    onAddSegment={handleAddSegment}
+                    onRenameSegment={(id, title) => updateSegmentLocal(id, { title })}
+                    onMoveSegment={handleMoveSegment}
+                    onDeleteSegment={handleDeleteSegment}
+                  />
+                )}
+              </div>
+
+              <FieldOutline
+                fields={visibleSortedFields}
+                onTapField={handleMobileTapField}
+                onMove={handleMobileMove}
+                selectedId={selectedNodeId}
+                onAdd={() => setMobileAddOpen(true)}
               />
             </div>
           </div>
 
-          {view === "outline" ? (
-            <main
-              className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
-              style={{ borderRightColor: "var(--cf-line-strong)" }}
-            >
-              <FieldOutline
-                fields={visibleSortedFields}
-                onTapField={setSelectedNodeId}
-                onMove={handleMobileMove}
-                selectedId={selectedNodeId}
-              />
-            </main>
-          ) : (
-            <main
-              ref={reactFlowWrapper}
-              className="relative flex h-full flex-1 flex-col border-r bg-(--cf-cream)"
-              style={{ borderRightColor: "var(--cf-line-strong)" }}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-            >
-              <div className="cf-pane-bar">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="cf-meta">Canvas</span>
-                  <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
-                    {visibleSortedFields.length}{" "}
-                    {visibleSortedFields.length === 1 ? "field" : "fields"}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setIsLocked(!isLocked)}
-                  aria-pressed={isLocked}
-                  title={isLocked ? "Unlock canvas" : "Lock canvas"}
-                  className={`inline-flex h-5.5 shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${
-                    isLocked
-                      ? "border-(--cf-orange) text-(--cf-orange)"
-                      : "border-(--cf-line-strong) text-(--cf-ink-soft) hover:text-(--cf-ink)"
-                  }`}
-                >
-                  {isLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
-                  {isLocked ? "Locked" : "Unlocked"}
-                </button>
-              </div>
-
-              <div className="relative min-h-0 flex-1">
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  nodeTypes={nodeTypes}
-                  onNodeClick={onNodeClick}
-                  onPaneClick={onPaneClick}
-                  onNodeDragStop={onNodeDragStop}
-                  fitView
-                  minZoom={0.5}
-                  maxZoom={1.5}
-                  nodesDraggable={!isLocked}
-                  panOnDrag={!isLocked}
-                  zoomOnScroll={!isLocked}
-                  preventScrolling={isLocked}
-                  proOptions={{ hideAttribution: true }}
-                >
-                  <Background
-                    variant={BackgroundVariant.Dots}
-                    color="rgba(26, 29, 41, 0.20)"
-                    gap={16}
-                    size={1.5}
-                  />
-
-                  <Panel
-                    position="bottom-left"
-                    className="cf-panel cf-raised flex flex-col gap-0.5 p-1"
-                  >
-                    <button
-                      onClick={() => zoomIn()}
-                      title="Zoom in"
-                      aria-label="Zoom in"
-                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Plus className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => zoomOut()}
-                      title="Zoom out"
-                      aria-label="Zoom out"
-                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Minus className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => fitView({ duration: 400 })}
-                      title="Fit view"
-                      aria-label="Fit view"
-                      className="size-7 rounded-md text-(--cf-ink) hover:bg-(--cf-cream) hover:text-(--cf-orange) flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Maximize2 className="size-3.5" />
-                    </button>
-                  </Panel>
-                </ReactFlow>
-              </div>
-            </main>
-          )}
-
-          <FieldInspector
-            selectedField={selectedField}
-            label={label}
-            setLabel={setLabel}
-            placeholder={placeholder}
-            setPlaceholder={setPlaceholder}
-            description={description}
-            setDescription={setDescription}
-            isRequired={isRequired}
-            handleRequiredChange={handleRequiredChange}
-            optionsList={optionsList}
-            setOptionsList={setOptionsList}
-            updateLocal={updateLocal}
-            handleDeleteField={handleDeleteField}
-            segmentOptions={branchTargetSegments}
-            currentSegmentId={selectedField?.segmentId ?? null}
-            onChangeSegment={(segmentId) => {
-              if (!selectedField) return;
-              updateLocal(selectedField.id, { segmentId });
-              if (segmentId && selectedSegmentId !== null) setSelectedSegmentId(segmentId);
-            }}
-            ruleSummaries={selectedFieldRuleSummaries}
-            incompleteRuleCount={selectedFieldIncompleteRules}
-            onEditBranching={
-              selectedField ? () => setBranchingFieldId(selectedField.id) : undefined
-            }
-            isLastInSegment={isSelectedFieldLastInSegment}
-          />
-
-          <VerticalScale className="hidden shrink-0 xl:block" />
-        </div>
-
-        <div className="flex flex-1 flex-col overflow-hidden bg-(--cf-cream) lg:hidden">
-          <div className="shrink-0 border-b" style={{ borderBottomColor: "var(--cf-line-strong)" }}>
-            <button
-              type="button"
-              onClick={() => setMobileSegmentsOpen((prev) => !prev)}
-              aria-expanded={mobileSegmentsOpen}
-              className="flex w-full items-center justify-between px-4 py-2.5 text-left"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Layers className="size-3.5 text-(--cf-orange)" />
-                <span className="cf-meta">Segments</span>
-                <span className="font-mono text-[10px] tracking-wider text-(--cf-ink-soft)">
-                  {visibleSegments.length || "none"}
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-2">
-                {selectedSegmentId && (
-                  <span className="max-w-32 truncate font-mono text-[10px] tracking-wider text-(--cf-orange) uppercase">
-                    {visibleSegments.find((s) => s.id === selectedSegmentId)?.title ?? "filtered"}
-                  </span>
-                )}
-                {mobileSegmentsOpen ? (
-                  <ChevronUp className="size-4 text-(--cf-ink-soft)" />
-                ) : (
-                  <ChevronDown className="size-4 text-(--cf-ink-soft)" />
-                )}
-              </span>
-            </button>
-
-            {mobileSegmentsOpen && (
-              <SegmentPanel
-                segments={visibleSegments}
-                questionCounts={segmentQuestionCounts}
-                unassignedCount={unassignedQuestionCount}
-                selectedSegmentId={selectedSegmentId}
-                onSelectSegment={setSelectedSegmentId}
-                onAddSegment={handleAddSegment}
-                onRenameSegment={(id, title) => updateSegmentLocal(id, { title })}
-                onMoveSegment={handleMoveSegment}
-                onDeleteSegment={handleDeleteSegment}
-              />
-            )}
+          <div className="lg:hidden">
+            <MobileAddFieldSheet
+              open={mobileAddOpen}
+              onClose={() => setMobileAddOpen(false)}
+              onSelect={handleMobileAddField}
+            />
+            <MobileFieldEditorSheet
+              open={mobileEditorOpen}
+              onClose={handleCloseMobileEditor}
+              selectedField={selectedField}
+              label={label}
+              setLabel={setLabel}
+              placeholder={placeholder}
+              setPlaceholder={setPlaceholder}
+              description={description}
+              setDescription={setDescription}
+              isRequired={isRequired}
+              handleRequiredChange={handleRequiredChange}
+              optionsList={optionsList}
+              setOptionsList={setOptionsList}
+              updateLocal={updateLocal}
+              handleDeleteField={handleDeleteField}
+              segmentOptions={branchTargetSegments}
+              currentSegmentId={selectedField?.segmentId ?? null}
+              onChangeSegment={(segmentId) => {
+                if (!selectedField) return;
+                updateLocal(selectedField.id, { segmentId });
+                if (segmentId && selectedSegmentId !== null) setSelectedSegmentId(segmentId);
+              }}
+              ruleSummaries={selectedFieldRuleSummaries}
+              incompleteRuleCount={selectedFieldIncompleteRules}
+              onEditBranching={
+                selectedField
+                  ? () => {
+                    handleCloseMobileEditor();
+                    setBranchingFieldId(selectedField.id);
+                  }
+                  : undefined
+              }
+              isLastInSegment={isSelectedFieldLastInSegment}
+            />
           </div>
-
-          <FieldOutline
-            fields={visibleSortedFields}
-            onTapField={handleMobileTapField}
-            onMove={handleMobileMove}
-            selectedId={selectedNodeId}
-            onAdd={() => setMobileAddOpen(true)}
-          />
-        </div>
-      </div>
-
-      <div className="lg:hidden">
-        <MobileAddFieldSheet
-          open={mobileAddOpen}
-          onClose={() => setMobileAddOpen(false)}
-          onSelect={handleMobileAddField}
+        </>
+      ) : activeTab === "responses" ? (
+        <ResponsesView
+          formId={formId}
+          fields={visibleSortedFields}
+          segments={visibleSegments}
+          submissionsCount={form?.submissionsCount ?? 0}
+          formTitle={form.title}
+          onNavigateTab={(tab) => router.replace(`/dashboard/sketches/${formId}?tab=${tab}`, { scroll: false })}
+          onShare={() => setShowShareDialog(true)}
         />
-        <MobileFieldEditorSheet
-          open={mobileEditorOpen}
-          onClose={handleCloseMobileEditor}
-          selectedField={selectedField}
-          label={label}
-          setLabel={setLabel}
-          placeholder={placeholder}
-          setPlaceholder={setPlaceholder}
-          description={description}
-          setDescription={setDescription}
-          isRequired={isRequired}
-          handleRequiredChange={handleRequiredChange}
-          optionsList={optionsList}
-          setOptionsList={setOptionsList}
-          updateLocal={updateLocal}
-          handleDeleteField={handleDeleteField}
-          segmentOptions={branchTargetSegments}
-          currentSegmentId={selectedField?.segmentId ?? null}
-          onChangeSegment={(segmentId) => {
-            if (!selectedField) return;
-            updateLocal(selectedField.id, { segmentId });
-            if (segmentId && selectedSegmentId !== null) setSelectedSegmentId(segmentId);
-          }}
-          ruleSummaries={selectedFieldRuleSummaries}
-          incompleteRuleCount={selectedFieldIncompleteRules}
-          onEditBranching={
-            selectedField
-              ? () => {
-                  handleCloseMobileEditor();
-                  setBranchingFieldId(selectedField.id);
-                }
-              : undefined
-          }
-          isLastInSegment={isSelectedFieldLastInSegment}
-        />
-      </div>
+      ) : null}
 
       <DeleteFormDialog
         show={showDeleteConfirm}

@@ -6,6 +6,5 @@ export * from "./models/form-logic";
 export * from "./models/form-submission";
 export * from "./models/form-upload";
 export * from "./models/form-draft";
-export * from "./models/form-field-view";
 export * from "./models/form-collaborator";
 export * from "./models/feedback";

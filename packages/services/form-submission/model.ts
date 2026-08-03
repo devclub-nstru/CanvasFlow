@@ -37,6 +37,10 @@ export const formSubmissionOutput = z.object({
   id: z.string().uuid(),
   formId: z.string().uuid(),
   values: z.array(formSubmissionValueOutput),
+  visitorId: z.string().nullable().optional(),
+  respondentEmail: z.string().nullable().optional(),
+  timeSpentMs: z.number().nullable().optional(),
+  deviceType: z.string().nullable().optional(),
   createdAt: z.any(),
 });
 export type FormSubmissionOutputType = z.infer<typeof formSubmissionOutput>;

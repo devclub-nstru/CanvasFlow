@@ -143,7 +143,7 @@ export default function DashboardPage() {
       <div className="cf-panel cf-raised overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-(--cf-line) p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
           <div>
-            <p className="cf-meta">Analytics</p>
+            <p className="cf-meta">Responses</p>
             <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
               Response trends
             </h3>

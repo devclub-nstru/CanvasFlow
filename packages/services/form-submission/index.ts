@@ -1,6 +1,6 @@
 import { db, eq, and, desc, lt } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
-import { getFormBundle, invalidateFormCount } from "../form";
+import { getFormBundle, invalidateFormCount, requireViewer } from "../form";
 import FormUploadService from "../form-upload";
 import { assertRespondentAllowed, ALREADY_RESPONDED_ERROR, type Respondent } from "./access";
 export * from "./access";
@@ -188,13 +188,7 @@ class FormSubmissionService {
   public async getSubmissions(payload: GetSubmissionsInputType) {
     const { formId, ownerId, cursor, limit } = await getSubmissionsInput.parseAsync(payload);
 
-    const formResult = await db
-      .select()
-      .from(formsTable)
-      .where(and(eq(formsTable.id, formId), eq(formsTable.ownerId, ownerId)));
-    if (!formResult[0]) {
-      throw new Error("Form not found or unauthorized");
-    }
+    await requireViewer(formId, ownerId);
 
     const cursorDate = cursor ? new Date(cursor) : null;
     const whereClause = cursorDate
