@@ -210,7 +210,6 @@ export function NotFoundPanel() {
             ["Learn more", "/learn-more"],
             ["About", "/about"],
             ["Your forms", "/dashboard/sketches"],
-            ["Analytics", "/dashboard/analytics"],
           ].map(([label, href]) => (
             <Link key={href} href={href!} className="hex-link text-[14px]">
               {label}

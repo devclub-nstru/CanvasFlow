@@ -12,12 +12,11 @@ import https from "node:https";
 
 import { logger } from "@repo/logger";
 import { closeRedis, isRedisConfigured } from "@repo/redis";
-import { createAnalyticsWorker, createUploadWorker, queueEnv } from "@repo/queue";
+import { createUploadWorker, queueEnv } from "@repo/queue";
 
 import { env, isCloudinaryConfigured } from "./env";
 import { cloudinaryStorage } from "./storage";
 import { createUploadProcessor } from "./processors/upload";
-import { processFieldAnswers } from "./processors/analytics";
 
 const agentOptions = { keepAlive: true, maxSockets: 256, maxFreeSockets: 32 };
 http.globalAgent = new http.Agent(agentOptions);
@@ -32,13 +31,13 @@ async function main() {
   if (!isCloudinaryConfigured()) {
     logger.warn(
       "[worker] Cloudinary is not configured. Upload jobs will be failed with a clear " +
-        "message; analytics jobs are unaffected. Set CLOUDINARY_CLOUD_NAME, " +
-        "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to enable file storage.",
+        "message. Set CLOUDINARY_CLOUD_NAME, " +
+        "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to enable file storage." +
+        " If this is development, you can proceed without it."
     );
   }
 
   const uploadWorker = createUploadWorker(createUploadProcessor(cloudinaryStorage));
-  const analyticsWorker = createAnalyticsWorker(processFieldAnswers);
 
   uploadWorker.on("failed", (job, err) => {
     logger.error(`[worker:upload] job ${job?.id ?? "unknown"} failed: ${err.message}`);
@@ -47,16 +46,8 @@ async function main() {
     logger.error(`[worker:upload] worker error: ${err.message}`);
   });
 
-  analyticsWorker.on("failed", (job, err) => {
-    logger.error(`[worker:analytics] job ${job?.id ?? "unknown"} failed: ${err.message}`);
-  });
-  analyticsWorker.on("error", (err) => {
-    logger.error(`[worker:analytics] worker error: ${err.message}`);
-  });
-
   logger.info(
-    `[worker] listening — uploads x${queueEnv.UPLOAD_WORKER_CONCURRENCY}, ` +
-      `analytics x${queueEnv.ANALYTICS_WORKER_CONCURRENCY} (${env.NODE_ENV})`,
+    `[worker] listening — uploads x${queueEnv.UPLOAD_WORKER_CONCURRENCY} (${env.NODE_ENV})`
   );
 
   let shuttingDown = false;
@@ -74,7 +65,7 @@ async function main() {
     forceExit.unref();
 
     try {
-      await Promise.allSettled([uploadWorker.close(), analyticsWorker.close()]);
+      await Promise.allSettled([uploadWorker.close()]);
       await closeRedis();
       logger.info("[worker] stopped cleanly");
       process.exit(0);

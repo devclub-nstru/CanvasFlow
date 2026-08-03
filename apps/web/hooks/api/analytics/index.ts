@@ -1,30 +1,10 @@
 import { trpc } from "~/trpc/client";
 
-export const useGetFormAnalytics = (formId: string) => {
-  const {
-    data: analytics,
-    error,
-    isLoading,
-    isError,
-    isSuccess,
-    refetch,
-  } = trpc.analytics.getFormAnalytics.useQuery(
-    { formId },
-    {
-      enabled: !!formId && formId.length === 36,
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
-    },
-  );
-
-  return { analytics, error, isLoading, isError, isSuccess, refetch };
-};
-
 export const useGetSubmissions = (formId: string) => {
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 200;
   const enabled = !!formId && formId.length === 36;
 
-  const result = trpc.analytics.getSubmissions.useInfiniteQuery(
+  const result = trpc.form.getSubmissions.useInfiniteQuery(
     { formId, limit: PAGE_SIZE },
     {
       enabled,
@@ -52,29 +32,4 @@ export const useGetSubmissions = (formId: string) => {
     hasNextPage: !!result.hasNextPage,
     isFetchingNextPage: result.isFetchingNextPage,
   };
-};
-
-export const useRecordFieldAnswer = () => {
-  const {
-    mutate: recordFieldAnswer,
-    mutateAsync: recordFieldAnswerAsync,
-    isPending,
-  } = trpc.analytics.recordFieldAnswer.useMutation();
-
-  return { recordFieldAnswer, recordFieldAnswerAsync, isPending };
-};
-
-export const useGetDetailedAnalytics = (formId: string) => {
-  const {
-    data: detailedAnalytics,
-    error,
-    isLoading,
-    isError,
-    refetch,
-  } = trpc.analytics.getDetailedAnalytics.useQuery(
-    { formId },
-    { enabled: !!formId && formId.length === 36, retry: false },
-  );
-
-  return { detailedAnalytics, error, isLoading, isError, refetch };
 };

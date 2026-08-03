@@ -1,0 +1,22 @@
+FROM node:22-alpine AS base
+RUN npm install -g pnpm@9.0.0
+WORKDIR /app
+
+FROM base AS builder
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @repo/api build
+RUN pnpm --filter @repo/api deploy --prod /prod/api
+RUN pnpm --filter @repo/database deploy --prod /prod/db
+COPY packages/database/drizzle /prod/db/drizzle
+COPY packages/database/migrate.mjs /prod/db/migrate.mjs
+
+FROM base AS runner
+COPY --from=builder /prod/api /app/api
+COPY --from=builder /prod/db /app/db
+
+EXPOSE 8000
+ENV NODE_ENV=production
+ENV PORT=8000
+
+CMD cd /app/db && node migrate.mjs && cd /app/api && node dist/index.js

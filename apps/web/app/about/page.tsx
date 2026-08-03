@@ -205,8 +205,8 @@ export default function AboutPage() {
               dropped off, and every response in a table you can export — no spreadsheets to stitch
               together first.
             </p>
-            <Link href="/dashboard/analytics" className="hex-btn-ghost mt-7 sm:mt-8">
-              Explore analytics →
+            <Link href="/dashboard/sketches" className="hex-btn-ghost mt-7 sm:mt-8">
+              Explore responses →
             </Link>
           </div>
         </div>

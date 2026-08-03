@@ -65,12 +65,7 @@ const Footer = () => {
             >
               Your Forms
             </Link>
-            <Link
-              href="/dashboard/analytics"
-              className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
-            >
-              Analytics
-            </Link>
+
           </div>
 
           <div className="flex flex-col gap-3">

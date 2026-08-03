@@ -309,8 +309,8 @@ const Index = () => {
                 and which question they gave up on. Your form becomes a real dashboard the second
                 answers land — no exports, no spreadsheets.
               </p>
-              <Link href="/dashboard/analytics" className="hex-btn-ghost mt-6 sm:mt-7">
-                Explore analytics →
+              <Link href="/dashboard/sketches" className="hex-btn-ghost mt-6 sm:mt-7">
+                Explore responses →
               </Link>
             </div>
             <div>

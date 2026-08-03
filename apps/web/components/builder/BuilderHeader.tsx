@@ -21,16 +21,17 @@ export type BuilderView = "canvas" | "outline";
 
 interface BuilderHeaderProps {
   form:
-    | {
-        title: string;
-        description?: string | null;
-        isPublished: boolean;
-        ownerEmail?: string | null;
-        role?: "owner" | "editor" | "viewer";
-        permissions?: any;
-      }
-    | null
-    | undefined;
+  | {
+    title: string;
+    description?: string | null;
+    isPublished: boolean;
+    ownerEmail?: string | null;
+    role?: "owner" | "editor" | "viewer";
+    permissions?: any;
+    submissionsCount?: number | null;
+  }
+  | null
+  | undefined;
   formId: string;
   isDirty: boolean;
   isSaving: boolean;
@@ -70,7 +71,6 @@ export function BuilderHeader({
   onViewChange,
 }: BuilderHeaderProps) {
   const isPublished = form?.isPublished ?? false;
-  const isOwner = form?.role === "owner";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const canDelete = form?.permissions?.settings?.canDelete ?? form?.role === "owner";
@@ -126,16 +126,14 @@ export function BuilderHeader({
 
         {/* status pill — always visible */}
         <span
-          className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${
-            isPublished
-              ? "border-(--cf-orange) text-(--cf-orange)"
-              : "border-(--cf-line-strong) text-(--cf-ink-soft)"
-          }`}
+          className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${isPublished
+            ? "border-(--cf-orange) text-(--cf-orange)"
+            : "border-(--cf-line-strong) text-(--cf-ink-soft)"
+            }`}
         >
           <span
-            className={`size-1.5 rounded-full ${
-              isPublished ? "bg-(--cf-orange)" : "bg-(--cf-ink-soft)"
-            }`}
+            className={`size-1.5 rounded-full ${isPublished ? "bg-(--cf-orange)" : "bg-(--cf-ink-soft)"
+              }`}
           />
           {isPublished ? "Live" : "Draft"}
         </span>
@@ -150,58 +148,56 @@ export function BuilderHeader({
 
       {/* right: actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <div
-          role="group"
-          aria-label="Builder view"
-          className="hidden shrink-0 items-center border lg:inline-flex"
-          style={{ borderColor: "var(--cf-line-strong)" }}
-        >
-          {(
-            [
-              { id: "canvas", label: "Canvas", Icon: LayoutGrid },
-              { id: "outline", label: "Outline", Icon: ListOrdered },
-            ] as const
-          ).map(({ id, label, Icon }) => {
-            const active = view === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onViewChange(id)}
-                aria-pressed={active}
-                title={id === "canvas" ? "Canvas builder" : "Outline builder"}
-                className={`inline-flex h-7.5 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${
-                  active
-                    ? "bg-(--cf-ink) text-(--cf-cream)"
-                    : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
+            <div
+              role="group"
+              aria-label="Builder view"
+              className="hidden shrink-0 items-center border lg:inline-flex"
+              style={{ borderColor: "var(--cf-line-strong)" }}
+            >
+              {(
+                [
+                  { id: "canvas", label: "Canvas", Icon: LayoutGrid },
+                  { id: "outline", label: "Outline", Icon: ListOrdered },
+                ] as const
+              ).map(({ id, label, Icon }) => {
+                const active = view === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onViewChange(id)}
+                    aria-pressed={active}
+                    title={id === "canvas" ? "Canvas builder" : "Outline builder"}
+                    className={`inline-flex h-7.5 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${active
+                      ? "bg-(--cf-ink) text-(--cf-cream)"
+                      : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
+                      }`}
+                  >
+                    <Icon className="size-3.5" />
+                    <span className="hidden xl:inline">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden h-5 w-px lg:block" style={{ background: "var(--cf-line-strong)" }} />
+
+            {/* Save — always visible, icon-only on phone */}
+            <button
+              onClick={handleSave}
+              disabled={(!isDirty && !justSaved) || isSaving}
+              title="Save changes"
+              aria-label="Save"
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${justSaved && !isSaving
+                ? "border-(--cf-orange) text-(--cf-orange)"
+                : "cf-btn-outline disabled:opacity-35"
                 }`}
-              >
-                <Icon className="size-3.5" />
-                <span className="hidden xl:inline">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="hidden h-5 w-px lg:block" style={{ background: "var(--cf-line-strong)" }} />
-
-        {/* Save — always visible, icon-only on phone */}
-        <button
-          onClick={handleSave}
-          disabled={(!isDirty && !justSaved) || isSaving}
-          title="Save changes"
-          aria-label="Save"
-          className={`inline-flex h-8 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${
-            justSaved && !isSaving
-              ? "border-(--cf-orange) text-(--cf-orange)"
-              : "cf-btn-outline disabled:opacity-35"
-          }`}
-        >
-          {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
-          <span className="hidden sm:inline">
-            {isSaving ? "Saving..." : justSaved ? "Saved" : "Save"}
-          </span>
-        </button>
+            >
+              {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
+              <span className="hidden sm:inline">
+                {isSaving ? "Saving..." : justSaved ? "Saved" : "Save"}
+              </span>
+            </button>
 
         <Link
           href={`/forms/${formId}?preview=1`}
@@ -222,16 +218,14 @@ export function BuilderHeader({
           <span className="hidden md:inline">Share</span>
         </button>
 
-        {isOwner && (
-          <button
-            onClick={onSettings}
-            title="Form settings"
-            className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
-          >
-            <Settings className="size-3.5" />
-            <span className="hidden md:inline">Settings</span>
-          </button>
-        )}
+        <button
+          onClick={onSettings}
+          title="Form settings"
+          className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
+        >
+          <Settings className="size-3.5" />
+          <span className="hidden md:inline">Settings</span>
+        </button>
 
         {canDelete && (
           <>
@@ -286,18 +280,6 @@ export function BuilderHeader({
                 <Share2 className="size-3.5" />
                 Share form
               </button>
-              {isOwner && (
-                <button
-                  onClick={() => {
-                    onSettings();
-                    setMenuOpen(false);
-                  }}
-                  className="cf-menu-item flex w-full items-center gap-2.5 py-2! text-[13px]"
-                >
-                  <Settings className="size-3.5" />
-                  Settings
-                </button>
-              )}
               {canDelete && (
                 <>
                   <div className="my-1 h-px" style={{ background: "var(--cf-line)" }} />
@@ -317,7 +299,7 @@ export function BuilderHeader({
           )}
         </div>
 
-        {/* Publish — always visible, always primary */}
+        {/* Publish — only on questions tab */}
         <button
           onClick={async () => {
             if (isDirty) await handleSave();

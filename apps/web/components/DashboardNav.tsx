@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { BarChart3, ChevronRight, Compass, Menu, PencilRuler, Plus, X } from "lucide-react";
+import { ChevronRight, Compass, Menu, PencilRuler, Plus, X } from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
@@ -14,7 +14,6 @@ import { avatarSeed, GlyphAvatar, resolvePreset } from "~/components/profile/Gly
 const LINKS = [
   { href: "/dashboard", label: "Studio", icon: Compass },
   { href: "/dashboard/sketches", label: "Forms", icon: PencilRuler },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 export default function DashboardNav() {

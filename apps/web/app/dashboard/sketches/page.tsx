@@ -478,10 +478,16 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
             href={`/dashboard/sketches/${form.id}`}
             className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
           >
-            Continue editing
+            Edit
             <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
           </Link>
         )}
+        <Link
+          href={`/dashboard/sketches/${form.id}?tab=responses`}
+          className="cf-btn-outline h-9.5 flex-1 px-4 text-[12.5px] flex items-center justify-center gap-1.5"
+        >
+          Responses
+        </Link>
         <button
           type="button"
           title="Share form"

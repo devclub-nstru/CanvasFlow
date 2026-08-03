@@ -6,14 +6,14 @@ import path from "node:path";
 
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+
 import { logger } from "@repo/logger";
 import { enqueueUpload, isQueueAvailable } from "@repo/queue";
 import { storageKindFor } from "@repo/services/form-upload";
 import { formUploadService } from "@repo/trpc/server/services";
 
 import { env } from "../env";
-import { redisRateLimitStore } from "../lib/rate-limit-store";
+import { leakyBucketRateLimiter } from "../lib/rate-limiter";
 
 export const uploadRouter: express.Router = express.Router();
 
@@ -107,13 +107,10 @@ const upload = multer({
   },
 });
 
-const uploadLimiter = rateLimit({
-  windowMs: 60_000,
+const uploadLimiter = leakyBucketRateLimiter({
+  bucketName: "upload",
   max: env.RATE_LIMIT_UPLOAD_MAX,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(req.ip ?? "unknown"),
-  store: redisRateLimitStore("upload"),
+  windowMs: 60_000,
   message: { error: "Too many uploads — wait a minute and try again." },
 });
 
