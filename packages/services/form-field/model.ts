@@ -21,6 +21,12 @@ export const fieldTypeZodEnum = z.enum([
 
 export const createFormFieldInput = z.object({
   formId: z.string().uuid().describe("ID of the parent form"),
+  segmentId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .describe("Segment this question belongs to; null means the implicit first segment"),
   label: z.string().trim().max(255, "Label is too long"),
   placeholder: z.string().trim().max(255).optional().nullable(),
   isRequired: z.boolean().default(false),
@@ -42,6 +48,12 @@ export const createFormFieldInput = z.object({
 
 export const updateFormFieldInput = z.object({
   id: z.string().uuid().describe("ID of the field to update"),
+  segmentId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .describe("Move the question to this segment; null moves it to the implicit first segment"),
   label: z.string().trim().max(255).optional(),
   placeholder: z.string().trim().max(255).optional().nullable(),
   isRequired: z.boolean().optional(),
@@ -50,9 +62,6 @@ export const updateFormFieldInput = z.object({
     .transform((val) => String(val))
     .optional()
     .describe("Fractional index for sorting"),
-  // Optimistic-lock version. When supplied, the service must match it
-  // against the row's current version (see form-field service for the
-  // conditional update).
   expectedVersion: z
     .number()
     .int()
@@ -102,6 +111,11 @@ export const getFormFieldInput = z.object({
 export const getFormFieldOutput = z.object({
   id: z.string().uuid().describe("ID of the form field"),
   formId: z.string().uuid().describe("ID of the parent form"),
+  segmentId: z
+    .string()
+    .uuid()
+    .nullable()
+    .describe("Segment this question belongs to; null means the implicit first segment"),
   label: z.string().describe("Label of the field"),
   labelKey: z.string().describe("Immutable slug key of the field"),
   placeholder: z.string().nullable().optional().describe("Placeholder of the field"),

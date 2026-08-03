@@ -78,6 +78,76 @@
       "when": 1784022259464,
       "tag": "0010_fine_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785448660575,
+      "tag": "0011_wide_odin",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785450312351,
+      "tag": "0012_flimsy_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785525377471,
+      "tag": "0013_big_bruce_banner",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785528829178,
+      "tag": "0014_plain_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1785528904334,
+      "tag": "0015_good_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785530772378,
+      "tag": "0016_spooky_the_fallen",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785532560477,
+      "tag": "0017_nebulous_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785534275413,
+      "tag": "0018_perfect_molten_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785535481933,
+      "tag": "0019_dashing_veda",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785538940570,
+      "tag": "0020_dashing_santa_claus",
+      "breakpoints": true
     }
   ]
 }

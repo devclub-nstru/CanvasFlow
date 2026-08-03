@@ -17,7 +17,7 @@ Drag fields onto an open canvas, connect them like nodes, watch responses light 
 - **Real-time analytics.** Response timeline, device breakdown, day-of-week, completion rate, submissions table with virtualisation and CSV export.
 - **One submission per visitor.** Partial unique index on `(form_id, visitor_id)` with a client-side lockout screen — visitors can't submit twice even by clearing localStorage.
 - **Idempotency on every submit.** A client-generated `idempotency_key` collapses double-clicks and network retries into a single record.
-- **Pro-tier paywall** for detailed analytics, with Free / Pro / Pro+ / Business tiers wired into the API and UI.
+- **Segments and conditional branching.** Forms split into pages, with if/else rules that weigh several answers at once and route to a question, a segment, or the end.
 - **Optimistic-lock versioning** on forms and fields so concurrent edits surface conflicts instead of silently overwriting.
 
 ## Tech stack
@@ -59,9 +59,9 @@ The `services` package is framework-agnostic — all SQL, validation, and busine
 
 - **Node ≥ 20** (`engines` is pinned)
 - **pnpm 9**
-- A PostgreSQL database. Either:
-  - a free [Neon](https://neon.tech) project (recommended), or
-  - the bundled `docker-compose.yml` for local Postgres on port 5432.
+- **Docker** — the bundled `docker-compose.yml` runs Postgres 15 for local
+  development. Any other PostgreSQL server works too; just point
+  `DATABASE_URL` at it and skip `pnpm db:up`.
 
 ### 1. Install
 
@@ -86,8 +86,12 @@ PORT=8000
 NODE_ENV=development
 BASE_URL=http://localhost:8000
 
-# Database (Neon or local Postgres)
-DATABASE_URL=postgresql://user:password@host:5432/dbname
+# Database — matches the bundled docker-compose Postgres.
+# POSTGRES_PORT is the host port compose publishes and must match the
+# port in DATABASE_URL. 5434 (not 5432) so it can coexist with other
+# Postgres containers on the same machine.
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/dev
+POSTGRES_PORT=5434
 
 # Better Auth
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
@@ -107,19 +111,26 @@ GITHUB_CLIENT_SECRET=
 ### 3. Set up the database
 
 ```sh
-# Optional: spin up local Postgres
-docker compose up -d
-
-# Generate + apply Drizzle migrations
-pnpm db:generate
-pnpm db:migrate
+pnpm db:up        # start the Postgres container, wait until it's healthy
+pnpm db:migrate   # apply the committed Drizzle migrations
 ```
+
+`pnpm db:up` uses `docker compose up -d --wait`, so it doesn't return until
+Postgres actually accepts TCP connections. Without that wait, a `db:migrate`
+fired immediately after start loses the race and fails with `ECONNREFUSED`.
+
+You only need `pnpm db:generate` when you've _changed_ `schema.ts` and want a
+new migration file — it is not part of first-time setup.
 
 ### 4. Run dev
 
 ```sh
 pnpm dev
 ```
+
+`dev` runs `db:up` first, so the database is guaranteed to be listening
+before the API boots. Use `pnpm dev:no-db` if you're pointing
+`DATABASE_URL` at a server you manage yourself.
 
 This boots, in parallel:
 
@@ -136,27 +147,39 @@ Sign up at `/signUp`, build a form, publish it, share `/forms/<id>`, watch respo
 
 All scripts are turbo-orchestrated and `dotenv -- ...` wrapped so workspaces share the root env.
 
-| Script             | What it does                                     |
-| ------------------ | ------------------------------------------------ |
-| `pnpm dev`         | Run every workspace's dev task                   |
-| `pnpm build`       | Build the API and the web app for production     |
-| `pnpm lint`        | ESLint across all workspaces (zero-warning)      |
-| `pnpm check-types` | TypeScript no-emit type-check                    |
-| `pnpm format`      | Prettier across `**/*.{ts,tsx,md}`               |
-| `pnpm db:generate` | Generate a Drizzle migration from schema changes |
-| `pnpm db:migrate`  | Apply pending migrations                         |
+| Script             | What it does                                        |
+| ------------------ | --------------------------------------------------- |
+| `pnpm dev`         | Start Postgres, then run every workspace's dev task |
+| `pnpm dev:no-db`   | Same, without touching Docker                       |
+| `pnpm build`       | Build the API and the web app for production        |
+| `pnpm lint`        | ESLint across all workspaces (zero-warning)         |
+| `pnpm check-types` | TypeScript no-emit type-check                       |
+| `pnpm format`      | Prettier across `**/*.{ts,tsx,md}`                  |
+| `pnpm db:up`       | Start the Postgres container, wait until healthy    |
+| `pnpm db:down`     | Stop it, keeping the data volume                    |
+| `pnpm db:logs`     | Tail Postgres logs                                  |
+| `pnpm db:psql`     | Open a `psql` shell inside the container            |
+| `pnpm db:reset`    | **Destroys the volume**, recreates, re-migrates     |
+| `pnpm db:generate` | Generate a Drizzle migration from schema changes    |
+| `pnpm db:migrate`  | Apply pending migrations                            |
+
+`db:migrate` and `db:generate` are marked `"cache": false` in `turbo.json`.
+They mutate a database / write files, so a turbo cache hit would report
+"migrations applied successfully" while doing nothing — which silently
+leaves the schema behind whenever you switch `DATABASE_URL` to a different
+server.
 
 Filter to a single workspace with `pnpm -F web <script>` or `pnpm -F @repo/api <script>`.
 
 ## Design decisions worth knowing
 
-- **Single-statement dashboard query.** `form.getDashboardStats` is one SQL `WITH owned AS (...)` CTE that returns `forms`, totals, per-form counts, and the 90-day trend as JSON in a single round-trip. The pg pool is also pre-warmed with four sockets at boot, so the first burst of concurrent queries doesn't pay parallel TLS handshakes to Neon. Result: dashboard loads in ~250ms warm and stays under 300ms even when fired alongside other authed calls.
+- **Single-statement dashboard query.** `form.getDashboardStats` is one SQL `WITH owned AS (...)` CTE that returns `forms`, totals, per-form counts, and the 90-day trend as JSON in a single round-trip. The pg pool is also pre-warmed with four sockets at boot, so the first burst of concurrent queries doesn't pay parallel TLS handshakes against a remote server. Result: dashboard loads in ~250ms warm and stays under 300ms even when fired alongside other authed calls.
 - **`Server-Timing` headers** are emitted from every authed tRPC procedure (`auth;dur=… inner;dur=…`). Visible in DevTools Network panel — useful for diagnosing whether a slow request was auth or query.
 - **React Query staleTime caching** on dashboard / list / analytics hooks (30–60s) so in-app back-navigation paints instantly. Mutations always `invalidate()` on success, so stale data can't survive a real write.
 - **Visitor lockout** is enforced in three places: the UI hides the form behind a `cf_submitted_<formId>` localStorage flag, the API service does a `(form_id, visitor_id)` lookup before insert, and a partial unique index on the same tuple wins races at the DB level.
 - **Field type validation in the public form** does format checks for `EMAIL` (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`) and `URL` (`new URL()`) — both block forward navigation and surface a sonner toast.
 - **Code splitting.** Recharts widgets and the heaviest analytics components are loaded via `next/dynamic` per route. The submissions virtualised table mounts its detail modal only when a row is clicked.
-- **Pricing tiers** are enforced server-side in `packages/services/form-submission/index.ts` (monthly submission caps) and `packages/trpc/server/trpc.ts` (`proAuthenticatedProcedure` for detailed analytics).
+- **Question layout** is a per-form setting (`forms.question_layout`) with an `AUTO` default that reads the form's shape: one question per page until a second segment exists, then a page per segment. The author can override to one-question, one-segment, or everything-at-once.
 
 ## Repository layout
 

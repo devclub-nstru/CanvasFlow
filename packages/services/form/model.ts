@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { getFormFieldOutput } from "../form-field/model";
+import { getFormSegmentOutput } from "../form-segment/model";
+import { getLogicRuleOutput } from "../form-logic/model";
 
 export type FormRole = "owner" | "editor" | "viewer";
 
@@ -21,12 +23,6 @@ export interface FormPermissions {
     canShare: boolean;
   };
 }
-
-// Sanitisation: every string input gets `.trim()` so leading/trailing
-// whitespace doesn't pollute storage or produce duplicates that differ
-// only by whitespace. Length caps prevent abuse of varchar columns.
-// `slug` is regex-constrained to URL-safe characters since it lives in
-// the public form URL.
 
 export const createFormInput = z.object({
   title: z.string().trim().min(1).max(150).describe("Title of the form"),
@@ -78,6 +74,14 @@ export const formPermissionsSchema = z.object({
 
 export type FormPermissionsType = z.infer<typeof formPermissionsSchema>;
 
+export const questionLayoutZodEnum = z.enum([
+  "AUTO",
+  "ONE_PER_PAGE",
+  "SEGMENT_PER_PAGE",
+  "ALL_AT_ONCE",
+]);
+export type QuestionLayout = z.infer<typeof questionLayoutZodEnum>;
+
 export const getFormOutput = z.object({
   id: z.string().uuid(),
   title: z.string(),
@@ -86,8 +90,17 @@ export const getFormOutput = z.object({
   isPublished: z.boolean(),
   isArchived: z.boolean(),
   isOpen: z.boolean(),
-  maxSubmissions: z.number().nullable().optional(),
   expiresAt: z.any().nullable().optional(),
+  questionLayout: questionLayoutZodEnum
+    .optional()
+    .describe("How many questions a respondent sees at once"),
+
+  requireSignIn: z.boolean().optional(),
+  collectRespondentEmail: z.boolean().optional(),
+  oneResponsePerRespondent: z.boolean().optional(),
+  allowedEmailDomains: z.array(z.string()).nullable().optional(),
+  thankYouMessage: z.string().nullable().optional(),
+
   submissionsCount: z.number().nullable().optional(),
   createdAt: z.any(),
   updatedAt: z.any(),
@@ -100,6 +113,8 @@ export type GetFormOutputType = z.infer<typeof getFormOutput>;
 
 export const getFormByIdOutput = getFormOutput.extend({
   fields: z.array(getFormFieldOutput),
+  segments: z.array(getFormSegmentOutput),
+  logicRules: z.array(getLogicRuleOutput),
 });
 export type GetFormByIdOutputType = z.infer<typeof getFormByIdOutput>;
 
@@ -220,14 +235,35 @@ export const updateFormSettingsInput = z.object({
     .optional()
     .describe("Description of the form"),
   isOpen: z.boolean().describe("Whether the form accepts submissions"),
-  maxSubmissions: z
-    .number()
-    .int()
-    .min(0)
-    .nullable()
-    .optional()
-    .describe("Maximum number of submissions"),
   expiresAt: z.any().nullable().optional().describe("Expiration date ISO string or Date object"),
+  questionLayout: questionLayoutZodEnum
+    .optional()
+    .describe("How many questions a respondent sees at once"),
+
+  requireSignIn: z.boolean().optional().describe("Respondents must be signed in"),
+  collectRespondentEmail: z
+    .boolean()
+    .optional()
+    .describe("Record the signed-in respondent's account email; implies requireSignIn"),
+  oneResponsePerRespondent: z
+    .boolean()
+    .optional()
+    .describe("Limit each account to one response; implies requireSignIn"),
+  allowedEmailDomains: z
+    .array(z.string().trim().min(1).max(255))
+    .max(20)
+    .optional()
+    .nullable()
+    .describe(
+      "Email domains permitted to respond, matched as a suffix so subdomains are included; implies requireSignIn",
+    ),
+  thankYouMessage: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .nullable()
+    .describe("Shown on the thank-you screen in addition to the default confirmation"),
 });
 export type UpdateFormSettingsInputType = z.infer<typeof updateFormSettingsInput>;
 

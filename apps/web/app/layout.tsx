@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalProviders } from "~/providers/global";
+import FeedbackWidget from "~/components/FeedbackWidget";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -13,15 +14,6 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-// Display serif — used for landing headlines (close to Daylight's editorial serif).
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["opsz", "SOFT"],
-});
-
-// Clean modern sans — body & UI (close to Daylight's Aeonik-style sans).
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -31,6 +23,14 @@ const inter = Inter({
 const jbMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono-cf",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
   display: "swap",
 });
 
@@ -50,9 +50,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${jbMono.variable}`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
       >
-        <GlobalProviders>{children}</GlobalProviders>
+        <GlobalProviders>
+          {children}
+          <FeedbackWidget />
+        </GlobalProviders>
       </body>
     </html>
   );

@@ -27,19 +27,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
@@ -62,22 +49,7 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
-
-
 
 @layer base {
   * {
@@ -89,52 +61,57 @@
   html {
     scroll-behavior: smooth;
   }
-  /* Anchored landing sections offset themselves so the fixed nav doesn't
-     overlap their top when scrolled to via in-page links. */
   section[id] {
     scroll-margin-top: 96px;
   }
+  button {
+    cursor: pointer;
+  }
 }
 
-/* ============================================================
-   CanvasFlow — Daylight-style landing theme
-   Cream paper, editorial serif headlines, clean sans body,
-   flat orange CTA, subtle full-page blueprint grid.
-   ============================================================ */
 :root {
-  /* core palette */
-  --cf-cream: #fff7e9;
-  --cf-cream-2: #fbecd3;
-  --cf-ink: #161311;
-  --cf-ink-soft: #56504a;
-  --cf-line: rgba(22, 19, 17, 0.08);
-  --cf-line-strong: rgba(22, 19, 17, 0.14);
-  --cf-orange: #f66f00;
-  --cf-orange-hover: #e26300;
+  --cf-cream: #f0f0f0;
+  --cf-cream-2: #e8e8e8;
 
-  /* hero dark warm photo-feel */
-  --cf-hero-bg: #2a2620;
+  --cf-ink: #1a1d29;
+  --cf-ink-soft: #5b6070;
+
+  --cf-line: rgba(26, 29, 41, 0.16);
+  --cf-line-strong: #1a1d29;
+
+  --cf-orange: #2d5cf6;
+  --cf-orange-hover: #2449d0;
+
+  --cf-danger: #c1281d;
 }
 
-/* Warm text selection */
 .cf-landing ::selection {
   background: var(--cf-orange);
   color: #fff;
 }
 
 .cf-landing {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, sans-serif;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   background: var(--cf-cream);
   color: var(--cf-ink);
 }
 
-/* Editorial serif numerals: optical-sizing for big headlines */
 .cf-display {
-  font-family: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 
 .cf-eyebrow {
@@ -145,66 +122,949 @@
   font-weight: 500;
 }
 
-/* Full-page subtle blueprint grid (4 vertical guides + horizontal rules per section). */
-.cf-page-grid {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background-image:
-    linear-gradient(to right, var(--cf-line) 1px, transparent 1px);
-  background-size: 25% 100%;
-  background-position: 25% 0;
+.cf-landing .rounded,
+.cf-landing .rounded-sm,
+.cf-landing .rounded-md,
+.cf-landing .rounded-lg,
+.cf-landing .rounded-xl,
+.cf-landing .rounded-2xl,
+.cf-landing .rounded-3xl,
+.cf-landing .rounded-t-2xl,
+.cf-landing .rounded-t-xl,
+.cf-landing .rounded-b-2xl {
+  border-radius: var(--hex-radius);
 }
 
-/* Subtle grain texture (paper feel) */
-.cf-grain {
-  background-image: radial-gradient(rgba(22, 19, 17, 0.05) 1px, transparent 1px);
-  background-size: 4px 4px;
-}
+@layer components {
+  .cf-panel {
+    background: var(--cf-cream-2);
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+  }
 
-/* Photographic-feeling dark warm hero — looks like a backlit golden-hour scene,
-   no external image needed. Three layered radial+linear gradients + grain. */
-.cf-hero-photo {
-  background-color: #1c1814;
-  background-image:
-    radial-gradient(60% 80% at 80% 90%, rgba(255, 138, 52, 0.55), transparent 65%),
-    radial-gradient(50% 60% at 15% 8%, rgba(28, 22, 18, 0.85), transparent 70%),
-    radial-gradient(35% 40% at 70% 25%, rgba(168, 110, 62, 0.45), transparent 70%),
-    linear-gradient(180deg, #2a2620 0%, #3a2d20 45%, #6a4221 100%);
-}
+  .cf-raised {
+    box-shadow: 4px 4px 0 0 var(--cf-line-strong);
+  }
 
-/* Vivid solid orange tile (used for the right-hand "energy panel" in hero). */
-.cf-orange-tile {
-  background-color: #f66f00;
-  background-image:
-    radial-gradient(120% 90% at 50% 42%, rgba(255, 214, 138, 0.35), transparent 60%),
-    repeating-linear-gradient(
-      108deg,
-      #ffa84a 0px,
-      #f87c14 70px,
-      #f66f00 130px,
-      #d85a00 190px,
-      #f66f00 250px,
-      #ffa84a 320px
-    );
-}
+  .cf-press {
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease,
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-press:hover {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 0 var(--cf-line-strong);
+  }
+  .cf-press:active {
+    transform: translate(4px, 4px);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .cf-float,
-  .cf-spin-slow {
-    animation: none !important;
+  /* Primary action. */
+  .cf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: var(--cf-orange);
+    color: #fff;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cf-btn:hover {
+    background: var(--cf-orange-hover);
+  }
+
+  .cf-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cf-ink);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-btn-outline:hover {
+    background: var(--cf-ink);
+    color: var(--cf-cream);
+  }
+
+  .cf-tab {
+    position: relative;
+    padding: 0 0 10px;
+    font-size: 14px;
+    color: var(--cf-ink-soft);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .cf-tab:hover {
+    color: var(--cf-ink);
+  }
+  .cf-tab[aria-selected="true"] {
+    color: var(--cf-ink);
+    font-weight: 600;
+  }
+  .cf-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--cf-ink);
+  }
+
+  .cf-meta {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cf-ink-soft);
+  }
+
+  .cf-rail {
+    background: var(--cf-cream-2);
+  }
+
+  .cf-pane-bar {
+    display: flex;
+    height: 40px;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 16px;
+    background: var(--cf-cream-2);
+    border-bottom: 1px solid var(--cf-line-strong);
+  }
+
+  .cf-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--cf-danger);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cf-danger);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-btn-danger:hover {
+    background: var(--cf-danger);
+    color: #fff;
+  }
+
+  /* Row in a light popover menu. */
+  .cf-menu-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--cf-ink);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .cf-menu-item:hover {
+    background: var(--cf-cream);
+  }
+
+  /* Icon-only button that only reveals its destructive intent on hover. */
+  .cf-danger-ghost {
+    color: var(--cf-ink-soft);
+    cursor: pointer;
+  }
+  .cf-danger-ghost:hover {
+    color: var(--cf-danger);
+  }
+
+  /* Dashed "add another" row. Dashed reads as a placeholder slot rather
+     than an existing item. */
+  .cf-add-dashed {
+    border-color: var(--cf-line-strong);
+    color: var(--cf-ink-soft);
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-add-dashed:hover {
+    border-color: var(--cf-orange);
+    color: var(--cf-orange);
+  }
+
+  /* Boxed group in the inspector, so each settings group reads as its own
+     drawn card instead of free-floating labels separated by whitespace. */
+  .cf-section {
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    background: var(--cf-cream-2);
+  }
+  .cf-section-bar {
+    padding: 7px 10px;
+    background: var(--cf-cream);
+    border-bottom: 1px solid var(--cf-line-strong);
+  }
+  .cf-section-body {
+    padding: 12px 10px;
   }
 }
 
-@keyframes cf-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+@media (prefers-reduced-motion: reduce) {
+  .cf-press,
+  .cf-press:hover,
+  .cf-press:active {
+    transition: none;
+    transform: none;
+  }
 }
-.cf-float { animation: cf-float 7s ease-in-out infinite; }
 
-@keyframes cf-spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Dotted paper for the app surface, matching the auth form panel. */
+.cf-dotgrid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: radial-gradient(#000 1px, transparent 1px);
+  background-size: 20px 20px;
 }
-.cf-spin-slow { animation: cf-spin-slow 60s linear infinite; }
+
+.cf-dark {
+  --cfd-bg: #101014;
+  --cfd-bg-2: #16161c;
+  --cfd-line: rgba(255, 255, 255, 0.1);
+  --cfd-line-strong: rgba(255, 255, 255, 0.22);
+  --cfd-text: #eceef2;
+  --cfd-text-soft: #9aa0ad;
+  --cfd-text-muted: #6b7280;
+
+  position: relative;
+  background: var(--cfd-bg);
+  color: var(--cfd-text);
+  border: 1px solid var(--cfd-line-strong);
+  border-radius: var(--hex-radius);
+  overflow: hidden;
+}
+
+/* Faint grid inside the panel, the same device the dark hero panels use. */
+.cf-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image:
+    linear-gradient(to right, #fff 1px, transparent 1px),
+    linear-gradient(to bottom, #fff 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@layer components {
+  /* Mono eyebrow on a dark ground ("TEMPLATES"). */
+  .cf-dark-meta {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cfd-text-muted);
+  }
+
+  /* Side rail item. */
+  .cf-dark-rail {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--cfd-text-soft);
+    border-radius: var(--hex-radius);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-dark-rail:hover {
+    color: var(--cfd-text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .cf-dark-rail[aria-current="true"] {
+    color: var(--cfd-text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .cf-dark-card {
+    position: relative;
+    background: var(--cfd-bg-2);
+    border: 1px solid var(--cfd-line);
+    border-radius: var(--hex-radius);
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+  .cf-dark-card:hover {
+    border-color: var(--cfd-line-strong);
+    background: #1b1b22;
+  }
+
+  /* Corner brackets, as in the reference's template tiles. */
+  .cf-crop::before,
+  .cf-crop::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+    border-color: var(--cfd-line-strong);
+  }
+  .cf-crop::before {
+    top: 6px;
+    left: 6px;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+  .cf-crop::after {
+    right: 6px;
+    bottom: 6px;
+    border-right: 1px solid;
+    border-bottom: 1px solid;
+  }
+
+  /* Field on a dark ground. */
+  .cf-dark-input {
+    width: 100%;
+    background: var(--cfd-bg-2);
+    border: 1px solid var(--cfd-line-strong);
+    border-radius: var(--hex-radius);
+    color: var(--cfd-text);
+    transition: box-shadow 0.15s ease;
+  }
+  .cf-dark-input::placeholder {
+    color: var(--cfd-text-muted);
+  }
+  .cf-dark-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 0 rgba(255, 255, 255, 0.18);
+  }
+
+  /* Outlined action on a dark ground. */
+  .cf-dark-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--cfd-line-strong);
+    border-radius: var(--hex-radius);
+    background: transparent;
+    color: var(--cfd-text);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .cf-dark-btn-outline:hover {
+    background: var(--cfd-text);
+    color: var(--cfd-bg);
+  }
+}
+
+
+.cf-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  background: var(--cf-cream);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--hex-radius);
+  box-shadow: 6px 6px 0 0 rgba(26, 29, 41, 0.18);
+}
+
+@layer components {
+  /* Title bar. Names the dialog on the left, status on the right. */
+  .cf-dialog-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: none;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--cf-line-strong);
+    background: var(--cf-cream-2);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Scrollable middle. `min-height: 0` is what actually lets it scroll
+     inside a flex column — without it the body grows past the dialog and
+     the footer is pushed off screen instead of the content scrolling. */
+  .cf-dialog-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 16px;
+  }
+
+  /* Ruled footer for counters and secondary actions. */
+  .cf-dialog-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: none;
+    padding: 10px 16px;
+    border-top: 1px solid var(--cf-line);
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--cf-ink-soft);
+  }
+
+  /* Settings row: label on the left, value and control on the right. */
+  .cf-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--cf-cream-2);
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    font-size: 13px;
+  }
+
+  /* Field on a dialog. Same drawn-box treatment as the page inputs. */
+  .cf-input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--cf-line-strong);
+    border-radius: var(--hex-radius);
+    color: var(--cf-ink);
+    transition: box-shadow 0.15s ease;
+  }
+  .cf-input::placeholder {
+    color: var(--cf-ink-soft);
+  }
+  .cf-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 0 var(--cf-line-strong);
+  }
+}
+
+.cf-toggle {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(26, 29, 41, 0.22);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.cf-toggle > span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 0.18s ease;
+}
+.cf-toggle[aria-checked="true"] {
+  background: var(--c-teal);
+}
+.cf-toggle[aria-checked="true"] > span {
+  transform: translateX(16px);
+}
+.cf-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-toggle,
+  .cf-toggle > span {
+    transition: none;
+  }
+}
+
+.cf-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(16, 16, 20, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+:root {
+  /* Ink ramp */
+  --hex-ink: #1a1d29;
+  --hex-ink-soft: #5b6070;
+  --hex-ink-muted: #8f95a3;
+
+  --hex-line: rgba(26, 29, 41, 0.16);
+  --hex-line-strong: #1a1d29;
+
+  --hex-radius: 0px;
+
+  --hex-paper: #f5f3ee;
+  --hex-nav: rgba(231, 229, 221, 0.82);
+  --hex-surface: #fdfdfb;
+
+  --hex-bone: #faf8f1;
+  --c-orange: #e0834a;
+  --c-yellow: #e3b23c;
+  --c-teal: #3aa793;
+  --c-blue: #4a6bc4;
+  --c-purple: #6c5ce7;
+  --c-lavender: #a79ae4;
+  --c-red: #dd6459;
+}
+
+@layer components {
+  /* ---- Surfaces -------------------------------------------------- */
+  .hex-card {
+    background: #fff;
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+    box-shadow: 5px 5px 0 0 rgba(26, 29, 41, 0.08);
+  }
+
+  .hex-line-soft {
+    border-color: var(--hex-line);
+  }
+  .hex-line-strong {
+    border-color: var(--hex-line-strong);
+  }
+
+  .hex-divider {
+    height: 1px;
+    width: 100%;
+    background: var(--hex-line);
+  }
+
+  .hex-tab {
+    position: relative;
+    padding: 0 0 10px;
+    font-size: 13px;
+    color: var(--hex-ink-soft);
+    white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+  .hex-tab:hover {
+    color: var(--hex-ink);
+  }
+  .hex-tab.active {
+    color: var(--hex-ink);
+    font-weight: 600;
+  }
+  .hex-tab.active::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--hex-ink);
+  }
+
+  /* ---- Type ------------------------------------------------------ */
+  .hex-mono {
+    font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* ---- Dashboard chrome ------------------------------------------ */
+  .hex-kpi {
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+    padding: 12px 14px;
+    background: var(--hex-surface);
+  }
+
+  .hex-select-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--hex-ink-muted);
+    margin-bottom: 4px;
+  }
+  .hex-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+    background: #fff;
+    border: 1px solid var(--hex-line-strong);
+    border-radius: var(--hex-radius);
+  }
+
+  .hex-row-hover {
+    transition: background 0.15s ease;
+  }
+  .hex-row-hover:hover {
+    background: rgba(26, 29, 41, 0.02);
+  }
+
+  .hex-grid-fine {
+    background-image:
+      linear-gradient(to right, var(--hex-ink) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--hex-ink) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(26, 29, 41, 0.16) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(26, 29, 41, 0.16);
+    border-radius: 999px;
+  }
+}
+
+@keyframes hex-draw {
+  from {
+    stroke-dashoffset: var(--len, 600);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.hex-line-path {
+  stroke-dasharray: var(--len, 600);
+  animation: hex-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes hex-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0.78;
+  }
+}
+.hex-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hex-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Stacked bars grow from the left. */
+@keyframes hex-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.hex-bar-x {
+  transform-origin: left center;
+  animation: hex-grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+@keyframes scanlines {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 100%;
+  }
+}
+.animate-scanlines {
+  animation: scanlines 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-line-path,
+  .hex-dot,
+  .hex-bar-x,
+  .animate-scanlines,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+  .hex-line-path {
+    stroke-dasharray: none;
+  }
+}
+
+.hex-fig {
+  font-family: var(--font-mono-cf), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--hex-ink-muted);
+}
+
+:root {
+  --pattern: rgba(26, 29, 41, 0.18);
+  --pattern-hatch: #d4d4d4;
+}
+
+.hex-theme {
+  color: var(--hex-ink);
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hex-theme .rounded,
+.hex-theme .rounded-sm,
+.hex-theme .rounded-md,
+.hex-theme .rounded-lg,
+.hex-theme .rounded-xl,
+.hex-theme .rounded-2xl,
+.hex-theme .rounded-3xl,
+.hex-theme .rounded-4xl,
+.hex-theme .rounded-\[1px\],
+.hex-theme .rounded-\[4px\] {
+  border-radius: var(--hex-radius);
+}
+
+.hex-paper {
+  background-color: var(--hex-paper);
+  background-image:
+    radial-gradient(rgba(26, 29, 41, 0.025) 1px, transparent 1px),
+    radial-gradient(rgba(26, 29, 41, 0.018) 1px, transparent 1px);
+  background-size:
+    3px 3px,
+    7px 7px;
+  background-position:
+    0 0,
+    1px 2px;
+}
+
+.hex-hero-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: url("https://ik.imagekit.io/yatharth/ChatGPT%20Image%20Apr%2030,%202026,%2007_52_59%20PM.png");
+  background-size: min(420px, 45vw) auto;
+  background-repeat: repeat;
+}
+
+.hex-section-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.1;
+  background-image: url("https://ik.imagekit.io/yatharth/BG-SECTION-.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Plain stock for anyone who has asked for less visual noise. */
+  .hex-paper {
+    background-image: none;
+  }
+  .hex-hero-paper,
+  .hex-section-paper {
+    display: none;
+  }
+}
+
+.hex-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--hex-line-strong);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hex-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 60% at 50% 0%, transparent 60%, rgba(26, 29, 41, 0.04) 100%),
+    radial-gradient(120% 60% at 50% 100%, transparent 60%, rgba(26, 29, 41, 0.04) 100%);
+}
+
+@layer components {
+  /* ---- Buttons & links ------------------------------------------- */
+  .hex-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--hex-radius);
+    background: var(--hex-ink);
+    color: #fff;
+    font-weight: 500;
+    border: 1px solid var(--hex-ink);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    cursor: pointer;
+  }
+  .hex-btn-primary:hover {
+    opacity: 0.9;
+  }
+  .hex-btn-primary:active {
+    transform: translateY(1px);
+  }
+
+  .hex-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--hex-radius);
+    background: var(--hex-bone);
+    color: var(--hex-ink);
+    font-size: 14px;
+    font-weight: 600;
+    border: 1.5px solid var(--hex-line-strong);
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+    cursor: pointer;
+  }
+  .hex-btn-ghost:hover {
+    background: var(--hex-ink);
+    color: #fff;
+  }
+
+  .hex-link {
+    color: var(--hex-ink);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--hex-line-strong);
+    text-underline-offset: 5px;
+    transition: text-decoration-color 0.2s ease;
+  }
+  .hex-link:hover {
+    text-decoration-color: var(--hex-ink);
+  }
+}
+
+/* ---- FAQ disclosure rows ----------------------------------------- */
+.hex-faq-row > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .hex-faq-row > summary {
+    gap: 24px;
+    padding: 22px 4px;
+  }
+}
+
+.hex-faq-row > summary::-webkit-details-marker {
+  display: none;
+}
+.hex-faq-row > summary::marker {
+  content: "";
+}
+.hex-faq-row > summary:focus-visible {
+  outline: 2px solid var(--hex-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.hex-faq-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--hex-radius);
+  border: 1px solid var(--hex-line-strong);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--hex-ink-soft);
+  transition:
+    transform 0.25s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+.hex-faq-row[open] .hex-faq-icon {
+  transform: rotate(45deg);
+  background: var(--hex-ink);
+  color: #fff;
+  border-color: var(--hex-ink);
+}
+
+.hex-faq-body {
+  padding: 0 2px 18px;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--hex-ink-soft);
+}
+
+@media (min-width: 640px) {
+  .hex-faq-body {
+    padding: 0 4px 24px;
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-faq-icon {
+    transition: none;
+  }
+}

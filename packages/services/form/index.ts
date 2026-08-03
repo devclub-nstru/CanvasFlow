@@ -1,8 +1,18 @@
 import { db, eq, and, gte, count, sql, usersTable } from "@repo/database";
+import {
+  cacheDel,
+  cacheGetJson,
+  cacheSetJson,
+  formCountKey,
+  formPublicKey,
+} from "@repo/redis/cache";
 import { formsTable } from "@repo/database/models/form";
 import { formFieldsTable } from "@repo/database/models/form-field";
+import { formSegmentsTable } from "@repo/database/models/form-segment";
+import { formLogicRulesTable, formLogicConditionsTable } from "@repo/database/models/form-logic";
 import { formSubmissionsTable } from "@repo/database/models/form-submission";
 import { formCollaboratorsTable } from "@repo/database/models/form-collaborator";
+import { normaliseDomain } from "../form-submission/access";
 
 import {
   createFormInput,
@@ -30,6 +40,118 @@ import {
   type FormRole,
   type FormPermissions,
 } from "./model";
+
+// TTL for the static bundle
+const FORM_BUNDLE_TTL_SECONDS = 30;
+
+// TTL for submission count cache
+const FORM_COUNT_TTL_SECONDS = 15;
+
+// Static bundle definition
+export interface FormBundle {
+  form: typeof formsTable.$inferSelect;
+  fields: (typeof formFieldsTable.$inferSelect)[];
+  segments: (typeof formSegmentsTable.$inferSelect)[];
+  logicRules: Array<
+    typeof formLogicRulesTable.$inferSelect & {
+      conditions: (typeof formLogicConditionsTable.$inferSelect)[];
+    }
+  >;
+}
+
+// Loads form bundle from database
+async function loadFormBundle(id: string): Promise<FormBundle | null> {
+  const rows = await db
+    .select({
+      form: formsTable,
+      field: formFieldsTable,
+    })
+    .from(formsTable)
+    .leftJoin(formFieldsTable, eq(formsTable.id, formFieldsTable.formId))
+    .where(eq(formsTable.id, id))
+    .orderBy(formFieldsTable.index);
+
+  const firstRow = rows[0];
+  if (!firstRow) return null;
+
+  const [segments, rules, conditionRows] = await Promise.all([
+    db
+      .select()
+      .from(formSegmentsTable)
+      .where(eq(formSegmentsTable.formId, id))
+      .orderBy(formSegmentsTable.index),
+    db
+      .select()
+      .from(formLogicRulesTable)
+      .where(eq(formLogicRulesTable.formId, id))
+      .orderBy(formLogicRulesTable.index),
+    db
+      .select({ condition: formLogicConditionsTable })
+      .from(formLogicConditionsTable)
+      .innerJoin(formLogicRulesTable, eq(formLogicRulesTable.id, formLogicConditionsTable.ruleId))
+      .where(eq(formLogicRulesTable.formId, id))
+      .orderBy(formLogicConditionsTable.index),
+  ]);
+
+  const fields = rows.map((r) => r.field).filter((f): f is NonNullable<typeof f> => !!(f && f.id));
+
+  const conditionsByRuleId = new Map<string, (typeof conditionRows)[number]["condition"][]>();
+  for (const row of conditionRows) {
+    const list = conditionsByRuleId.get(row.condition.ruleId);
+    if (list) list.push(row.condition);
+    else conditionsByRuleId.set(row.condition.ruleId, [row.condition]);
+  }
+
+  return {
+    form: firstRow.form,
+    fields,
+    segments,
+    logicRules: rules.map((rule) => ({
+      ...rule,
+      conditions: conditionsByRuleId.get(rule.id) ?? [],
+    })),
+  };
+}
+
+// Retrieve cached form bundle
+export async function getFormBundle(id: string): Promise<FormBundle | null> {
+  const key = formPublicKey(id);
+
+  const hit = await cacheGetJson<FormBundle>(key);
+  if (hit) return hit;
+
+  const fresh = await loadFormBundle(id);
+  if (fresh) await cacheSetJson(key, fresh, FORM_BUNDLE_TTL_SECONDS);
+
+  return fresh;
+}
+
+// Retrieve cached submission count
+async function getFormSubmissionsCount(id: string): Promise<number> {
+  const key = formCountKey(id);
+
+  const hit = await cacheGetJson<number>(key);
+  if (typeof hit === "number") return hit;
+
+  const rows = await db
+    .select({ value: count() })
+    .from(formSubmissionsTable)
+    .where(eq(formSubmissionsTable.formId, id));
+
+  const total = Number(rows[0]?.value ?? 0);
+  await cacheSetJson(key, total, FORM_COUNT_TTL_SECONDS);
+  return total;
+}
+
+// Invalidates cached form payload
+export async function invalidateFormCache(formId: string): Promise<void> {
+  await cacheDel(formPublicKey(formId), formCountKey(formId));
+}
+
+// Invalidates cached submission count
+export async function invalidateFormCount(formId: string): Promise<void> {
+  await cacheDel(formCountKey(formId));
+}
 
 export async function checkFormAccess(formId: string, userId: string): Promise<FormRole | null> {
   const access = await db
@@ -149,34 +271,6 @@ class FormService {
   public async createForm(payload: CreateFormInputType) {
     const { title, description, slug, ownerId } = await createFormInput.parseAsync(payload);
 
-    const userResult = await db
-      .select({ plan: usersTable.plan })
-      .from(usersTable)
-      .where(eq(usersTable.id, ownerId));
-    const userPlan = userResult[0]?.plan || "Free";
-
-    let formLimit = 10;
-    if (userPlan === "Pro") formLimit = 50;
-    else if (userPlan === "Pro+") formLimit = 200;
-    else if (userPlan === "Business") formLimit = Infinity;
-
-    if (formLimit !== Infinity) {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const existingForms = await db
-        .select({ value: count() })
-        .from(formsTable)
-        .where(and(eq(formsTable.ownerId, ownerId), gte(formsTable.createdAt, startOfMonth)));
-
-      if (Number(existingForms[0]?.value ?? 0) >= formLimit) {
-        throw new Error(
-          `You have reached the limit of ${formLimit} forms per month for the ${userPlan} tier.`,
-        );
-      }
-    }
-
     const existingForm = await this.getFormBySlug(slug);
     if (existingForm) {
       throw new Error(`Form with slug ${slug} already exists`);
@@ -257,38 +351,24 @@ class FormService {
     });
   }
 
+  // Retrieves public form payload
   public async getFormById(payload: GetFormInputType) {
     const { id } = await getFormInput.parseAsync(payload);
 
-    const rows = await db
-      .select({
-        form: formsTable,
-        field: formFieldsTable,
-      })
-      .from(formsTable)
-      .leftJoin(formFieldsTable, eq(formsTable.id, formFieldsTable.formId))
-      .where(eq(formsTable.id, id))
-      .orderBy(formFieldsTable.index);
+    const [bundle, submissionsCount] = await Promise.all([
+      getFormBundle(id),
+      getFormSubmissionsCount(id),
+    ]);
 
-    const firstRow = rows[0];
-    if (!firstRow) {
+    if (!bundle) {
       throw new Error("Form not found");
     }
 
-    const submissionsCountRows = await db
-      .select({ value: count() })
-      .from(formSubmissionsTable)
-      .where(eq(formSubmissionsTable.formId, id));
-    const submissionsCount = Number(submissionsCountRows[0]?.value ?? 0);
-
-    const form = firstRow.form;
-    const fields = rows
-      .map((r) => r.field)
-      .filter((f): f is NonNullable<typeof f> => !!(f && f.id));
-
     return {
-      ...form,
-      fields,
+      ...bundle.form,
+      fields: bundle.fields,
+      segments: bundle.segments,
+      logicRules: bundle.logicRules,
       submissionsCount,
       role: undefined,
       permissions: undefined,
@@ -317,6 +397,8 @@ class FormService {
       throw new Error("Form not found");
     }
 
+    await invalidateFormCache(id);
+
     return {
       id: firstResult.id,
     };
@@ -335,6 +417,8 @@ class FormService {
 
     if (!result[0]) throw new Error("Form not found");
 
+    await invalidateFormCache(id);
+
     return { success: true };
   }
 
@@ -345,27 +429,10 @@ class FormService {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    // Trend chart covers up to 90 days so the dashboard can render
-    // 7d / 30d / 90d windows from a single fetch.
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89);
     ninetyDaysAgo.setHours(0, 0, 0, 0);
 
-    // ─── One round-trip, one connection ──────────────────────────────────
-    //
-    // The dashboard used to fan out four queries through Promise.all. On
-    // a cold pool each one had to wait its turn for a fresh TLS handshake
-    // to Neon's pooler (~300ms each), which serialized into ~1.7s wall
-    // time despite "running in parallel".
-    //
-    // Collapsing into a single statement with subqueries:
-    //   • one pg connection acquired (no handshake contention)
-    //   • one Neon round-trip
-    //   • Postgres planner can share the `forms WHERE owner_id` scan
-    //     across the four sub-aggregates instead of repeating it.
-    //
-    // Output shape mirrors the four old result sets so the JS below
-    // didn't need to change.
     type DashboardRow = {
       forms: Array<{ id: string; title: string; is_published: boolean; created_at: string }> | null;
       agg: { total: number; month: number } | null;
@@ -441,8 +508,6 @@ class FormService {
       };
     }
 
-    // Sort in memory and grab the four most recent — avoids the second
-    // SELECT on formsTable that the old implementation made.
     const recentFormsRaw = [...forms]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 4);
@@ -714,11 +779,35 @@ class FormService {
   }
 
   public async updateFormSettings(payload: UpdateFormSettingsInputType & { requesterId: string }) {
-    const { id, title, description, isOpen, maxSubmissions, expiresAt } =
-      await updateFormSettingsInput.parseAsync(payload);
+    const {
+      id,
+      title,
+      description,
+      isOpen,
+      expiresAt,
+      questionLayout,
+      requireSignIn,
+      collectRespondentEmail,
+      oneResponsePerRespondent,
+      allowedEmailDomains,
+      thankYouMessage,
+    } = await updateFormSettingsInput.parseAsync(payload);
     const { requesterId } = payload;
 
     await requireOwner(id, requesterId);
+
+    const domains =
+      allowedEmailDomains === undefined
+        ? undefined
+        : allowedEmailDomains === null
+          ? null
+          : [...new Set(allowedEmailDomains.map(normaliseDomain).filter(Boolean))];
+
+    const impliedRequireSignIn =
+      requireSignIn === true ||
+      collectRespondentEmail === true ||
+      oneResponsePerRespondent === true ||
+      (domains?.length ?? 0) > 0;
 
     await db
       .update(formsTable)
@@ -726,11 +815,25 @@ class FormService {
         title,
         description: description ?? null,
         isOpen,
-        maxSubmissions: maxSubmissions ?? null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        ...(questionLayout !== undefined ? { questionLayout } : {}),
+
+        ...(requireSignIn !== undefined ||
+        collectRespondentEmail !== undefined ||
+        oneResponsePerRespondent !== undefined ||
+        domains !== undefined
+          ? { requireSignIn: impliedRequireSignIn }
+          : {}),
+        ...(collectRespondentEmail !== undefined ? { collectRespondentEmail } : {}),
+        ...(oneResponsePerRespondent !== undefined ? { oneResponsePerRespondent } : {}),
+        ...(domains !== undefined ? { allowedEmailDomains: domains } : {}),
+        ...(thankYouMessage !== undefined ? { thankYouMessage: thankYouMessage || null } : {}),
+
         updatedAt: new Date(),
       })
       .where(eq(formsTable.id, id));
+
+    await invalidateFormCache(id);
 
     return { success: true };
   }

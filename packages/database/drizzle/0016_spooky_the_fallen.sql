@@ -1,0 +1,2 @@
+CREATE TYPE "public"."question_layout" AS ENUM('AUTO', 'ONE_PER_PAGE', 'SEGMENT_PER_PAGE', 'ALL_AT_ONCE');--> statement-breakpoint
+ALTER TABLE "forms" ADD COLUMN "question_layout" "question_layout" DEFAULT 'AUTO' NOT NULL;

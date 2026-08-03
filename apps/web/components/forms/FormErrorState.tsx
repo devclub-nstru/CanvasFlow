@@ -2,67 +2,166 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, RotateCcw } from "lucide-react";
 
 interface FormErrorStateProps {
-  type: "not-found" | "draft-mode" | "already-submitted" | "closed" | "expired" | "limit-reached";
+  type:
+    | "not-found"
+    | "draft-mode"
+    | "already-submitted"
+    | "closed"
+    | "expired"
+    | "sign-in-required"
+    | "domain-not-allowed";
+  allowedDomains?: string[];
+  signInHref?: string;
+  onRespondAgain?: () => void;
 }
 
-export function FormErrorState({ type }: FormErrorStateProps) {
-  const config =
-    type === "draft-mode"
-      ? {
-          eyebrow: "Not live",
-          title: "This form is still a draft",
-          body: "The author hasn't published it yet, so it isn't accepting responses.",
-        }
-      : type === "already-submitted"
-        ? {
-            eyebrow: "Already submitted",
-            title: "You've responded to this form",
-            body: "Each visitor can submit this form once. Thanks — we already have your response on file.",
-          }
-        : type === "closed"
-          ? {
-              eyebrow: "Closed",
-              title: "Form is closed",
-              body: "The author has closed this form to new responses.",
-            }
-          : type === "expired"
-            ? {
-                eyebrow: "Expired",
-                title: "Form has expired",
-                body: "This form has passed its expiration date and is no longer accepting submissions.",
-              }
-            : type === "limit-reached"
-              ? {
-                  eyebrow: "Limit reached",
-                  title: "Submission limit reached",
-                  body: "This form has reached its maximum allowed number of submissions.",
-                }
-              : {
-                  eyebrow: "Not found",
-                  title: "We can't find this form",
-                  body: "The form may have been deleted, or the link is incorrect. Double-check the URL.",
-                };
+const STATES: Record<
+  FormErrorStateProps["type"],
+  { eyebrow: string; title: string; body: string }
+> = {
+  "draft-mode": {
+    eyebrow: "Not live",
+    title: "This form is still a draft",
+    body: "The author hasn't published it yet, so it isn't accepting responses.",
+  },
+  "already-submitted": {
+    eyebrow: "Already submitted",
+    title: "You've responded to this form",
+    body: "Thanks — we already have your response on file, so there's no need to send it again.",
+  },
+  "sign-in-required": {
+    eyebrow: "Sign in",
+    title: "This form needs you signed in",
+    body: "The author asked for responses from signed-in accounts, so we can tell respondents apart. Your answers aren't submitted until you do.",
+  },
+  "domain-not-allowed": {
+    eyebrow: "Wrong account",
+    title: "This form is limited to a specific organisation",
+    body: "Your signed-in email isn't in a domain the author accepts. Sign in with your organisation account and try again.",
+  },
+  closed: {
+    eyebrow: "Closed",
+    title: "This form is not accepting responses",
+    body: "The author has closed it to new submissions. If you were asked to fill it in, check with whoever sent you the link.",
+  },
+  expired: {
+    eyebrow: "Expired",
+    title: "This form is no longer accepting responses",
+    body: "It passed its closing date, so submissions are closed. If you were asked to fill it in, check with whoever sent you the link.",
+  },
+
+  "not-found": {
+    eyebrow: "Not found",
+    title: "We can't find this form",
+    body: "The form may have been deleted, or the link is incorrect. Double-check the URL.",
+  },
+};
+
+export function FormErrorState({
+  type,
+  allowedDomains,
+  signInHref,
+  onRespondAgain,
+}: FormErrorStateProps) {
+  const config = STATES[type];
+  const hasPrimaryAction = !!signInHref || !!onRespondAgain;
 
   return (
-    <div className="cf-landing min-h-screen w-full flex items-center justify-center bg-[color:var(--cf-cream)] p-6">
-      <div className="w-full max-w-sm bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line)] p-8 text-center space-y-4">
-        <p className="cf-eyebrow text-[color:var(--cf-orange)]">{config.eyebrow}</p>
-        <h2 className="cf-display text-[24px] leading-tight text-[color:var(--cf-ink)]">
-          {config.title}
-        </h2>
-        <p className="text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-          {config.body}
-        </p>
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-1.5 h-[40px] px-5 rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[13px] font-medium tracking-tight transition-colors"
+    <div
+      className="cf-landing cf-dotgrid flex min-h-screen w-full items-center justify-center p-6"
+      style={{ background: "var(--cf-cream)" }}
+    >
+      <div
+        className="w-full max-w-md border p-8 text-center"
+        style={{
+          borderColor: "var(--cf-line-strong)",
+          background: "var(--cf-cream-2)",
+          boxShadow: "5px 5px 0 0 rgba(26, 29, 41, 0.08)",
+        }}
+      >
+        <p
+          className="border px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.18em] uppercase"
+          style={{
+            display: "inline-block",
+            borderColor: "var(--cf-orange)",
+            color: "var(--cf-orange)",
+          }}
         >
-          Visit CanvasFlow
-          <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </Link>
+          {config.eyebrow}
+        </p>
+        <h1 className="cf-display mt-5 text-[26px] leading-tight text-(--cf-ink)">
+          {config.title}
+        </h1>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-(--cf-ink-soft)">{config.body}</p>
+
+        {allowedDomains && allowedDomains.length > 0 && (
+          <div
+            className="mt-5 border px-3 py-2.5 text-left"
+            style={{ borderColor: "var(--cf-line-strong)" }}
+          >
+            <p className="cf-meta mb-1.5">Accepted domains</p>
+            <ul className="space-y-0.5">
+              {allowedDomains.map((domain) => (
+                <li key={domain} className="font-mono text-[12px] text-(--cf-ink)">
+                  @{domain}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {signInHref && (
+          <Link
+            href={signInHref}
+            className="group mt-7 inline-flex h-11 items-center gap-2 border px-5 text-[13.5px] font-semibold text-white transition-all hover:translate-x-px hover:translate-y-px hover:shadow-none"
+            style={{
+              background: "var(--cf-orange)",
+              borderColor: "var(--cf-line-strong)",
+              boxShadow: "4px 4px 0 0 var(--cf-line-strong)",
+            }}
+          >
+            Sign in to continue
+            <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
+        )}
+
+        {onRespondAgain && (
+          <button
+            type="button"
+            onClick={onRespondAgain}
+            className="cf-btn cf-raised cf-press mt-7 h-11 px-5 text-[13.5px]"
+          >
+            <RotateCcw className="size-3.5" />
+            Submit another response
+          </button>
+        )}
+
+        {hasPrimaryAction ? (
+          <div className="mt-5">
+            <Link
+              href="/"
+              className="text-[12.5px] text-(--cf-ink-soft) underline hover:text-(--cf-ink)"
+            >
+              Visit CanvasFlow
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href="/"
+            className="group mt-7 inline-flex h-11 items-center gap-2 border px-5 text-[13.5px] font-semibold text-white transition-all hover:translate-x-px hover:translate-y-px hover:shadow-none"
+            style={{
+              background: "var(--cf-orange)",
+              borderColor: "var(--cf-line-strong)",
+              boxShadow: "4px 4px 0 0 var(--cf-line-strong)",
+            }}
+          >
+            Visit CanvasFlow
+            <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
+        )}
       </div>
     </div>
   );

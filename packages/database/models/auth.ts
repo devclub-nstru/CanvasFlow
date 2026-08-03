@@ -1,11 +1,4 @@
-import { pgTable, varchar, timestamp, boolean, text, pgEnum, index } from "drizzle-orm/pg-core";
-
-export const subscriptionTypeEnum = pgEnum("subscription_type", [
-  "Free",
-  "Pro",
-  "Pro+",
-  "Business",
-]);
+import { pgTable, varchar, timestamp, boolean, text, index } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -14,7 +7,6 @@ export const usersTable = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  plan: subscriptionTypeEnum("plan").notNull().default("Free"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -37,8 +29,6 @@ export const sessionsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
   },
   (table) => ({
-    // FK lookups (`SELECT * FROM sessions WHERE user_id = $1`) ran without
-    // an index until now. Frequently hit on every authenticated request.
     userIdx: index("sessions_user_id_idx").on(table.userId),
     expiresIdx: index("sessions_expires_at_idx").on(table.expiresAt),
   }),

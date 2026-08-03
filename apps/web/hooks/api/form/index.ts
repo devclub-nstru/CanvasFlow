@@ -14,8 +14,6 @@ export const useCreateForm = () => {
     isSuccess,
     status,
   } = trpc.form.createForm.useMutation({
-    // Optimistic update: add a placeholder form immediately so the UI
-    // feels instant. The server response replaces it on success.
     onMutate: async (input) => {
       await utils.form.listFormsByUserId.cancel();
       const previous = utils.form.listFormsByUserId.getData();
@@ -83,11 +81,6 @@ export const useListFormsByUserId = () => {
     isLoading,
     refetch,
   } = trpc.form.listFormsByUserId.useQuery(undefined, {
-    // My Forms list is read on the sketches page and the analytics
-    // sidebar; both pages get hit on back-nav. Same caching policy
-    // as the dashboard — 60s freshness, no refetch-on-focus.
-    // Mutations (create/update/delete form) already invalidate this
-    // key, so stale data can't survive a real change.
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -119,15 +112,14 @@ export const useCreateFormField = () => {
     status,
   } = trpc.form.createFormField.useMutation({
     onMutate: async (input) => {
-      // Cancel any in-flight refetches for this form's fields
       await utils.form.listFormFields.cancel({ formId: input.formId });
       const previous = utils.form.listFormFields.getData({ formId: input.formId });
 
-      // Optimistically add the new field so the canvas updates instantly
       utils.form.listFormFields.setData({ formId: input.formId }, (old) => {
         const optimistic = {
           id: `optimistic-${Date.now()}`,
           formId: input.formId,
+          segmentId: input.segmentId ?? null,
           label: input.label ?? "",
           labelKey: input.label?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? "field",
           placeholder: input.placeholder ?? null,
@@ -136,8 +128,6 @@ export const useCreateFormField = () => {
           type: input.type,
           options: input.options ?? null,
           description: input.description ?? null,
-          // Optimistic baseline — the real version is set when
-          // the server reply lands and the cache is refreshed.
           version: 0,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -153,7 +143,6 @@ export const useCreateFormField = () => {
       }
     },
     onSettled: (_data, _err, input) => {
-      // Only refetch fields for this specific form — not the entire router
       void utils.form.listFormFields.invalidate({ formId: input.formId });
     },
   });
@@ -574,4 +563,290 @@ export const useUpdateFormSettings = () => {
     isPending,
     error,
   };
+};
+
+/* ─── Segments ────────────────────────────────────────────────────────── */
+
+export const useListFormSegments = (formId: string) => {
+  const {
+    data: segments,
+    error,
+    failureCount,
+    isError,
+    isSuccess,
+    status,
+    isLoading,
+    refetch,
+  } = trpc.form.listFormSegments.useQuery(
+    { formId },
+    { enabled: !!formId && formId.length === 36 },
+  );
+
+  return {
+    segments,
+    error,
+    isError,
+    isSuccess,
+    status,
+    failureCount,
+    isLoading,
+    refetch,
+  };
+};
+
+export const useCreateFormSegment = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: createFormSegmentAsync,
+    mutate: createFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.createFormSegment.useMutation({
+    // No optimistic update here, unlike createFormField. The first segment
+    // on a form also materialises "Segment 1" and re-parents every existing
+    // question server-side; the client can't predict those ids, so guessing
+    // would paint a segment list that has to be thrown away a moment later.
+    onSettled: (_data, _err, input) => {
+      void utils.form.listFormSegments.invalidate({ formId: input.formId });
+      // Fields move into the default segment as part of this call.
+      void utils.form.listFormFields.invalidate({ formId: input.formId });
+    },
+  });
+
+  return {
+    createFormSegmentAsync,
+    createFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+export const useUpdateFormSegment = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: updateFormSegmentAsync,
+    mutate: updateFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.updateFormSegment.useMutation({
+    // Input carries only the segment id, so scope-by-formId isn't available
+    // — same trade-off the field mutations already make.
+    onSettled: () => {
+      void utils.form.listFormSegments.invalidate();
+    },
+  });
+
+  return {
+    updateFormSegmentAsync,
+    updateFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+export const useDeleteFormSegment = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: deleteFormSegmentAsync,
+    mutate: deleteFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.deleteFormSegment.useMutation({
+    onSettled: () => {
+      void utils.form.listFormSegments.invalidate();
+      // Questions in the deleted segment fall back to the implicit first
+      // segment, and rules targeting it are cascade-deleted.
+      void utils.form.listFormFields.invalidate();
+      void utils.form.listLogicRules.invalidate();
+    },
+  });
+
+  return {
+    deleteFormSegmentAsync,
+    deleteFormSegment,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+/* ─── Conditional branching ───────────────────────────────────────────── */
+
+export const useListLogicRules = (formId: string) => {
+  const {
+    data: logicRules,
+    error,
+    failureCount,
+    isError,
+    isSuccess,
+    status,
+    isLoading,
+    refetch,
+  } = trpc.form.listLogicRules.useQuery({ formId }, { enabled: !!formId && formId.length === 36 });
+
+  return {
+    logicRules,
+    error,
+    isError,
+    isSuccess,
+    status,
+    failureCount,
+    isLoading,
+    refetch,
+  };
+};
+
+export const useCreateLogicRule = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: createLogicRuleAsync,
+    mutate: createLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.createLogicRule.useMutation({
+    onSettled: (_data, _err, input) => {
+      void utils.form.listLogicRules.invalidate({ formId: input.formId });
+    },
+  });
+
+  return {
+    createLogicRuleAsync,
+    createLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+export const useUpdateLogicRule = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: updateLogicRuleAsync,
+    mutate: updateLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.updateLogicRule.useMutation({
+    onSettled: () => {
+      void utils.form.listLogicRules.invalidate();
+    },
+  });
+
+  return {
+    updateLogicRuleAsync,
+    updateLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+export const useDeleteLogicRule = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: deleteLogicRuleAsync,
+    mutate: deleteLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.deleteLogicRule.useMutation({
+    onSettled: () => {
+      void utils.form.listLogicRules.invalidate();
+    },
+  });
+
+  return {
+    deleteLogicRuleAsync,
+    deleteLogicRule,
+    error,
+    isPending,
+    isSuccess,
+    status,
+  };
+};
+
+/* ─── Drafts ──────────────────────────────────────────────────────────── */
+
+/**
+ * The signed-in respondent's saved progress on a form, or null.
+ *
+ * `enabled` gates on the caller telling us they're signed in: the procedure is
+ * authenticated, so calling it anonymously is a guaranteed 401 on every public
+ * form load. `retry: false` for the same reason — a failure here means "no
+ * draft", never something worth retrying.
+ *
+ * `staleTime: Infinity` because the draft is only read once, to restore. After
+ * that the renderer's own state is the truth, and a refetch that overwrote it
+ * mid-typing would be a bug rather than a refresh.
+ */
+export const useGetDraft = (formId: string, enabled: boolean) => {
+  const {
+    data: draft,
+    isLoading,
+    isFetched,
+  } = trpc.form.getDraft.useQuery(
+    { formId },
+    {
+      enabled: enabled && !!formId && formId.length === 36,
+      retry: false,
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+    },
+  );
+
+  return { draft, isLoading, isFetched };
+};
+
+export const useSaveDraft = () => {
+  const {
+    mutateAsync: saveDraftAsync,
+    mutate: saveDraft,
+    isPending,
+    error,
+  } = trpc.form.saveDraft.useMutation({
+    // Deliberately no invalidation. This fires repeatedly while someone types,
+    // and refetching the draft we just wrote would pull the server's copy back
+    // over the state that produced it.
+  });
+
+  return { saveDraftAsync, saveDraft, isPending, error };
+};
+
+export const useDeleteDraft = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: deleteDraftAsync,
+    mutate: deleteDraft,
+    isPending,
+  } = trpc.form.deleteDraft.useMutation({
+    onSettled: (_data, _err, input) => {
+      void utils.form.getDraft.invalidate({ formId: input.formId });
+    },
+  });
+
+  return { deleteDraftAsync, deleteDraft, isPending };
 };

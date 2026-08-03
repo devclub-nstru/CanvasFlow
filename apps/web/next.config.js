@@ -3,17 +3,84 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const isProd = process.env.NODE_ENV === "production";
+
+function resolveApiOrigin() {
+  const fallback = "http://localhost:8000";
+  const raw = process.env.NEXT_PUBLIC_API_URL;
+  if (!raw) return fallback;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return fallback;
+  }
+}
+
+const API_ORIGIN = resolveApiOrigin();
+const IMAGEKIT = "https://ik.imagekit.io"; // landing artwork
+const QR_SERVICE = "https://api.qrserver.com"; // share-dialog QR, both <img> and fetch()
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE}`,
+  "font-src 'self' data:",
+  `connect-src 'self' ${API_ORIGIN} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  ...(isProd ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  // Redundant beside `frame-ancestors` for modern browsers, kept for older ones.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // Send the full URL same-origin, only the origin cross-origin, nothing on a
+  // downgrade. Keeps form IDs out of third-party referer logs.
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // The app asks for none of these, so deny them outright.
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  },
+  // HSTS is meaningless over plain HTTP and pinning `localhost` in a dev
+  // browser profile is a genuine nuisance, so it is production-only.
+  // `preload` is deliberately omitted: submitting to the preload list is
+  // effectively irreversible and should be a conscious decision, not a default.
+  ...(isProd
+    ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+    : []),
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Produces a self-contained build at `.next/standalone/` we can ship to
-  // a VM and run with `node apps/web/server.js`. No `node_modules` or
-  // source needed on the box at runtime.
   output: "standalone",
-  // Critical for a Turborepo/pnpm-workspace setup: tell Next's file
-  // tracer to walk up to the workspace root so internal `@repo/*`
-  // packages are pulled into the standalone bundle. Without this you'll
-  // get "Cannot find module '@repo/trpc'" at runtime.
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  images: {
+    // Landing-page artwork is served from ImageKit.
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
+        pathname: "/**",
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        // Every route, including the public form pages.
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

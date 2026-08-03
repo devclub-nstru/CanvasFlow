@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import db from "@repo/database";
+import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
 import {
   usersTable,
   sessionsTable,
@@ -8,9 +9,6 @@ import {
   verificationsTable,
 } from "@repo/database/models/auth";
 
-// Only register a social provider when BOTH its client id and secret are
-// present as real values. Falling back to placeholder strings causes a 500
-// when better-auth tries to initiate the OAuth flow.
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const githubClientId = process.env.GITHUB_CLIENT_ID;
@@ -24,20 +22,47 @@ if (githubClientId && githubClientSecret) {
   socialProviders.github = { clientId: githubClientId, clientSecret: githubClientSecret };
 }
 
-// Additional trusted origins from env (comma-separated). Lets us add
-// production / staging hosts without code edits.
-//   TRUSTED_ORIGINS=https://canvasflow.dittya.dev
 const extraTrustedOrigins = (process.env.TRUSTED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-// Cookie domain for the subdomain split (web on `canvasflow.…`, api on
-// `api.canvasflow.…`). Setting this to `.canvasflow.dittya.dev` lets the
-// session cookie set by `/api/auth/*` be read by the web app. Omit in
-// dev — leaving it unset scopes the cookie to the request host, which
-// is what we want on `localhost`.
 const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+
+// Redis session cache
+const sessionCache = (() => {
+  if (!isRedisConfigured()) return undefined;
+
+  return {
+    get: async (key: string): Promise<string | null> => {
+      try {
+        const client = await redisReady();
+        if (!client) return null;
+        return await client.get(redisKey("auth", key));
+      } catch {
+        return null;
+      }
+    },
+
+    set: async (key: string, value: string, ttl?: number): Promise<void> => {
+      try {
+        const client = await redisReady();
+        if (!client) return;
+
+        if (ttl && ttl > 0) await client.set(redisKey("auth", key), value, "EX", ttl);
+        else await client.set(redisKey("auth", key), value, "EX", 86_400);
+      } catch {}
+    },
+
+    delete: async (key: string): Promise<void> => {
+      try {
+        const client = await redisReady();
+        if (!client) return;
+        await client.del(redisKey("auth", key));
+      } catch {}
+    },
+  };
+})();
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8000",
@@ -53,11 +78,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  ...(sessionCache ? { secondaryStorage: sessionCache } : {}),
   session: {
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60,
     },
+    storeSessionInDatabase: true,
   },
   socialProviders,
   trustedOrigins: [

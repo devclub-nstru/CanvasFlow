@@ -1,69 +1,124 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { usePathname } from "next/navigation";
 import React from "react";
 
-/**
- * Auth shell — Daylight-style.
- *  - Cream paper background, hairline ring, editorial serif copy
- *  - Left panel: a quiet brand column (md+ only) with the wordmark + a big
- *    serif quote + a small "live" status colophon at the bottom
- *  - Right panel: the form (signIn / signUp) centered on cream
- */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="cf-landing min-h-screen w-full bg-[color:var(--cf-cream)] text-[color:var(--cf-ink)] antialiased">
-      <div className="relative min-h-screen w-full flex flex-col md:flex-row">
-        {/* LEFT: editorial brand panel (md+ only) */}
-        <aside className="relative hidden md:flex md:w-1/2 lg:w-[45%] border-r border-[color:var(--cf-line)] flex-col justify-between p-10 lg:p-14 bg-[color:var(--cf-cream-2)] overflow-hidden">
-          {/* faint blueprint guides */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-y-0 left-1/4 w-px bg-[color:var(--cf-line)]" />
-            <div className="absolute inset-y-0 left-2/4 w-px bg-[color:var(--cf-line)]" />
-            <div className="absolute inset-y-0 left-3/4 w-px bg-[color:var(--cf-line)]" />
-          </div>
+import Noise from "~/components/Noise";
+import { HorizontalScale, HorizontalScaleDark, VerticalScaleDark } from "~/components/Scale";
 
-          {/* brand mark */}
-          <Link
-            href="/"
-            className="relative inline-flex items-center gap-3 z-10"
-            aria-label="CanvasFlow home"
-          >
-            <Image src="/logo.svg" alt="" width={32} height={32} className="object-contain" />
-            <span className="cf-display text-[22px] leading-none">CanvasFlow</span>
+const PANEL_POINTS: [string, string][] = [
+  ["01", "Twelve field types, drag to reorder"],
+  ["02", "One question at a time for whoever fills it in"],
+  ["03", "Live analytics and drop-off per question"],
+  ["04", "Share by link or QR, close it when you're done"],
+];
+
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isSignUp = pathname?.startsWith("/signUp");
+
+  return (
+    <div className="hex-theme relative flex min-h-screen font-sans">
+      <Noise />
+      {/* ── Brand panel ─────────────────────────────────────────────── */}
+      <aside className="relative hidden w-[52%] flex-col overflow-hidden bg-[#0e0e0e] lg:flex">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+        <VerticalScaleDark className="pointer-events-none absolute inset-y-0 left-0" />
+        <VerticalScaleDark className="pointer-events-none absolute inset-y-0 right-0" />
+
+        <HorizontalScaleDark />
+
+        <div className="relative z-10 flex flex-1 flex-col px-12 py-12 xl:px-16 xl:py-14">
+          <Link href="/" className="group mb-auto w-fit">
+            <span className="text-[15px] font-bold tracking-[-0.04em] text-white transition-opacity group-hover:opacity-70">
+              CanvasFlow
+            </span>
           </Link>
 
-          {/* big serif quote */}
-          <div className="relative z-10 max-w-md">
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Welcome</p>
-            <h2 className="mt-5 cf-display text-[44px] lg:text-[60px] leading-[0.95]">
-              Build forms
-              <span className="block">in golden hour.</span>
-            </h2>
-            <p className="mt-5 max-w-sm text-[14.5px] leading-relaxed text-[color:var(--cf-ink-soft)]">
-              A studio for makers of beautiful data. Sketch on an open canvas, ship durable forms,
-              watch responses land in real time.
+          <div className="mt-16 mb-12">
+            <p className="hex-mono mb-5 text-[11px] tracking-[0.18em] uppercase text-white/30">
+              FIG.AUTH
+            </p>
+            <h1 className="text-[44px] leading-[1.05] font-semibold tracking-[-0.03em] text-white xl:text-[52px]">
+              Forms,{" "}
+              <em
+                className="font-normal italic"
+                style={{
+                  fontFamily: "var(--font-instrument-serif), serif",
+                  color: "var(--c-lavender)",
+                }}
+              >
+                thoughtfully
+              </em>
+              <br />
+              built for teams.
+            </h1>
+            <p className="mt-6 max-w-xs text-[15px] leading-relaxed text-white/40">
+              Build a form, publish it with a link, and watch the responses turn into a dashboard
+              the moment they land.
             </p>
           </div>
 
-          {/* colophon */}
-          <div className="relative z-10 flex items-center justify-between text-[12px] font-mono text-[color:var(--cf-ink-soft)]">
-            <span className="inline-flex items-center gap-2 text-[color:var(--cf-ink)]">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[color:var(--cf-orange)] opacity-60 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--cf-orange)]" />
-              </span>
-              Studio · live
-            </span>
-            <span>© 2026</span>
+          <div>
+            {PANEL_POINTS.map(([n, label]) => (
+              <div key={n} className="flex items-center gap-4 border-b border-white/6 py-3.5">
+                <span className="hex-mono w-5 shrink-0 text-[10px] text-white/45">{n}</span>
+                <div className="h-3.5 w-px shrink-0 bg-white/15" />
+                <span className="text-[13px] text-white/50">{label}</span>
+              </div>
+            ))}
           </div>
-        </aside>
+        </div>
 
-        {/* RIGHT: form */}
-        <main className="relative flex-1 flex flex-col justify-between p-6 sm:p-10 lg:p-14">
-          {children}
-        </main>
+        <HorizontalScaleDark />
+      </aside>
+
+      {/* ── Form panel ──────────────────────────────────────────────── */}
+      <div className="hex-paper relative flex min-h-screen flex-1 flex-col overflow-y-auto">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: "radial-gradient(#000 1px, transparent 1px)",
+            backgroundSize: "20px 20px",
+          }}
+        />
+
+        <HorizontalScale />
+
+        <nav
+          className="relative z-10 border-b hex-line-soft"
+          style={{ borderBottomWidth: 1, background: "var(--hex-nav)" }}
+        >
+          <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-10">
+            <Link href="/" className="text-[15px] font-bold tracking-[-0.04em] lg:hidden">
+              CanvasFlow
+            </Link>
+            <span className="hidden lg:block" />
+            <p
+              className="hex-mono text-[10px] tracking-[0.18em] uppercase"
+              style={{ color: "var(--hex-ink-muted)" }}
+            >
+              {isSignUp ? "Create a new account" : "Sign in to your account"}
+            </p>
+          </div>
+        </nav>
+
+        <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12 sm:px-10 sm:py-14">
+          <div className="flex w-full max-w-125 flex-col">{children}</div>
+        </div>
+
+        <div className="relative z-10">
+          <HorizontalScale />
+        </div>
       </div>
     </div>
   );

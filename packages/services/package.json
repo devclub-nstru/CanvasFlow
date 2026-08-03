@@ -14,8 +14,13 @@
   "dependencies": {
     "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
+    "@repo/queue": "workspace:*",
+    "@repo/redis": "workspace:*",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "zod": "^4.3.5"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
   }
 }

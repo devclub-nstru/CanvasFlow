@@ -1,19 +1,63 @@
 services:
-  postgresdb:
+  postgres:
     image: postgres:15
+    container_name: canvasflow-postgres
     restart: unless-stopped
-    container_name: postgresdb
 
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dev
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dev}
 
+    # Raised max_connections to support API process pooling
+    command:
+      - postgres
+      - -c
+      - max_connections=300
+
+    # Host port 5434 to avoid collision with standard 5432
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
 
     volumes:
       - pg_data:/var/lib/postgresql/data
+
+    # Healthcheck to verify Postgres accepts TCP connections
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready --host=127.0.0.1 -p 5432 -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dev}",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  # Redis server for caching, rate limiting, and queue backing
+  redis:
+    image: redis:7-alpine
+    container_name: canvasflow-redis
+    restart: unless-stopped
+
+    command:
+      - redis-server
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - "no"
+
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 3s
 
 volumes:
   pg_data:

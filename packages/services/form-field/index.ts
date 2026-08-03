@@ -1,6 +1,7 @@
 import { db, eq, and, max } from "@repo/database";
 import { formFieldsTable } from "@repo/database/models/form-field";
-import { requireEditor } from "../form";
+import { formSegmentsTable } from "@repo/database/models/form-segment";
+import { invalidateFormCache, requireEditor } from "../form";
 import {
   createFormFieldInput,
   type CreateFormFieldInputType,
@@ -26,9 +27,28 @@ class FormFieldService {
     return next.toFixed(2);
   }
 
+  private async assertSegmentBelongsToForm(
+    formId: string,
+    segmentId?: string | null,
+  ): Promise<void> {
+    if (!segmentId) return;
+
+    const rows = await db
+      .select({ formId: formSegmentsTable.formId })
+      .from(formSegmentsTable)
+      .where(eq(formSegmentsTable.id, segmentId));
+
+    const segment = rows[0];
+    if (!segment) throw new Error("Segment not found");
+    if (segment.formId !== formId) {
+      throw new Error("Segment belongs to a different form");
+    }
+  }
+
   public async createFormField(payload: CreateFormFieldInputType & { userId: string }) {
     const {
       formId,
+      segmentId,
       label,
       placeholder,
       isRequired,
@@ -39,26 +59,20 @@ class FormFieldService {
     } = await createFormFieldInput.parseAsync(payload);
 
     await requireEditor(formId, payload.userId);
+    await this.assertSegmentBelongsToForm(formId, segmentId);
 
     const labelKey =
       label
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || "field";
-
-    // Honor the client-supplied index when present. The client knows
-    // the order of any batch of new fields it's about to send and ships
-    // unique values; this avoids a race when `handleSave` fires multiple
-    // creates via Promise.all (each parallel call would otherwise read
-    // the same MAX(index) and collide on the unique (form_id, index)
-    // constraint). Fall back to server-computed next index when the
-    // caller doesn't supply one.
     const index = clientIndex ?? (await this.getNextIndex(formId));
 
     const insertResult = await db
       .insert(formFieldsTable)
       .values({
         formId,
+        segmentId: segmentId || null,
         label,
         labelKey,
         placeholder: placeholder || undefined,
@@ -76,6 +90,8 @@ class FormFieldService {
       throw new Error("Failed to create form field");
     }
 
+    await invalidateFormCache(formId);
+
     return {
       id: insertResult[0].id,
       labelKey,
@@ -86,6 +102,7 @@ class FormFieldService {
   public async updateFormField(payload: UpdateFormFieldInputType & { userId: string }) {
     const {
       id,
+      segmentId,
       label,
       placeholder,
       isRequired,
@@ -106,10 +123,8 @@ class FormFieldService {
     }
 
     await requireEditor(existingField.formId, payload.userId);
+    await this.assertSegmentBelongsToForm(existingField.formId, segmentId);
 
-    // Optimistic-lock check — if the caller supplied an expected version
-    // and the row has since moved past it, another client wrote first.
-    // We surface a recognisable conflict so the caller can resolve.
     if (expectedVersion !== undefined && existingField.version !== expectedVersion) {
       throw new Error(
         `Form field was modified by someone else (expected version ${expectedVersion}, got ${existingField.version}). Reload and try again.`,
@@ -131,13 +146,10 @@ class FormFieldService {
           .replace(/(^-|-$)/g, "") || "field";
     }
 
-    // Conditional update — set the new values AND bump the version, but
-    // only where the version still matches what the client expected.
-    // Returning 0 rows here means another writer raced us; we surface a
-    // conflict so the caller can refetch.
     const updateResult = await db
       .update(formFieldsTable)
       .set({
+        ...(segmentId !== undefined ? { segmentId } : {}),
         ...(label !== undefined ? { label } : {}),
         ...(newLabelKey !== undefined ? { labelKey: newLabelKey } : {}),
         ...(placeholder !== undefined ? { placeholder } : {}),
@@ -159,10 +171,10 @@ class FormFieldService {
       });
 
     if (!updateResult || updateResult.length === 0 || !updateResult[0]?.id) {
-      // Either the row vanished (deleted concurrently) or the version
-      // didn't match (someone else wrote between our read and write).
       throw new Error("Update raced with another change — please retry");
     }
+
+    await invalidateFormCache(existingField.formId);
 
     return {
       id: updateResult[0].id,
@@ -194,6 +206,8 @@ class FormFieldService {
     if (!deleteResult || deleteResult.length === 0 || !deleteResult[0]?.id) {
       throw new Error("Failed to delete form field or field not found");
     }
+
+    await invalidateFormCache(existingField.formId);
 
     return {
       success: true,

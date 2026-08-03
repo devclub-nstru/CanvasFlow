@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Copy, Crown, Plus, QrCode, Shield, Trash2, User, X } from "lucide-react";
+import { Copy, Crown, Plus, Shield, Trash2, User, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   useListCollaborators,
@@ -12,6 +12,7 @@ import {
 } from "~/hooks/api/form";
 import { useSearchUsers } from "~/hooks/api/user";
 import { useDebounce } from "~/hooks/useDebounce";
+import { CustomSelect } from "~/components/ui/CustomSelect";
 
 interface ShareCollaboratorsDialogProps {
   show: boolean;
@@ -39,7 +40,6 @@ export function ShareCollaboratorsDialog({
   const [inviteRole, setInviteRole] = useState<"viewer" | "editor">("viewer");
   const [confirmTransferUserId, setConfirmTransferUserId] = useState<string | null>(null);
   const [confirmTransferUserEmail, setConfirmTransferUserEmail] = useState("");
-  const [showQr, setShowQr] = useState(true);
   const { transferOwnershipAsync } = useTransferOwnership();
 
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -149,266 +149,296 @@ export function ShareCollaboratorsDialog({
     }
   };
 
+  const accessCount = 1 + (collaborators?.length ?? 0);
+
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[color:var(--cf-ink)]/45 backdrop-blur-sm p-4">
-      <div className="bg-[color:var(--cf-cream-2)] rounded-2xl ring-1 ring-[color:var(--cf-line-strong)] p-6 max-w-md w-full shadow-[0_30px_80px_-30px_rgba(22,19,17,0.35)] flex flex-col gap-5">
-        {/* Header */}
-        <div className="flex justify-between items-start">
+    <div className="cf-scrim z-300">
+      <div className="cf-dialog max-h-[88vh] max-w-2xl">
+        <div className="cf-dialog-bar">
+          <span className="truncate">Share · {formTitle}</span>
+          <span className="flex shrink-0 items-center gap-3">
+            <span
+              className="font-mono text-[11px] capitalize"
+              style={{ color: "var(--cf-ink-soft)" }}
+            >
+              {role}
+            </span>
+            <button onClick={onClose} className="cf-btn-outline size-7" aria-label="Close dialog">
+              <X className="size-3.5" />
+            </button>
+          </span>
+        </div>
+
+        <div className="cf-dialog-body space-y-6">
+          {/* Public link */}
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-orange)]">Collaborators</p>
-            <h3 className="mt-1 cf-display text-[22px] leading-tight text-[color:var(--cf-ink)] truncate max-w-[320px]">
-              {formTitle}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-[color:var(--cf-cream)] text-[color:var(--cf-ink-soft)] transition-colors cursor-pointer"
-            aria-label="Close dialog"
-          >
-            <X className="size-4.5" />
-          </button>
-        </div>
-
-        {/* Public Link Section */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)]">
-            Public link
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              value={publicUrl}
-              className="flex-1 bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line)] px-3 py-1.5 text-[12.5px] font-mono text-[color:var(--cf-ink-soft)] select-all focus:outline-none"
-            />
-            <button
-              onClick={handleCopyLink}
-              className="inline-flex items-center justify-center p-2 rounded-lg bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] transition-colors cursor-pointer"
-              title="Copy public link"
-            >
-              <Copy className="size-4" />
-            </button>
-            <button
-              onClick={() => setShowQr(!showQr)}
-              className={`inline-flex items-center justify-center p-2 rounded-lg bg-[color:var(--cf-cream)] hover:bg-[color:var(--cf-cream-2)] ring-1 ring-[color:var(--cf-line-strong)] text-[color:var(--cf-ink)] transition-colors cursor-pointer ${showQr ? "bg-[color:var(--cf-orange)]/10 ring-[color:var(--cf-orange)]/30 text-[color:var(--cf-orange)]" : ""}`}
-              title="Toggle QR Code"
-            >
-              <QrCode className="size-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* QR Code Container */}
-        {showQr && (
-          <div className="flex flex-col items-center justify-center bg-[color:var(--cf-cream)] p-4 rounded-xl border border-[color:var(--cf-line)] space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="bg-white p-2.5 rounded-lg shadow-sm border border-[color:var(--cf-line-strong)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(publicUrl)}&color=221917&bgcolor=ffffff`}
-                alt="Form QR Code"
-                width={150}
-                height={150}
-                className="block"
+            <p className="cf-meta mb-2">Public link</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={publicUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                className="cf-input flex-1 px-3 py-2.5 font-mono text-[12.5px]"
+                style={{ color: "var(--cf-ink-soft)" }}
               />
+              <button
+                onClick={handleCopyLink}
+                className="cf-btn shrink-0 px-4 text-[12.5px]"
+                style={{ background: "var(--cf-ink)" }}
+                title="Copy public link"
+              >
+                <Copy className="size-3.5" />
+                Copy
+              </button>
             </div>
-            <button
-              onClick={handleDownloadQr}
-              className="text-[12px] font-medium text-[color:var(--cf-orange)] hover:text-[color:var(--cf-orange-hover)] transition-colors cursor-pointer"
-            >
-              Download QR Code
-            </button>
           </div>
-        )}
 
-        {/* Owner Invite Form or Transfer Confirmation */}
-        {isOwner &&
-          (confirmTransferUserId ? (
-            <div className="bg-[color:var(--cf-cream)] p-4 rounded-xl ring-1 ring-[color:var(--cf-orange)]/40 space-y-3">
-              <h4 className="font-semibold text-[13.5px] text-[color:var(--cf-ink)] flex items-center gap-1.5">
-                <Crown className="size-4 text-[color:var(--cf-orange)]" />
-                Transfer Ownership?
-              </h4>
-              <p className="text-[12px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-                Make{" "}
-                <span className="font-semibold text-[color:var(--cf-ink)]">
-                  {confirmTransferUserEmail}
-                </span>{" "}
-                the new owner? You will become an editor collaborator.
+          <div className="grid gap-5 sm:grid-cols-[148px_1fr]">
+            <div>
+              <p className="cf-meta mb-2">QR code</p>
+              <div className="border bg-white p-2" style={{ borderColor: "var(--cf-line-strong)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(publicUrl)}&color=1a1d29&bgcolor=ffffff`}
+                  alt="QR code for the public form link"
+                  width={150}
+                  height={150}
+                  className="block h-auto w-full"
+                />
+              </div>
+              <button
+                onClick={handleDownloadQr}
+                className="cf-btn-outline mt-2 w-full py-1.5 text-[11.5px]"
+              >
+                Download
+              </button>
+            </div>
+
+            <div className="min-w-0 flex flex-col gap-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="cf-meta">Access</p>
+                <span className="cf-meta">{accessCount}</span>
+              </div>
+
+              {/* Invite collaborator input inside the access block */}
+              {isOwner && !confirmTransferUserId && (
+                <form onSubmit={handleAdd} className="mb-1">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="relative min-w-0 flex-1" ref={suggestionsRef}>
+                      <label htmlFor="invite-email" className="sr-only">
+                        Collaborator email
+                      </label>
+                      <input
+                        id="invite-email"
+                        type="email"
+                        required
+                        placeholder="Add people by email..."
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="cf-input h-9 px-3 text-[13px]"
+                      />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div
+                          className="custom-scrollbar absolute top-full right-0 left-0 z-350 mt-1 max-h-48 overflow-y-auto border"
+                          style={{
+                            borderColor: "var(--cf-line-strong)",
+                            background: "var(--cf-cream)",
+                            boxShadow: "4px 4px 0 0 rgba(26, 29, 41, 0.14)",
+                          }}
+                        >
+                          {suggestions.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setEmail(u.email);
+                                setShowSuggestions(false);
+                              }}
+                              className="flex w-full cursor-pointer flex-col px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-(--cf-cream-2)"
+                            >
+                              <span className="font-medium">{u.name}</span>
+                              <span className="text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
+                                {u.email}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <label htmlFor="invite-role" className="sr-only">
+                      Invite role
+                    </label>
+                    <CustomSelect
+                      value={inviteRole}
+                      onChange={(val) => setInviteRole(val as "viewer" | "editor")}
+                      options={[
+                        { value: "viewer", label: "Viewer" },
+                        { value: "editor", label: "Editor" },
+                      ]}
+                      className="w-28 shrink-0"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={addPending}
+                      className="cf-btn shrink-0 h-9 px-4 text-[12.5px] disabled:opacity-50"
+                    >
+                      <Plus className="size-4" />
+                      Add
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="space-y-2">
+                {/* Owner */}
+                <div className="cf-row">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <Shield className="size-3.5 shrink-0" style={{ color: "var(--cf-orange)" }} />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">Workspace owner</span>
+                      {ownerEmail && (
+                        <span
+                          className="block truncate text-[11px]"
+                          style={{ color: "var(--cf-ink-soft)" }}
+                        >
+                          {ownerEmail}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="cf-meta shrink-0">Owner</span>
+                </div>
+
+                {isLoading ? (
+                  <div className="flex justify-center py-4">
+                    <div
+                      className="size-5 animate-spin rounded-full border-2"
+                      style={{
+                        borderColor: "var(--cf-line)",
+                        borderTopColor: "var(--cf-orange)",
+                      }}
+                    />
+                  </div>
+                ) : collaborators?.length === 0 ? (
+                  <p
+                    className="py-3 text-center text-[12.5px]"
+                    style={{ color: "var(--cf-ink-soft)" }}
+                  >
+                    No collaborators yet.
+                  </p>
+                ) : (
+                  collaborators?.map((c) => (
+                    <div key={c.id} className="cf-row">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <User
+                          className="size-3.5 shrink-0"
+                          style={{ color: "var(--cf-ink-soft)" }}
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">
+                            {c.name || "Collaborator"}
+                          </span>
+                          <span
+                            className="block truncate text-[11px]"
+                            style={{ color: "var(--cf-ink-soft)" }}
+                          >
+                            {c.email}
+                          </span>
+                        </span>
+                      </span>
+
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {isOwner ? (
+                          <>
+                            <label htmlFor={`role-${c.id}`} className="sr-only">
+                              Role for {c.email}
+                            </label>
+                            <CustomSelect
+                              value={c.role}
+                              onChange={(val) => handleUpdateRole(c.id, val as "viewer" | "editor")}
+                              options={[
+                                { value: "viewer", label: "Viewer" },
+                                { value: "editor", label: "Editor" },
+                              ]}
+                              className="w-28"
+                            />
+                            <button
+                              onClick={() => {
+                                setConfirmTransferUserId(c.id);
+                                setConfirmTransferUserEmail(c.email);
+                              }}
+                              className="cf-btn-outline size-7"
+                              title="Transfer ownership"
+                              aria-label={`Transfer ownership to ${c.email}`}
+                            >
+                              <Crown className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleRemove(c.id)}
+                              className="cf-btn-outline size-7"
+                              title="Remove collaborator"
+                              aria-label={`Remove ${c.email}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="cf-meta capitalize">{c.role}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Transfer confirmation that replaces invite block if active */}
+          {isOwner && confirmTransferUserId && (
+            <div
+              className="border p-4"
+              style={{ borderColor: "var(--c-red)", background: "var(--cf-cream-2)" }}
+            >
+              <p className="cf-meta" style={{ color: "var(--c-red)" }}>
+                Transfer ownership
               </p>
-              <div className="flex justify-end gap-2 pt-1">
+              <p className="mt-2 text-[12.5px] leading-relaxed">
+                Make <span className="font-semibold">{confirmTransferUserEmail}</span> the new
+                owner? You become an editor and cannot undo this yourself.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setConfirmTransferUserId(null)}
-                  className="px-3 py-1 h-[28px] text-[11.5px] rounded-full text-[color:var(--cf-ink)] hover:bg-[color:var(--cf-cream-2)] transition-colors cursor-pointer"
+                  className="cf-btn-outline px-3 py-1.5 text-[12px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleTransferOwnership}
-                  className="px-4 py-1 h-[28px] rounded-full bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[11.5px] font-medium transition-colors cursor-pointer"
+                  className="cf-btn px-4 py-1.5 text-[12px]"
+                  style={{ background: "var(--c-red)" }}
                 >
                   Transfer
                 </button>
               </div>
             </div>
-          ) : (
-            <form
-              onSubmit={handleAdd}
-              className="space-y-1.5 pt-1 border-t border-[color:var(--cf-line)]"
-            >
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)]">
-                Invite collaborator
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1" ref={suggestionsRef}>
-                  <input
-                    type="email"
-                    required
-                    placeholder="email@example.com"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setShowSuggestions(true);
-                    }}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="w-full bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line)] px-3 py-1.5 text-[13px] text-[color:var(--cf-ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--cf-orange)]"
-                  />
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-[color:var(--cf-cream-2)] rounded-lg ring-1 ring-[color:var(--cf-line-strong)] shadow-lg max-h-48 overflow-y-auto z-[350] py-1">
-                      {suggestions.map((u) => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            setEmail(u.email);
-                            setShowSuggestions(false);
-                          }}
-                          className="w-full text-left px-3 py-2 text-[12.5px] hover:bg-[color:var(--cf-cream)] flex flex-col transition-colors cursor-pointer"
-                        >
-                          <span className="font-medium text-[color:var(--cf-ink)]">{u.name}</span>
-                          <span className="text-[11px] text-[color:var(--cf-ink-soft)]">
-                            {u.email}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as "viewer" | "editor")}
-                  className="bg-[color:var(--cf-cream)] rounded-lg ring-1 ring-[color:var(--cf-line)] px-2.5 py-1.5 text-[12px] text-[color:var(--cf-ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--cf-orange)] cursor-pointer"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                </select>
-                <button
-                  type="submit"
-                  disabled={addPending}
-                  className="inline-flex items-center justify-center h-[34px] px-3.5 rounded-lg bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white text-[12.5px] font-medium disabled:opacity-50 transition-colors cursor-pointer shrink-0"
-                >
-                  <Plus className="size-4 mr-0.5" />
-                  Add
-                </button>
-              </div>
-            </form>
-          ))}
+          )}
+        </div>
 
-        {/* Collaborators List */}
-        <div className="space-y-2 pt-1 border-t border-[color:var(--cf-line)]">
-          <label className="block text-[11px] font-mono uppercase tracking-wider text-[color:var(--cf-ink-soft)] mb-2">
-            Who has access
-          </label>
-
-          <div className="max-h-[180px] overflow-y-auto pr-1 space-y-3">
-            {/* Owner Row */}
-            <div className="flex items-center justify-between gap-3 text-[13px]">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-7 rounded-full bg-[color:var(--cf-cream)] border border-[color:var(--cf-line-strong)] flex items-center justify-center text-[color:var(--cf-ink-soft)] shrink-0">
-                  <Shield className="size-3.5 text-[color:var(--cf-orange)]" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-[color:var(--cf-ink)] truncate">Workspace Owner</p>
-                  {ownerEmail && (
-                    <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">
-                      {ownerEmail}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <span className="text-[11.5px] font-mono text-[color:var(--cf-ink-soft)] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] px-2 py-0.5 rounded-full">
-                Owner
-              </span>
-            </div>
-
-            {/* Collaborator Rows */}
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <div className="size-5 border-2 border-[color:var(--cf-line-strong)] border-t-[color:var(--cf-orange)] rounded-full animate-spin" />
-              </div>
-            ) : collaborators?.length === 0 ? (
-              <p className="text-[12.5px] text-[color:var(--cf-ink-soft)] italic py-2 text-center">
-                No external collaborators invited yet.
-              </p>
-            ) : (
-              collaborators?.map((c) => (
-                <div key={c.id} className="flex items-center justify-between gap-3 text-[13px]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="size-7 rounded-full bg-[color:var(--cf-cream)] border border-[color:var(--cf-line-strong)] flex items-center justify-center text-[color:var(--cf-ink-soft)] shrink-0">
-                      <User className="size-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-[color:var(--cf-ink)] truncate">
-                        {c.name || "Collaborator"}
-                      </p>
-                      <p className="text-[11px] text-[color:var(--cf-ink-soft)] truncate">
-                        {c.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isOwner ? (
-                      <>
-                        <select
-                          value={c.role}
-                          onChange={(e) =>
-                            handleUpdateRole(c.id, e.target.value as "viewer" | "editor")
-                          }
-                          className="bg-[color:var(--cf-cream)] rounded-md ring-1 ring-[color:var(--cf-line)] px-2 py-1 text-[11.5px] text-[color:var(--cf-ink)] focus:outline-none cursor-pointer"
-                        >
-                          <option value="viewer">Viewer</option>
-                          <option value="editor">Editor</option>
-                        </select>
-                        <button
-                          onClick={() => {
-                            setConfirmTransferUserId(c.id);
-                            setConfirmTransferUserEmail(c.email);
-                          }}
-                          className="p-1 rounded text-[color:var(--cf-ink-soft)]/60 hover:text-[color:var(--cf-orange)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer"
-                          title="Transfer ownership"
-                        >
-                          <Crown className="size-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleRemove(c.id)}
-                          className="p-1 rounded text-[color:var(--cf-ink-soft)]/60 hover:text-[color:var(--cf-orange)] hover:bg-[color:var(--cf-cream)] transition-colors cursor-pointer"
-                          title="Remove collaborator"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[11.5px] font-mono text-[color:var(--cf-ink-soft)] bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] px-2 py-0.5 rounded-full capitalize">
-                        {c.role}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="cf-dialog-foot">
+          <span>
+            {accessCount} {accessCount === 1 ? "person" : "people"} with access
+          </span>
+          <span>{isOwner ? "you own this form" : `you are ${role}`}</span>
         </div>
       </div>
     </div>

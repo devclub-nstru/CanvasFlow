@@ -9,7 +9,9 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (token && (pathname === "/signIn" || pathname === "/signUp")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    if (request.nextUrl.searchParams.get("switch") !== "1") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
   if (!token && pathname.startsWith("/dashboard")) {

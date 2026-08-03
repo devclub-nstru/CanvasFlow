@@ -7,8 +7,17 @@ import {
   text,
   integer,
   index,
+  pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
+
+export const questionLayoutEnum = pgEnum("question_layout", [
+  "AUTO",
+  "ONE_PER_PAGE",
+  "SEGMENT_PER_PAGE",
+  "ALL_AT_ONCE",
+]);
 
 export const formsTable = pgTable(
   "forms",
@@ -29,12 +38,20 @@ export const formsTable = pgTable(
     isPublished: boolean("is_published").default(false).notNull(),
     isArchived: boolean("is_archived").default(false).notNull(),
     isOpen: boolean("is_open").default(true).notNull(),
-    maxSubmissions: integer("max_submissions"),
     expiresAt: timestamp("expires_at"),
 
-    // Optimistic-lock counter — incremented on every mutating update.
-    // Concurrent writers compare-and-set against this; the loser gets a
-    // 409-style conflict instead of silently overwriting fresher data.
+    questionLayout: questionLayoutEnum("question_layout").notNull().default("AUTO"),
+
+    requireSignIn: boolean("require_sign_in").default(false).notNull(),
+
+    collectRespondentEmail: boolean("collect_respondent_email").default(false).notNull(),
+
+    oneResponsePerRespondent: boolean("one_response_per_respondent").default(false).notNull(),
+
+    allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>(),
+
+    thankYouMessage: text("thank_you_message"),
+
     version: integer("version").notNull().default(0),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -45,7 +62,6 @@ export const formsTable = pgTable(
     publishedAt: timestamp("published_at"),
   },
   (table) => ({
-    // Hot path: list/stats/limit queries filter by owner, often ordered by createdAt.
     ownerCreatedIdx: index("forms_owner_created_idx").on(table.ownerId, table.createdAt),
   }),
 );

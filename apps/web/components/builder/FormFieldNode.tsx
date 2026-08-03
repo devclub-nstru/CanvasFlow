@@ -11,6 +11,7 @@ import {
   Link2,
   List,
   Mail,
+  Paperclip,
   Phone,
   Star,
   ToggleLeft,
@@ -31,6 +32,7 @@ export const AVAILABLE_FIELDS = [
   { type: "DATE", label: "Date", icon: Calendar, description: "Calendar selection" },
   { type: "TIME", label: "Time", icon: Clock, description: "Time selection" },
   { type: "TOGGLE", label: "Toggle", icon: ToggleLeft, description: "Yes / no switch" },
+  { type: "FILE_UPLOAD", label: "File upload", icon: Paperclip, description: "Attach a document" },
 ];
 
 export const getFieldIcon = (type: string) => {
@@ -52,36 +54,39 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
 
   return (
     <div
-      className={`w-72 bg-[color:var(--cf-cream-2)] rounded-xl transition-all select-none cursor-pointer shadow-[0_8px_24px_-12px_rgba(22,19,17,0.18)] ${
+      className={`w-72 cursor-pointer border-2 bg-white transition-shadow select-none ${
         selected
-          ? "ring-2 ring-[color:var(--cf-orange)] ring-offset-2 ring-offset-[color:var(--cf-cream)]"
-          : "ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)]"
+          ? "border-(--cf-orange) shadow-[5px_5px_0_0_var(--cf-orange)]"
+          : "border-(--cf-line-strong) shadow-[4px_4px_0_0_rgba(26,29,41,0.16)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.32)]"
       }`}
     >
-      <div className="p-4 space-y-3">
-        {/* header */}
-        <div className="flex justify-between items-center">
-          <div className="inline-flex items-center gap-1.5 cf-eyebrow text-[color:var(--cf-ink-soft)]">
-            <IconComponent className="size-3 text-[color:var(--cf-orange)]" />
-            <span>{field.type.replace("_", " ")}</span>
-          </div>
-          {field.isRequired && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider bg-[color:var(--cf-orange)]/15 text-[color:var(--cf-orange)] ring-1 ring-[color:var(--cf-orange)]/30">
-              Req
-            </span>
-          )}
+      <div
+        className="flex items-center justify-between border-b px-4 py-2"
+        style={{ borderBottomColor: "var(--cf-line)", background: "var(--cf-cream)" }}
+      >
+        <div className="cf-meta inline-flex items-center gap-1.5">
+          <IconComponent className="size-3 text-(--cf-orange)" />
+          <span>{field.type.replace("_", " ")}</span>
         </div>
+        {field.isRequired && (
+          <span
+            className="inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] tracking-wider uppercase"
+            style={{ borderColor: "var(--cf-orange)", color: "var(--cf-orange)" }}
+          >
+            Req
+          </span>
+        )}
+      </div>
 
+      <div className="space-y-3 p-4">
         {/* label + description */}
         <div className="space-y-1.5">
-          <h4 className="cf-display text-[16px] leading-snug text-[color:var(--cf-ink)] line-clamp-2">
+          <h4 className="cf-display text-[16px] leading-snug text-(--cf-ink) line-clamp-2">
             {field.label || `Untitled ${field.type.replace("_", " ").toLowerCase()}`}
           </h4>
 
           {field.description && (
-            <p className="text-[11px] text-[color:var(--cf-ink-soft)] leading-relaxed">
-              {field.description}
-            </p>
+            <p className="text-[11px] text-(--cf-ink-soft) leading-relaxed">{field.description}</p>
           )}
         </div>
 
@@ -99,7 +104,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
           width: 8,
           height: 8,
           background: "var(--cf-orange)",
-          border: "2px solid var(--cf-cream-2)",
+          border: "2px solid var(--cf-ink)",
         }}
       />
       <Handle
@@ -109,7 +114,7 @@ export const FormFieldNode = ({ data, selected }: { data: any; selected: boolean
           width: 8,
           height: 8,
           background: "var(--cf-orange)",
-          border: "2px solid var(--cf-cream-2)",
+          border: "2px solid var(--cf-ink)",
         }}
       />
     </div>
@@ -122,18 +127,18 @@ function FieldPreview({ field }: { field: any }) {
   if (field.type === "SELECT") {
     const options = getFieldOptionsArray(field);
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md p-2 space-y-1">
+      <div className="space-y-1 border border-(--cf-line-strong) bg-(--cf-cream) p-2.5">
         {options.slice(0, 3).map((opt, i) => (
           <div
             key={i}
-            className="flex items-center justify-between text-[11px] text-[color:var(--cf-ink-soft)]"
+            className="flex items-center justify-between text-[11px] text-(--cf-ink-soft)"
           >
             <span className="truncate pr-2">{opt}</span>
-            <span className="text-[9px] text-[color:var(--cf-ink-soft)]/50">▼</span>
+            <span className="text-[9px] text-(--cf-ink-soft)/50">▼</span>
           </div>
         ))}
         {options.length > 3 && (
-          <p className="text-[10px] font-mono text-[color:var(--cf-ink-soft)]/50 text-center pt-0.5">
+          <p className="text-[10px] font-mono text-(--cf-ink-soft)/50 text-center pt-0.5">
             + {options.length - 3} more
           </p>
         )}
@@ -146,16 +151,13 @@ function FieldPreview({ field }: { field: any }) {
     return (
       <div className="space-y-1.5">
         {options.slice(0, 3).map((opt, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 text-[11px] text-[color:var(--cf-ink-soft)]"
-          >
-            <div className="size-3 rounded-sm ring-1 ring-[color:var(--cf-line-strong)] bg-[color:var(--cf-cream)] shrink-0" />
+          <div key={i} className="flex items-center gap-2 text-[11px] text-(--cf-ink-soft)">
+            <div className="size-3 shrink-0 border border-(--cf-line-strong) bg-(--cf-cream)" />
             <span className="truncate">{opt}</span>
           </div>
         ))}
         {options.length > 3 && (
-          <p className="text-[10px] font-mono text-[color:var(--cf-ink-soft)]/50 pl-5">
+          <p className="text-[10px] font-mono text-(--cf-ink-soft)/50 pl-5">
             + {options.length - 3} more
           </p>
         )}
@@ -168,7 +170,7 @@ function FieldPreview({ field }: { field: any }) {
     return (
       <div className="flex items-center gap-1">
         {Array.from({ length: max }).map((_, i) => (
-          <Star key={i} className="size-3.5 text-[color:var(--cf-ink)]/15 fill-current" />
+          <Star key={i} className="size-3.5 text-(--cf-ink)/15 fill-current" />
         ))}
       </div>
     );
@@ -181,9 +183,9 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minDate ? `From ${o.minDate}` : ""}${o?.maxDate ? ` to ${o.maxDate}` : ""}`
         : field.placeholder || "Select a date";
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
+      <div className="flex items-center justify-between border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
         <span className="truncate pr-2">{range}</span>
-        <Calendar className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
+        <Calendar className="size-3.5 text-(--cf-ink-soft)/55 shrink-0" />
       </div>
     );
   }
@@ -195,9 +197,9 @@ function FieldPreview({ field }: { field: any }) {
         ? `${o?.minTime ? `From ${o.minTime}` : ""}${o?.maxTime ? ` to ${o.maxTime}` : ""}`
         : field.placeholder || "Select a time";
     return (
-      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)] flex justify-between items-center">
+      <div className="flex items-center justify-between border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
         <span className="truncate pr-2">{range}</span>
-        <Clock className="size-3.5 text-[color:var(--cf-ink-soft)]/55 shrink-0" />
+        <Clock className="size-3.5 text-(--cf-ink-soft)/55 shrink-0" />
       </div>
     );
   }
@@ -209,14 +211,14 @@ function FieldPreview({ field }: { field: any }) {
       <div className="flex items-center justify-between gap-3">
         <span
           className={`text-[11px] ${
-            !on ? "font-medium text-[color:var(--cf-ink)]" : "text-[color:var(--cf-ink-soft)]/55"
+            !on ? "font-medium text-(--cf-ink)" : "text-(--cf-ink-soft)/55"
           }`}
         >
           {o?.inactiveLabel || "No"}
         </span>
         <div
           className={`relative inline-flex h-4 w-8 shrink-0 rounded-full transition-colors ${
-            on ? "bg-[color:var(--cf-orange)]" : "bg-[color:var(--cf-ink)]/15"
+            on ? "bg-(--cf-orange)" : "bg-(--cf-ink)/15"
           }`}
         >
           <span
@@ -227,7 +229,7 @@ function FieldPreview({ field }: { field: any }) {
         </div>
         <span
           className={`text-[11px] ${
-            on ? "font-medium text-[color:var(--cf-orange)]" : "text-[color:var(--cf-ink-soft)]/55"
+            on ? "font-medium text-(--cf-orange)" : "text-(--cf-ink-soft)/55"
           }`}
         >
           {o?.activeLabel || "Yes"}
@@ -236,9 +238,28 @@ function FieldPreview({ field }: { field: any }) {
     );
   }
 
+  if (field.type === "FILE_UPLOAD") {
+    const o = field.options as any;
+    const accept: string[] = Array.isArray(o?.accept) ? o.accept : [];
+    const limit = o?.maxMb ? `${o.maxMb}MB max` : "";
+    const kinds = accept.length > 0 ? accept.join(", ") : "Any allowed type";
+
+    return (
+      <div className="border border-dashed border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[12px] text-(--cf-ink-soft)">
+          <Paperclip className="size-3.5 shrink-0 text-(--cf-ink-soft)/55" />
+          <span className="truncate">{field.placeholder || "Choose a file"}</span>
+        </div>
+        <p className="mt-1 truncate font-mono text-[10px] text-(--cf-ink-soft)/60">
+          {[kinds, limit].filter(Boolean).join(" · ")}
+        </p>
+      </div>
+    );
+  }
+
   // text/textarea/email/number/phone/url
   return (
-    <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line)] rounded-md px-3 py-2 text-[12px] text-[color:var(--cf-ink-soft)]/55">
+    <div className="border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2 text-[12px] text-(--cf-ink-soft)">
       {field.placeholder || "Answer here..."}
     </div>
   );

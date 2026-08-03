@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 import { formsTable } from "./form";
+import { formSegmentsTable } from "./form-segment";
 
 export const fieldTypeEnum = pgEnum("field_type_num", [
   "TEXT",
@@ -45,6 +46,10 @@ export const formFieldsTable = pgTable(
       })
       .notNull(),
 
+    segmentId: uuid("segment_id").references(() => formSegmentsTable.id, {
+      onDelete: "set null",
+    }),
+
     label: varchar("label", { length: 255 }).notNull(),
     labelKey: varchar("label_key", { length: 255 }).notNull(),
 
@@ -60,7 +65,6 @@ export const formFieldsTable = pgTable(
 
     description: text("description"),
 
-    // Optimistic-lock counter (see comment on forms.version)
     version: integer("version").notNull().default(0),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -72,8 +76,8 @@ export const formFieldsTable = pgTable(
   (table) => {
     return {
       uniqueFormIdAndIndex: unique().on(table.formId, table.index),
-      // Hot path for listing a form's fields ordered by index
       formIdx: index("form_fields_form_idx").on(table.formId),
+      segmentIdx: index("form_fields_segment_idx").on(table.segmentId, table.index),
     };
   },
 );

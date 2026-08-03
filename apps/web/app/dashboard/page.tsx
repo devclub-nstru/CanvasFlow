@@ -29,8 +29,6 @@ export default function DashboardPage() {
   const { openCreateFormModal } = useDashboard();
   const { stats, isLoading } = useGetDashboardStats();
 
-  // Time-range tabs for the "Response trends" chart. The server returns 90
-  // days of daily counts; slicing here keeps tab switching instant.
   type TrendRange = "7d" | "30d" | "3m";
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
 
@@ -101,18 +99,21 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10">
       {/* ───── hero ───── */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="cf-display text-[36px] sm:text-[48px] md:text-[56px] leading-[0.95]">
-            Good morning.
+          {/* Set uppercase and tight, with the accent period as the one spot
+              of colour — the same mark the auth headings carry. */}
+          <h1 className="cf-display text-[32px] leading-[0.95] uppercase sm:text-[42px] md:text-[52px]">
+            Overview
+            <span style={{ color: "var(--cf-orange)" }}>.</span>
           </h1>
-          <p className="mt-3 text-[14.5px] text-[color:var(--cf-ink-soft)] leading-relaxed max-w-md">
-            Here&apos;s what&apos;s happening in your studio today.
+          <p className="mt-3 max-w-sm font-mono text-[13px] leading-relaxed text-(--cf-ink-soft)">
+            Design, publish, and read your forms in one place.
           </p>
         </div>
         <button
           onClick={openCreateFormModal}
-          className="group inline-flex items-center justify-center gap-1.5 h-[44px] px-5 bg-[color:var(--cf-orange)] hover:bg-[color:var(--cf-orange-hover)] text-white rounded-full text-[13.5px] font-medium tracking-tight transition-colors self-start md:self-auto"
+          className="cf-btn cf-raised cf-press h-11 self-start px-5 text-[13.5px] md:self-auto"
         >
           <Plus className="size-4" />
           New form
@@ -120,51 +121,56 @@ export default function DashboardPage() {
       </div>
 
       {/* ───── stats grid ───── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS.map((stat, i) => {
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {STATS.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div
-              key={i}
-              className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] transition-shadow p-5"
-            >
-              <div className="flex items-start justify-between">
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{stat.title}</p>
-                <Icon className="size-4 text-[color:var(--cf-orange)]" />
+            <div key={stat.title} className="cf-panel cf-raised p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="cf-meta">{stat.title}</p>
+                <Icon className="size-4 shrink-0" style={{ color: "var(--cf-orange)" }} />
               </div>
-              <p className="mt-5 cf-display text-[40px] leading-none">{stat.val}</p>
-              <p className="mt-2 text-[12px] text-[color:var(--cf-ink-soft)]">{stat.sub}</p>
+              <p className="cf-display mt-4 text-[28px] leading-none tabular-nums sm:mt-5 sm:text-[40px]">
+                {stat.val}
+              </p>
+              <p className="mt-2 text-[12px] text-(--cf-ink-soft)">{stat.sub}</p>
             </div>
           );
         })}
       </div>
 
       {/* ───── response trends ───── */}
-      <div className="bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-[color:var(--cf-line)] flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+      <div className="cf-panel cf-raised overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-(--cf-line) p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Analytics</p>
-            <h3 className="mt-2 cf-display text-[24px] sm:text-[28px] leading-tight">
+            <p className="cf-meta">Responses</p>
+            <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
               Response trends
             </h3>
-            <p className="mt-1 text-[13px] text-[color:var(--cf-ink-soft)]">
-              {activeRange.subtitle}
-            </p>
+            <p className="mt-1 text-[13px] text-(--cf-ink-soft)">{activeRange.subtitle}</p>
           </div>
 
-          <div className="inline-flex bg-[color:var(--cf-cream)] p-1 rounded-full text-[12px] font-medium select-none shrink-0 self-start sm:self-auto ring-1 ring-[color:var(--cf-line)]">
+          {/* Segmented control, squared and hairlined to match the chrome. */}
+          <div
+            className="inline-flex shrink-0 self-start border border-(--cf-line-strong) text-[12px] font-medium select-none sm:self-auto"
+            role="tablist"
+            aria-label="Trend range"
+          >
             {RANGE_TABS.map((tab) => {
               const isActive = tab.id === trendRange;
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setTrendRange(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                  className="cursor-pointer px-3 py-1.5 transition-colors sm:px-3.5"
+                  style={
                     isActive
-                      ? "bg-[color:var(--cf-cream-2)] text-[color:var(--cf-ink)] ring-1 ring-[color:var(--cf-line-strong)]"
-                      : "text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-ink)]"
-                  }`}
+                      ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
+                      : { color: "var(--cf-ink-soft)" }
+                  }
                 >
                   {tab.label}
                 </button>
@@ -174,7 +180,7 @@ export default function DashboardPage() {
         </div>
 
         {/* mini summary row */}
-        <div className="px-5 sm:px-6 py-4 border-b border-[color:var(--cf-line)] grid grid-cols-3 gap-4 sm:gap-8">
+        <div className="grid grid-cols-3 gap-4 border-b border-(--cf-line) px-4 py-4 sm:gap-8 sm:px-6">
           <SummaryMetric label="Total in range" value={trendSummary.total.toLocaleString()} />
           <SummaryMetric label="Avg / day" value={trendSummary.avgPerDay.toFixed(1)} />
           <SummaryMetric
@@ -192,11 +198,11 @@ export default function DashboardPage() {
           {!hasTrendData ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center max-w-sm px-6">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[color:var(--cf-cream)] flex items-center justify-center ring-1 ring-[color:var(--cf-line)]">
-                  <Inbox className="size-5 text-[color:var(--cf-orange)]" />
+                <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
+                  <Inbox className="size-5" style={{ color: "var(--cf-orange)" }} />
                 </div>
-                <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Awaiting data</p>
-                <p className="mt-3 text-[13.5px] text-[color:var(--cf-ink-soft)] leading-relaxed">
+                <p className="cf-meta">Awaiting data</p>
+                <p className="mt-3 text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
                   Publish your first form to start collecting responses and watch trends light up
                   here.
                 </p>
@@ -207,18 +213,18 @@ export default function DashboardPage() {
               <AreaChart data={trendData} margin={{ top: 24, right: 24, left: 4, bottom: 12 }}>
                 <defs>
                   <linearGradient id="cf-trend-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f66f00" stopOpacity={0.32} />
-                    <stop offset="100%" stopColor="#f66f00" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--cf-orange)" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="var(--cf-orange)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
-                  stroke="rgba(22,19,17,0.06)"
+                  stroke="rgba(26,29,41,0.10)"
                   strokeDasharray="2 4"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="date"
-                  stroke="#56504a"
+                  stroke="var(--cf-ink-soft)"
                   opacity={0.55}
                   tick={{ fontSize: 11 }}
                   tickLine={false}
@@ -227,7 +233,7 @@ export default function DashboardPage() {
                   minTickGap={16}
                 />
                 <YAxis
-                  stroke="#56504a"
+                  stroke="var(--cf-ink-soft)"
                   opacity={0.55}
                   tick={{ fontSize: 11 }}
                   tickLine={false}
@@ -237,7 +243,7 @@ export default function DashboardPage() {
                 />
                 <ChartTooltip
                   cursor={{
-                    stroke: "#f66f00",
+                    stroke: "var(--cf-orange)",
                     strokeOpacity: 0.35,
                     strokeWidth: 1,
                     strokeDasharray: "4 3",
@@ -246,12 +252,10 @@ export default function DashboardPage() {
                     if (!active || !payload || payload.length === 0) return null;
                     const count = Number(payload[0]?.value ?? 0);
                     return (
-                      <div className="bg-[color:var(--cf-cream)] ring-1 ring-[color:var(--cf-line-strong)] rounded-lg px-3 py-2 shadow-[0_10px_30px_-12px_rgba(22,19,17,0.18)]">
-                        <p className="cf-eyebrow text-[color:var(--cf-ink-soft)] text-[10px]">
-                          {label}
-                        </p>
-                        <p className="mt-1 text-[13px] font-medium text-[color:var(--cf-ink)] tabular-nums">
-                          <span className="text-[color:var(--cf-orange)]">{count}</span> response
+                      <div className="cf-raised border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2">
+                        <p className="cf-meta">{label}</p>
+                        <p className="mt-1 text-[13px] font-medium text-(--cf-ink) tabular-nums">
+                          <span className="text-(--cf-orange)">{count}</span> response
                           {count === 1 ? "" : "s"}
                         </p>
                       </div>
@@ -261,12 +265,12 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke="#f66f00"
+                  stroke="var(--cf-orange)"
                   strokeWidth={2.5}
                   fill="url(#cf-trend-gradient)"
                   activeDot={{
                     r: 4,
-                    stroke: "#f66f00",
+                    stroke: "var(--cf-orange)",
                     strokeWidth: 2,
                     fill: "var(--cf-cream)",
                   }}
@@ -279,43 +283,57 @@ export default function DashboardPage() {
 
       {/* ───── recent forms ───── */}
       <div className="space-y-4">
-        <div className="flex justify-between items-end pb-3 border-b border-[color:var(--cf-line)]">
+        <div className="flex items-end justify-between gap-4 border-b border-(--cf-line-strong) pb-3">
           <div>
-            <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">Recent</p>
-            <h3 className="mt-2 cf-display text-[24px] sm:text-[28px] leading-tight">Forms</h3>
+            <p className="cf-meta">Recent</p>
+            <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
+              Forms
+              <span style={{ color: "var(--cf-orange)" }}>.</span>
+            </h3>
           </div>
-          <Link
-            href="/dashboard/sketches"
-            className="group inline-flex items-center gap-1 text-[13px] font-medium text-[color:var(--cf-ink-soft)] hover:text-[color:var(--cf-orange)] transition-colors"
-          >
-            View all
-            <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
+          <div className="flex items-center gap-4">
+            <span className="cf-meta hidden sm:inline">{stats?.recentForms.length ?? 0} shown</span>
+            <Link
+              href="/dashboard/sketches"
+              className="group inline-flex items-center gap-1 text-[13px] font-medium transition-opacity hover:opacity-70"
+            >
+              View all
+              <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isLoading ? (
-            <div className="py-8 text-center text-[13px] text-[color:var(--cf-ink-soft)] md:col-span-2">
-              Loading...
-            </div>
+            <div className="cf-meta py-8 text-center md:col-span-2">Loading</div>
           ) : !stats || stats.recentForms.length === 0 ? (
-            <div className="py-12 text-center text-[13px] text-[color:var(--cf-ink-soft)] md:col-span-2">
-              No forms yet. Create your first one below.
+            <div className="cf-panel flex flex-col items-center px-6 py-12 text-center md:col-span-2">
+              <p className="cf-display text-[24px] leading-none sm:text-[32px]">No forms yet.</p>
+              <p className="mt-3 max-w-sm text-[13.5px] leading-relaxed text-(--cf-ink-soft)">
+                Your workspace is empty. Create your first form and it will show up here.
+              </p>
             </div>
           ) : (
             stats.recentForms.map((item) => (
               <Link
                 key={item.id}
                 href={`/dashboard/sketches/${item.id}`}
-                className="group bg-[color:var(--cf-cream-2)] rounded-xl ring-1 ring-[color:var(--cf-line)] hover:ring-[color:var(--cf-line-strong)] p-4 flex items-center justify-between gap-4 transition-shadow"
+                className="cf-panel cf-raised cf-press group relative flex items-center justify-between gap-4 p-4"
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-md bg-[color:var(--cf-cream)] flex items-center justify-center shrink-0 ring-1 ring-[color:var(--cf-line)]">
-                    <FileText className="size-4 text-[color:var(--cf-orange)]" />
+                <span
+                  aria-hidden
+                  className="absolute top-0 right-0 h-3.5 w-3.5 border-b border-l border-(--cf-line-strong)"
+                  style={{
+                    background: item.isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)",
+                  }}
+                />
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex size-10 shrink-0 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
+                    <FileText className="size-4" style={{ color: "var(--cf-orange)" }} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="cf-display text-[18px] leading-tight truncate">{item.title}</h4>
-                    <p className="text-[12px] text-[color:var(--cf-ink-soft)] mt-0.5">
+                    <h4 className="cf-display truncate text-[17px] leading-tight">{item.title}</h4>
+                    <p className="mt-1 text-[12px] text-(--cf-ink-soft)">
                       {item.isPublished ? "Published" : "Draft"}
                       <span className="mx-1.5">·</span>
                       {new Date(item.createdAt).toLocaleDateString("en-US", {
@@ -326,21 +344,19 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-[12px] font-mono text-[color:var(--cf-ink-soft)] shrink-0">
-                  <span className="text-[color:var(--cf-ink)]">{item.submissionsCount}</span>
+                <div className="flex shrink-0 items-center gap-2 pr-2 font-mono text-[12px] text-(--cf-ink-soft)">
+                  <span className="tabular-nums text-(--cf-ink)">{item.submissionsCount}</span>
                   <span>resp.</span>
-                  <ArrowUpRight className="size-3.5 text-[color:var(--cf-ink-soft)] group-hover:text-[color:var(--cf-orange)] transition-colors" />
                 </div>
               </Link>
             ))
           )}
 
-          {/* "start new form" placeholder card */}
           <button
             onClick={openCreateFormModal}
-            className="group bg-[color:var(--cf-cream)]/40 rounded-xl ring-1 ring-dashed ring-[color:var(--cf-line-strong)] hover:ring-[color:var(--cf-orange)] p-5 flex items-center justify-center min-h-[88px] transition-all cursor-pointer"
+            className="group flex min-h-22 cursor-pointer items-center justify-center border border-dashed border-(--cf-line-strong) p-5 transition-colors hover:bg-(--cf-cream-2)"
           >
-            <span className="inline-flex items-center gap-2 text-[13px] font-medium text-[color:var(--cf-ink-soft)] group-hover:text-[color:var(--cf-orange)] transition-colors">
+            <span className="inline-flex items-center gap-2 text-[13px] font-medium text-(--cf-ink-soft) transition-colors group-hover:text-(--cf-ink)">
               <Plus className="size-4" />
               Start a new form
             </span>
@@ -356,13 +372,11 @@ export default function DashboardPage() {
 function SummaryMetric({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="min-w-0">
-      <p className="cf-eyebrow text-[color:var(--cf-ink-soft)]">{label}</p>
+      <p className="cf-meta">{label}</p>
       <p className="mt-1.5 cf-display text-[22px] sm:text-[24px] leading-none tabular-nums truncate">
         {value}
       </p>
-      {sub && (
-        <p className="mt-1 text-[11px] font-mono text-[color:var(--cf-ink-soft)] truncate">{sub}</p>
-      )}
+      {sub && <p className="mt-1 text-[11px] font-mono text-(--cf-ink-soft) truncate">{sub}</p>}
     </div>
   );
 }
