@@ -3,7 +3,6 @@ import { logger } from "@repo/logger";
 import cors from "cors";
 import compression from "compression";
 
-
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
 import cookieParser from "cookie-parser";
@@ -89,10 +88,7 @@ const authGlobalLimiter = leakyBucketRateLimiter({
   message: { error: "Request rate exceeded for this session." },
 });
 
-app.use(
-  ["/trpc/form.submitForm", "/trpc/feedback.submitFeedback"],
-  publicWriteLimiter,
-);
+app.use(["/trpc/form.submitForm", "/trpc/feedback.submitFeedback"], publicWriteLimiter);
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 

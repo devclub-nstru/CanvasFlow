@@ -401,8 +401,6 @@ export default function PublicFormPage() {
       }
     }
 
-
-
     if (nextPage.kind === "page") {
       const advanced = [...pagePath, nextPage.pageIndex];
       setPagePath(advanced);
@@ -525,6 +523,7 @@ export default function PublicFormPage() {
   if (error || !form) return <FormErrorState type="not-found" />;
   if (gateResolving) return <FormLoadingState />;
   if (!form.isPublished) return <FormErrorState type="draft-mode" />;
+  if (form.isArchived) return <FormErrorState type="not-found" />;
   if (!form.isOpen) return <FormErrorState type="closed" />;
   if (form.expiresAt && new Date() > new Date(form.expiresAt)) {
     return <FormErrorState type="expired" />;

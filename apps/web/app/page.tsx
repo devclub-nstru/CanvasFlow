@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import Footer from "~/components/Footer";
@@ -530,102 +530,136 @@ const Index = () => {
 
 /* ── Sharing & access mock ─────────────────────────────────────────── */
 
-const ShareAccessMock = () => (
-  <div className="hex-card w-full overflow-hidden">
-    <div
-      className="flex items-center justify-between border-b hex-line-soft px-4 py-2.5"
-      style={{ borderBottomWidth: 1 }}
-    >
-      <span className="text-[12px] font-medium">Share · Customer Feedback</span>
-      <span className="hex-mono text-[10px]" style={{ color: "var(--hex-ink-muted)" }}>
-        published
-      </span>
-    </div>
+const ShareAccessMock = () => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [collectEmail, setCollectEmail] = useState(true);
+  const [limitOne, setLimitOne] = useState(true);
 
-    <div className="space-y-5 p-4 sm:p-5">
-      {/* Public link */}
-      <div>
-        <div className="hex-select-label">Public link</div>
+  return (
+    <div className="hex-card w-full overflow-hidden border border-(--cf-line-strong) bg-white shadow-[5px_5px_0_0_var(--cf-ink)] font-sans text-[11px] select-none text-(--cf-ink) flex flex-col">
+      {/* dialog header */}
+      <div className="flex items-center justify-between border-b border-(--cf-line-strong) px-4 py-2.5 bg-(--cf-cream-2) font-mono">
+        <span className="text-[11px] font-bold">Settings · Customer Feedback</span>
         <div className="flex items-center gap-2">
-          <div
-            className="hex-mono flex min-w-0 flex-1 items-center rounded-md border hex-line-soft bg-[#fafaf7] px-3 py-2 text-[11px]"
-            style={{ color: "var(--hex-ink-soft)" }}
-          >
-            <span className="truncate">canvasflow.app/forms/customer-feedback</span>
+          <span className="inline-flex items-center gap-1 border border-(--cf-orange) text-(--cf-orange) px-1.5 py-0.5 text-[8.5px] uppercase font-bold tracking-wider leading-none bg-white">
+            Open
+          </span>
+          <div className="cf-btn-outline size-6 flex items-center justify-center bg-white">
+            <X className="size-3" />
           </div>
-          <button
-            className="shrink-0 rounded-md px-3 py-2 text-[11px] font-medium text-white"
-            style={{ background: "var(--hex-ink)" }}
-          >
-            Copy
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-[104px_1fr]">
-        <div className="max-w-35 sm:max-w-none">
-          <div className="hex-select-label">QR code</div>
-          <div
-            className="grid grid-cols-7 gap-0.75 rounded-md border hex-line-soft bg-white p-2"
-            aria-hidden
-          >
-            {Array.from({ length: 49 }).map((_, i) => (
-              <span
-                key={i}
-                className="aspect-square rounded-[1px]"
-                style={{
-                  background:
-                    (i * 7 + Math.floor(i / 7) * 3) % 5 < 2 ? "var(--hex-ink)" : "transparent",
-                }}
+      {/* dialog body */}
+      <div className="p-4 sm:p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+          {/* Left Column */}
+          <div className="space-y-4">
+            {/* Form title */}
+            <div className="space-y-1.5">
+              <label className="cf-meta text-[9px] font-mono font-bold uppercase tracking-wider text-(--cf-ink-soft) block">
+                Form title
+              </label>
+              <input
+                type="text"
+                disabled
+                value="Customer Feedback Form"
+                className="w-full bg-white border border-(--cf-line-strong) h-8 px-3 text-[11px] focus:outline-none font-semibold"
               />
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div>
-          <div className="hex-select-label">Access</div>
-          <div className="space-y-2">
-            {[
-              { l: "Accepting responses", v: "On", on: true },
-              { l: "Expires", v: "31 Aug 2026", on: true },
-              { l: "Max submissions", v: "500", on: true },
-              { l: "One response per visitor", v: "On", on: true },
-            ].map((row) => (
-              <div
-                key={row.l}
-                className="flex items-center justify-between rounded-md border hex-line-soft bg-[#fafaf7] px-3 py-2"
-              >
-                <span className="text-[11px]" style={{ color: "var(--hex-ink-soft)" }}>
-                  {row.l}
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="hex-mono text-[10px] font-semibold">{row.v}</span>
-                  <span
-                    className="h-3 w-6 rounded-full p-0.5"
-                    style={{ background: row.on ? "var(--c-teal)" : "rgba(26,29,41,0.18)" }}
-                  >
-                    <span
-                      className="block h-2 w-2 rounded-full bg-white"
-                      style={{ marginLeft: row.on ? "auto" : undefined }}
-                    />
-                  </span>
-                </span>
+            {/* Question layout */}
+            <div className="space-y-1.5">
+              <span className="cf-meta text-[9px] font-mono font-bold uppercase tracking-wider text-(--cf-ink-soft) block">
+                Question layout
+              </span>
+              <div className="w-full bg-white border border-(--cf-line-strong) h-8 px-3 flex items-center justify-between text-[11px] text-(--cf-ink) font-semibold">
+                <span>One question per page</span>
+                <span className="text-[9px] text-(--cf-ink-soft)">▾</span>
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-2.5">
+            <span className="cf-meta text-[9px] font-mono font-bold uppercase tracking-wider text-(--cf-ink-soft) block">
+              Availability & Access
+            </span>
+            {/* Row 1: Accepting responses */}
+            <div className="flex items-start justify-between gap-4 p-2 border border-(--cf-line-strong) bg-(--cf-cream-2)">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold">Accepting responses</p>
+                <p className="text-[9px] text-(--cf-ink-soft) leading-snug mt-0.5">
+                  Allow users to submit responses.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="shrink-0 size-6 border border-(--cf-line-strong) flex items-center justify-center bg-white cursor-pointer"
+              >
+                <span
+                  className={`size-3.5 border border-(--cf-line-strong) flex items-center justify-center text-white ${isOpen ? "bg-(--cf-orange)" : "bg-white"}`}
+                >
+                  {isOpen && <Check className="size-2.5" />}
+                </span>
+              </button>
+            </div>
+
+            {/* Row 2: Collect emails */}
+            <div className="flex items-start justify-between gap-4 p-2 border border-(--cf-line-strong) bg-(--cf-cream-2)">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold">Record respondent email</p>
+                <p className="text-[9px] text-(--cf-ink-soft) leading-snug mt-0.5">
+                  Collect email addresses with submissions.
+                </p>
+              </div>
+              <button
+                onClick={() => setCollectEmail(!collectEmail)}
+                className="shrink-0 size-6 border border-(--cf-line-strong) flex items-center justify-center bg-white cursor-pointer"
+              >
+                <span
+                  className={`size-3.5 border border-(--cf-line-strong) flex items-center justify-center text-white ${collectEmail ? "bg-(--cf-orange)" : "bg-white"}`}
+                >
+                  {collectEmail && <Check className="size-2.5" />}
+                </span>
+              </button>
+            </div>
+
+            {/* Row 3: Limit one response */}
+            <div className="flex items-start justify-between gap-4 p-2 border border-(--cf-line-strong) bg-(--cf-cream-2)">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold">Limit to 1 response</p>
+                <p className="text-[9px] text-(--cf-ink-soft) leading-snug mt-0.5">
+                  Only allow one response per email.
+                </p>
+              </div>
+              <button
+                onClick={() => setLimitOne(!limitOne)}
+                className="shrink-0 size-6 border border-(--cf-line-strong) flex items-center justify-center bg-white cursor-pointer"
+              >
+                <span
+                  className={`size-3.5 border border-(--cf-line-strong) flex items-center justify-center text-white ${limitOne ? "bg-(--cf-orange)" : "bg-white"}`}
+                >
+                  {limitOne && <Check className="size-2.5" />}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div
-        className="hex-mono flex items-center justify-between border-t hex-line-soft pt-3 text-[10px]"
-        style={{ color: "var(--hex-ink-muted)", borderTopWidth: 1 }}
-      >
-        <span>328 / 500 submissions</span>
-        <span>closes in 32 days</span>
+      {/* dialog footer */}
+      <div className="flex items-center justify-end gap-2 border-t border-(--cf-line-strong) px-4 py-3 bg-(--cf-cream-2)">
+        <button className="cf-btn-outline h-7 px-3 text-[10px] bg-white cursor-default">
+          Cancel
+        </button>
+        <button className="cf-btn h-7 px-4 text-[10px] text-white font-bold cursor-default">
+          Save
+        </button>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ── Step cards ────────────────────────────────────────────────────── */
 

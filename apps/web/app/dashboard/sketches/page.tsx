@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
@@ -14,7 +16,12 @@ import {
   Users,
 } from "lucide-react";
 
-import { useListFormsByUserId, useDeleteForm } from "~/hooks/api/form";
+import {
+  useListFormsByUserId,
+  useDeleteForm,
+  useArchiveForm,
+  useUnarchiveForm,
+} from "~/hooks/api/form";
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useDebounce } from "~/hooks/useDebounce";
 import { trpc } from "~/trpc/client";
@@ -54,6 +61,7 @@ const FILTERS = [
   { id: "ALL", label: "All" },
   { id: "DRAFTS", label: "Drafts" },
   { id: "PUBLISHED", label: "Published" },
+  { id: "ARCHIVED", label: "Archived" },
 ];
 
 const ITEMS_PER_PAGE = 6;
@@ -64,12 +72,39 @@ export default function SketchesPage() {
   const { forms, isLoading } = useListFormsByUserId();
   const { openCreateFormModal } = useDashboard();
   const { deleteFormAsync, isPending: isDeleting } = useDeleteForm();
+  const { archiveFormAsync } = useArchiveForm();
+  const { unarchiveFormAsync } = useUnarchiveForm();
+
+  const handleArchive = async (formId: string) => {
+    try {
+      await archiveFormAsync({ id: formId });
+      toast.success("Form archived");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to archive form");
+    }
+  };
+
+  const handleUnarchive = async (formId: string) => {
+    try {
+      await unarchiveFormAsync({ id: formId });
+      toast.success("Form unarchived");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to unarchive form");
+    }
+  };
 
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"createdAt" | "title">("createdAt");
+  const [sort, setSort] = useState<"createdAt" | "title" | "updatedAt">("updatedAt");
   const [filter, setFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteWordInput, setDeleteWordInput] = useState("");
+  const [deleteTitleInput, setDeleteTitleInput] = useState("");
+  useEffect(() => {
+    setDeleteWordInput("");
+    setDeleteTitleInput("");
+  }, [confirmDeleteId]);
+
   const [shareFormId, setShareFormId] = useState<string | null>(null);
   const [shareFormTitle, setShareFormTitle] = useState("");
   const [shareOwnerEmail, setShareOwnerEmail] = useState<string | null | undefined>(undefined);
@@ -85,8 +120,10 @@ export default function SketchesPage() {
     if (!forms) return [];
     let result = [...forms];
 
-    if (filter === "DRAFTS") result = result.filter((f) => !f.isPublished);
-    else if (filter === "PUBLISHED") result = result.filter((f) => f.isPublished);
+    if (filter === "ALL") result = result.filter((f) => !f.isArchived);
+    else if (filter === "DRAFTS") result = result.filter((f) => !f.isPublished && !f.isArchived);
+    else if (filter === "PUBLISHED") result = result.filter((f) => f.isPublished && !f.isArchived);
+    else if (filter === "ARCHIVED") result = result.filter((f) => f.isArchived);
 
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
@@ -99,6 +136,9 @@ export default function SketchesPage() {
     }
 
     result.sort((a, b) => {
+      if (sort === "updatedAt") {
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
       if (sort === "createdAt") {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
@@ -142,7 +182,7 @@ export default function SketchesPage() {
           </p>
         </div>
 
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-2xl">
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-xl">
           <div className="relative flex-1">
             <Search
               className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
@@ -162,20 +202,11 @@ export default function SketchesPage() {
           </div>
 
           <ToolbarSelect
-            label="Status"
-            value={filter}
-            onChange={(v) => {
-              setFilter(v);
-              setPage(1);
-            }}
-            options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
-          />
-
-          <ToolbarSelect
             label="Sort"
             value={sort}
-            onChange={(v) => setSort(v as "createdAt" | "title")}
+            onChange={(v) => setSort(v as "createdAt" | "title" | "updatedAt")}
             options={[
+              { value: "updatedAt", label: "Last updated" },
               { value: "createdAt", label: "Newest" },
               { value: "title", label: "Title" },
             ]}
@@ -183,8 +214,31 @@ export default function SketchesPage() {
         </div>
       </div>
 
+      {/* ───── status filter tabs ───── */}
+      <div className="flex flex-wrap gap-4 sm:gap-6 border-b border-(--cf-line-strong) text-[11px] font-mono uppercase tracking-wider">
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => {
+                setFilter(f.id);
+                setPage(1);
+              }}
+              className={`pb-2.5 transition-colors border-b-2 cursor-pointer font-bold ${
+                active
+                  ? "border-(--cf-orange) text-(--cf-orange)"
+                  : "border-transparent text-(--cf-ink-soft) hover:text-(--cf-ink)"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ───── result count rule ───── */}
-      <div className="flex items-end justify-between gap-4 border-b border-(--cf-line-strong) pb-3">
+      <div className="flex items-end justify-between gap-4 pb-1">
         <p className="cf-meta">{hasActiveFilters ? "Filtered" : "All forms"}</p>
         <p className="cf-meta">
           {processedForms.length} {processedForms.length === 1 ? "result" : "results"}
@@ -220,6 +274,8 @@ export default function SketchesPage() {
                 setShareOwnerEmail(form.ownerEmail);
                 setShareRole(form.role);
               }}
+              onArchive={() => handleArchive(form.id)}
+              onUnarchive={() => handleUnarchive(form.id)}
             />
           ))}
         </div>
@@ -254,7 +310,7 @@ export default function SketchesPage() {
 
       {/* ───── delete confirm ───── */}
       {confirmDeleteId && confirmDeleteForm && (
-        <div className="cf-scrim z-200">
+        <div className="cf-scrim z-300">
           <div className="cf-dark cf-crop w-full max-w-md">
             <div className="relative z-1 p-6 sm:p-8">
               <p className="cf-dark-meta" style={{ color: "var(--c-red)" }}>
@@ -275,6 +331,45 @@ export default function SketchesPage() {
                 undone.
               </p>
 
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label
+                    htmlFor="dashboard-confirm-delete-word"
+                    className="block text-[11px] font-mono mb-1.5 uppercase"
+                    style={{ color: "var(--cfd-text-soft)" }}
+                  >
+                    Type <span className="font-bold text-white">delete</span> to confirm:
+                  </label>
+                  <input
+                    id="dashboard-confirm-delete-word"
+                    type="text"
+                    value={deleteWordInput}
+                    onChange={(e) => setDeleteWordInput(e.target.value)}
+                    placeholder="delete"
+                    className="w-full h-9 border border-zinc-700 bg-zinc-900 text-white px-3 text-[13px] transition-shadow focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="dashboard-confirm-delete-title"
+                    className="block text-[11px] font-mono mb-1.5 uppercase"
+                    style={{ color: "var(--cfd-text-soft)" }}
+                  >
+                    Type form name{" "}
+                    <span className="font-bold text-white">{confirmDeleteForm.title}</span> to
+                    confirm:
+                  </label>
+                  <input
+                    id="dashboard-confirm-delete-title"
+                    type="text"
+                    value={deleteTitleInput}
+                    onChange={(e) => setDeleteTitleInput(e.target.value)}
+                    placeholder={confirmDeleteForm.title}
+                    className="w-full h-9 border border-zinc-700 bg-zinc-900 text-white px-3 text-[13px] transition-shadow focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-6">
                 <button
                   onClick={() => setConfirmDeleteId(null)}
@@ -285,9 +380,13 @@ export default function SketchesPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(confirmDeleteId)}
-                  disabled={isDeleting}
-                  className="cf-btn px-5 py-2 text-[13px] disabled:opacity-50"
-                  style={{ background: "var(--c-red)" }}
+                  disabled={
+                    isDeleting ||
+                    deleteWordInput.trim().toLowerCase() !== "delete" ||
+                    deleteTitleInput.trim().toLowerCase() !== confirmDeleteForm.title.toLowerCase()
+                  }
+                  className="cf-btn px-5 py-2 text-[13px] text-white hover:!bg-[#b54a41] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  style={{ background: "var(--c-red)", borderColor: "var(--cfd-line-strong)" }}
                 >
                   <Trash2 className="size-3.5" />
                   {isDeleting ? "Deleting..." : "Delete"}
@@ -344,6 +443,7 @@ interface FormCardProps {
     id: string;
     title: string;
     isPublished: boolean;
+    isArchived: boolean;
     submissionsCount?: number;
     createdAt: string;
     publishedAt?: string | null;
@@ -354,12 +454,16 @@ interface FormCardProps {
   };
   onDelete: () => void;
   onShare: () => void;
+  onArchive: () => void;
+  onUnarchive: () => void;
 }
 
-function FormCard({ form, onDelete, onShare }: FormCardProps) {
+function FormCard({ form, onDelete, onShare, onArchive, onUnarchive }: FormCardProps) {
   const isPublished = form.isPublished;
+  const isArchived = form.isArchived;
   const responses = form.submissionsCount ?? 0;
   const canDelete = form.permissions?.settings?.canDelete ?? form.role === "owner";
+  const canArchive = form.permissions?.settings?.canArchive ?? form.role === "owner";
 
   const utils = trpc.useUtils();
   const prefetchBuilder = () => {
@@ -376,7 +480,13 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
       <span
         aria-hidden
         className="absolute top-0 right-0 z-10 size-4 border-b border-l border-(--cf-line-strong)"
-        style={{ background: isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)" }}
+        style={{
+          background: isArchived
+            ? "var(--cf-ink-soft)"
+            : isPublished
+              ? "var(--cf-orange)"
+              : "var(--cf-ink-soft)",
+        }}
       />
 
       <div className="relative hidden aspect-video w-full overflow-hidden border border-(--cf-line-strong) bg-(--cf-cream) sm:block">
@@ -409,11 +519,20 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
         <span
           className="cf-meta inline-block border px-2 py-1"
           style={{
-            borderColor: isPublished ? "var(--cf-orange)" : "var(--cf-line-strong)",
-            color: isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)",
+            borderColor: isArchived
+              ? "var(--cf-line-strong)"
+              : isPublished
+                ? "var(--cf-orange)"
+                : "var(--cf-line-strong)",
+            color: isArchived
+              ? "var(--cf-ink-soft)"
+              : isPublished
+                ? "var(--cf-orange)"
+                : "var(--cf-ink-soft)",
+            background: isArchived ? "var(--cf-cream-2)" : "transparent",
           }}
         >
-          {isPublished ? "Published" : "Draft"}
+          {isArchived ? "Archived" : isPublished ? "Published" : "Draft"}
         </span>
 
         <div className="flex items-start justify-between gap-2">
@@ -464,43 +583,88 @@ function FormCard({ form, onDelete, onShare }: FormCardProps) {
 
       {/* actions */}
       <div className="flex gap-2 pt-1">
-        {isPublished ? (
-          <Link
-            href={`/dashboard/sketches/${form.id}`}
-            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
-            style={{ background: "var(--cf-ink)" }}
-          >
-            Open
-            <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
-          </Link>
+        {isArchived ? (
+          <>
+            <Link
+              href={`/dashboard/sketches/${form.id}?tab=responses`}
+              className="cf-btn-outline h-9.5 flex-1 px-4 text-[12.5px] flex items-center justify-center gap-1.5"
+            >
+              Responses
+            </Link>
+            {canArchive && (
+              <button
+                type="button"
+                title="Unarchive form"
+                aria-label="Unarchive form"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onUnarchive();
+                }}
+                className="cf-btn h-9.5 px-4 text-[12.5px] flex items-center justify-center gap-1.5 cursor-pointer text-white hover:!bg-[#c16832] transition-colors"
+                style={{ background: "var(--cf-orange)", borderColor: "var(--cf-orange)" }}
+              >
+                <ArchiveRestore className="size-3.5" />
+                Unarchive
+              </button>
+            )}
+          </>
         ) : (
-          <Link
-            href={`/dashboard/sketches/${form.id}`}
-            className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
-          >
-            Edit
-            <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
-          </Link>
+          <>
+            {isPublished ? (
+              <Link
+                href={`/dashboard/sketches/${form.id}`}
+                className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
+                style={{ background: "var(--cf-ink)" }}
+              >
+                Open
+                <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+              </Link>
+            ) : (
+              <Link
+                href={`/dashboard/sketches/${form.id}`}
+                className="cf-btn group/btn h-9.5 flex-1 px-4 text-[12.5px]"
+              >
+                Edit
+                <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+              </Link>
+            )}
+            <Link
+              href={`/dashboard/sketches/${form.id}?tab=responses`}
+              className="cf-btn-outline h-9.5 flex-1 px-4 text-[12.5px] flex items-center justify-center gap-1.5"
+            >
+              Responses
+            </Link>
+            <button
+              type="button"
+              title="Share form"
+              aria-label="Share form"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onShare();
+              }}
+              className="cf-btn-outline size-9.5 shrink-0"
+            >
+              <Share2 className="size-3.5" />
+            </button>
+            {canArchive && (
+              <button
+                type="button"
+                title="Archive form"
+                aria-label="Archive form"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onArchive();
+                }}
+                className="cf-btn-outline size-9.5 shrink-0 hover:text-red-500 hover:border-red-300"
+              >
+                <Archive className="size-3.5" />
+              </button>
+            )}
+          </>
         )}
-        <Link
-          href={`/dashboard/sketches/${form.id}?tab=responses`}
-          className="cf-btn-outline h-9.5 flex-1 px-4 text-[12.5px] flex items-center justify-center gap-1.5"
-        >
-          Responses
-        </Link>
-        <button
-          type="button"
-          title="Share form"
-          aria-label="Share form"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onShare();
-          }}
-          className="cf-btn-outline size-9.5 shrink-0"
-        >
-          <Share2 className="size-3.5" />
-        </button>
       </div>
     </div>
   );

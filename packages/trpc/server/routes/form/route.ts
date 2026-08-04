@@ -39,6 +39,8 @@ import {
   transferOwnershipOutputModel,
   updateFormSettingsInputModel,
   updateFormSettingsOutputModel,
+  archiveFormOutputModel,
+  unarchiveFormOutputModel,
   createFormSegmentInputModel,
   createFormSegmentOutputModel,
   updateFormSegmentInputModel,
@@ -384,6 +386,36 @@ export const formRouter = router({
     .output(updateFormSettingsOutputModel)
     .mutation(async ({ input, ctx }) => {
       return formService.updateFormSettings({ ...input, requesterId: ctx.user.id });
+    }),
+
+  archiveForm: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/archiveForm"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(getFormInputModel)
+    .output(archiveFormOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formService.archiveForm({ ...input, ownerId: ctx.user.id });
+    }),
+
+  unarchiveForm: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/unarchiveForm"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(getFormInputModel)
+    .output(unarchiveFormOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formService.unarchiveForm({ ...input, ownerId: ctx.user.id });
     }),
 
   // Segments

@@ -4,7 +4,7 @@ import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
 
 interface RateLimiterOptions {
   bucketName: string;
-  max: number;      // Bucket capacity (max burst size)
+  max: number; // Bucket capacity (max burst size)
   windowMs: number; // Time window in milliseconds (leak duration)
   message?: string | object;
 }
@@ -53,7 +53,7 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
 
       // 1. Identify client
       let clientKey = "";
-      
+
       // Try resolving auth session token
       const sessionToken = req.headers.cookie?.match(/better-auth\.session_token=([^;]+)/)?.[1];
       if (sessionToken) {
@@ -77,14 +77,14 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
       const now = Date.now();
 
       // Execute atomic GCRA script
-      const result = await client.eval(
+      const result = (await client.eval(
         gcraScript,
         1,
         key,
         max.toString(),
         windowMs.toString(),
-        now.toString()
-      ) as [number, number];
+        now.toString(),
+      )) as [number, number];
 
       const [allowed, retryAfterMs] = result;
 
@@ -96,7 +96,9 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
         res.setHeader("Retry-After", retryAfterSec);
         res.setHeader("X-RateLimit-Limit", max);
 
-        const errorMsg = message || { error: "Too many requests — slow down and try again shortly." };
+        const errorMsg = message || {
+          error: "Too many requests — slow down and try again shortly.",
+        };
         return res.status(429).json(typeof errorMsg === "string" ? { error: errorMsg } : errorMsg);
       }
     } catch (err) {

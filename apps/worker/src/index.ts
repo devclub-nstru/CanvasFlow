@@ -33,7 +33,7 @@ async function main() {
       "[worker] Cloudinary is not configured. Upload jobs will be failed with a clear " +
         "message. Set CLOUDINARY_CLOUD_NAME, " +
         "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to enable file storage." +
-        " If this is development, you can proceed without it."
+        " If this is development, you can proceed without it.",
     );
   }
 
@@ -47,7 +47,7 @@ async function main() {
   });
 
   logger.info(
-    `[worker] listening — uploads x${queueEnv.UPLOAD_WORKER_CONCURRENCY} (${env.NODE_ENV})`
+    `[worker] listening — uploads x${queueEnv.UPLOAD_WORKER_CONCURRENCY} (${env.NODE_ENV})`,
   );
 
   let shuttingDown = false;

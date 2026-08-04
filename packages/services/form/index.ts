@@ -179,10 +179,28 @@ export async function checkFormAccess(formId: string, userId: string): Promise<F
   return null;
 }
 
-export async function requireOwner(formId: string, userId: string): Promise<void> {
+export async function requireNotArchived(formId: string): Promise<void> {
+  const rows = await db
+    .select({ isArchived: formsTable.isArchived })
+    .from(formsTable)
+    .where(eq(formsTable.id, formId))
+    .limit(1);
+  if (rows[0]?.isArchived) {
+    throw new Error("Form is archived");
+  }
+}
+
+export async function requireOwner(
+  formId: string,
+  userId: string,
+  allowArchived = false,
+): Promise<void> {
   const role = await checkFormAccess(formId, userId);
   if (role !== "owner") {
     throw new Error("Unauthorized: Owner access required");
+  }
+  if (!allowArchived) {
+    await requireNotArchived(formId);
   }
 }
 
@@ -191,6 +209,7 @@ export async function requireEditor(formId: string, userId: string): Promise<voi
   if (role !== "owner" && role !== "editor") {
     throw new Error("Unauthorized: Editor access required");
   }
+  await requireNotArchived(formId);
 }
 
 export async function requireViewer(formId: string, userId: string): Promise<void> {
@@ -200,13 +219,13 @@ export async function requireViewer(formId: string, userId: string): Promise<voi
   }
 }
 
-export function getFormPermissions(role: FormRole | null): FormPermissions {
+export function getFormPermissions(role: FormRole | null, isArchived = false): FormPermissions {
   const isOwner = role === "owner";
   const isEditor = role === "editor";
   const isViewer = role === "viewer";
 
-  const hasBuilderView = isOwner || isEditor;
-  const hasBuilderEdit = isOwner || isEditor;
+  const hasBuilderView = (isOwner || isEditor) && !isArchived;
+  const hasBuilderEdit = (isOwner || isEditor) && !isArchived;
   const hasAnalyticsView = isOwner || isEditor || isViewer;
   const hasResponsesView = isOwner || isEditor || isViewer;
 
@@ -222,10 +241,10 @@ export function getFormPermissions(role: FormRole | null): FormPermissions {
       canView: hasResponsesView,
     },
     settings: {
-      canDelete: isOwner,
-      canPublish: isOwner || isEditor,
+      canDelete: isOwner && !isArchived,
+      canPublish: (isOwner || isEditor) && !isArchived,
       canArchive: isOwner,
-      canShare: isOwner,
+      canShare: isOwner && !isArchived,
     },
   };
 }
@@ -264,7 +283,7 @@ class FormService {
       ...row.form,
       ownerEmail: row.ownerEmail,
       role,
-      permissions: getFormPermissions(role),
+      permissions: getFormPermissions(role, row.form.isArchived),
     };
   }
 
@@ -346,7 +365,7 @@ class FormService {
         submissionsCount: f.submissionsCount,
         ownerEmail: f.ownerEmail,
         role,
-        permissions: getFormPermissions(role),
+        permissions: getFormPermissions(role, f.isArchived),
       };
     });
   }
@@ -360,7 +379,7 @@ class FormService {
       getFormSubmissionsCount(id),
     ]);
 
-    if (!bundle) {
+    if (!bundle || bundle.form.isArchived) {
       throw new Error("Form not found");
     }
 
@@ -412,6 +431,44 @@ class FormService {
 
     const result = await db
       .delete(formsTable)
+      .where(eq(formsTable.id, id))
+      .returning({ id: formsTable.id });
+
+    if (!result[0]) throw new Error("Form not found");
+
+    await invalidateFormCache(id);
+
+    return { success: true };
+  }
+
+  public async archiveForm(payload: GetFormInputType & { ownerId: string }) {
+    const { id } = await getFormInput.parseAsync(payload);
+    const { ownerId: userId } = payload;
+
+    await requireOwner(id, userId);
+
+    const result = await db
+      .update(formsTable)
+      .set({ isArchived: true })
+      .where(eq(formsTable.id, id))
+      .returning({ id: formsTable.id });
+
+    if (!result[0]) throw new Error("Form not found");
+
+    await invalidateFormCache(id);
+
+    return { success: true };
+  }
+
+  public async unarchiveForm(payload: GetFormInputType & { ownerId: string }) {
+    const { id } = await getFormInput.parseAsync(payload);
+    const { ownerId: userId } = payload;
+
+    await requireOwner(id, userId, true);
+
+    const result = await db
+      .update(formsTable)
+      .set({ isArchived: false })
       .where(eq(formsTable.id, id))
       .returning({ id: formsTable.id });
 

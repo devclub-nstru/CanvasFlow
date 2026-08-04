@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowUpRight,
   DraftingCompass,
   FileText,
   Inbox,
@@ -139,228 +138,229 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ───── response trends ───── */}
-      <div className="cf-panel cf-raised overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-(--cf-line) p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
-          <div>
-            <p className="cf-meta">Responses</p>
-            <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
-              Response trends
-            </h3>
-            <p className="mt-1 text-[13px] text-(--cf-ink-soft)">{activeRange.subtitle}</p>
-          </div>
-
-          {/* Segmented control, squared and hairlined to match the chrome. */}
-          <div
-            className="inline-flex shrink-0 self-start border border-(--cf-line-strong) text-[12px] font-medium select-none sm:self-auto"
-            role="tablist"
-            aria-label="Trend range"
-          >
-            {RANGE_TABS.map((tab) => {
-              const isActive = tab.id === trendRange;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setTrendRange(tab.id)}
-                  className="cursor-pointer px-3 py-1.5 transition-colors sm:px-3.5"
-                  style={
-                    isActive
-                      ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
-                      : { color: "var(--cf-ink-soft)" }
-                  }
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* mini summary row */}
-        <div className="grid grid-cols-3 gap-4 border-b border-(--cf-line) px-4 py-4 sm:gap-8 sm:px-6">
-          <SummaryMetric label="Total in range" value={trendSummary.total.toLocaleString()} />
-          <SummaryMetric label="Avg / day" value={trendSummary.avgPerDay.toFixed(1)} />
-          <SummaryMetric
-            label="Peak day"
-            value={trendSummary.peakLabel}
-            sub={
-              trendSummary.peakCount > 0
-                ? `${trendSummary.peakCount} response${trendSummary.peakCount === 1 ? "" : "s"}`
-                : undefined
-            }
-          />
-        </div>
-
-        <div className="relative h-80 sm:h-96 w-full px-2 pt-3 pb-4 sm:px-3">
-          {!hasTrendData ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center max-w-sm px-6">
-                <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
-                  <Inbox className="size-5" style={{ color: "var(--cf-orange)" }} />
-                </div>
-                <p className="cf-meta">Awaiting data</p>
-                <p className="mt-3 text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
-                  Publish your first form to start collecting responses and watch trends light up
-                  here.
-                </p>
-              </div>
+      {/* ───── trends & recent grid ───── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
+        {/* Left: Response trends */}
+        <div className="cf-panel cf-raised overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-(--cf-line) p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+            <div>
+              <p className="cf-meta">Responses</p>
+              <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
+                Response trends
+              </h3>
+              <p className="mt-1 text-[13px] text-(--cf-ink-soft)">{activeRange.subtitle}</p>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 24, right: 24, left: 4, bottom: 12 }}>
-                <defs>
-                  <linearGradient id="cf-trend-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--cf-orange)" stopOpacity={0.32} />
-                    <stop offset="100%" stopColor="var(--cf-orange)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  stroke="rgba(26,29,41,0.10)"
-                  strokeDasharray="2 4"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  stroke="var(--cf-ink-soft)"
-                  opacity={0.55}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={xTickInterval}
-                  minTickGap={16}
-                />
-                <YAxis
-                  stroke="var(--cf-ink-soft)"
-                  opacity={0.55}
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={28}
-                  allowDecimals={false}
-                />
-                <ChartTooltip
-                  cursor={{
-                    stroke: "var(--cf-orange)",
-                    strokeOpacity: 0.35,
-                    strokeWidth: 1,
-                    strokeDasharray: "4 3",
-                  }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const count = Number(payload[0]?.value ?? 0);
-                    return (
-                      <div className="cf-raised border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2">
-                        <p className="cf-meta">{label}</p>
-                        <p className="mt-1 text-[13px] font-medium text-(--cf-ink) tabular-nums">
-                          <span className="text-(--cf-orange)">{count}</span> response
-                          {count === 1 ? "" : "s"}
+
+            {/* Segmented control, squared and hairlined to match the chrome. */}
+            <div
+              className="inline-flex shrink-0 self-start border border-(--cf-line-strong) text-[12px] font-medium select-none sm:self-auto"
+              role="tablist"
+              aria-label="Trend range"
+            >
+              {RANGE_TABS.map((tab) => {
+                const isActive = tab.id === trendRange;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setTrendRange(tab.id)}
+                    className="cursor-pointer px-3 py-1.5 transition-colors sm:px-3.5"
+                    style={
+                      isActive
+                        ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
+                        : { color: "var(--cf-ink-soft)" }
+                    }
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* mini summary row */}
+          <div className="grid grid-cols-3 gap-4 border-b border-(--cf-line) px-4 py-4 sm:gap-8 sm:px-6">
+            <SummaryMetric label="Total in range" value={trendSummary.total.toLocaleString()} />
+            <SummaryMetric label="Avg / day" value={trendSummary.avgPerDay.toFixed(1)} />
+            <SummaryMetric
+              label="Peak day"
+              value={trendSummary.peakLabel}
+              sub={
+                trendSummary.peakCount > 0
+                  ? `${trendSummary.peakCount} response${trendSummary.peakCount === 1 ? "" : "s"}`
+                  : undefined
+              }
+            />
+          </div>
+
+          <div className="relative h-80 sm:h-96 w-full px-2 pt-3 pb-4 sm:px-3">
+            {!hasTrendData ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center max-w-sm px-6">
+                  <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
+                    <Inbox className="size-5" style={{ color: "var(--cf-orange)" }} />
+                  </div>
+                  <p className="cf-meta">Awaiting data</p>
+                  <p className="mt-3 text-[13.5px] text-(--cf-ink-soft) leading-relaxed">
+                    Publish your first form to start collecting responses and watch trends light up
+                    here.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData} margin={{ top: 24, right: 24, left: 4, bottom: 12 }}>
+                  <defs>
+                    <linearGradient id="cf-trend-gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--cf-orange)" stopOpacity={0.32} />
+                      <stop offset="100%" stopColor="var(--cf-orange)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    stroke="rgba(26,29,41,0.10)"
+                    strokeDasharray="2 4"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="var(--cf-ink-soft)"
+                    opacity={0.55}
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={xTickInterval}
+                    minTickGap={16}
+                  />
+                  <YAxis
+                    stroke="var(--cf-ink-soft)"
+                    opacity={0.55}
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={28}
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip
+                    cursor={{
+                      stroke: "var(--cf-orange)",
+                      strokeOpacity: 0.35,
+                      strokeWidth: 1,
+                      strokeDasharray: "4 3",
+                    }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const count = Number(payload[0]?.value ?? 0);
+                      return (
+                        <div className="cf-raised border border-(--cf-line-strong) bg-(--cf-cream) px-3 py-2">
+                          <p className="cf-meta">{label}</p>
+                          <p className="mt-1 text-[13px] font-medium text-(--cf-ink) tabular-nums">
+                            <span className="text-(--cf-orange)">{count}</span> response
+                            {count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="var(--cf-orange)"
+                    strokeWidth={2.5}
+                    fill="url(#cf-trend-gradient)"
+                    activeDot={{
+                      r: 4,
+                      stroke: "var(--cf-orange)",
+                      strokeWidth: 2,
+                      fill: "var(--cf-cream)",
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Recent forms */}
+        <div className="cf-panel cf-raised p-5 flex flex-col justify-between self-stretch">
+          <div className="space-y-4">
+            <div className="border-b border-(--cf-line-strong) pb-2.5">
+              <p className="cf-meta text-[9px] font-mono font-bold uppercase tracking-wider text-(--cf-ink-soft)">
+                Recent
+              </p>
+              <h3 className="cf-display mt-1 text-[20px] font-bold">
+                Forms<span style={{ color: "var(--cf-orange)" }}>.</span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              {isLoading ? (
+                <div className="cf-meta py-8 text-center">Loading</div>
+              ) : !stats || stats.recentForms.length === 0 ? (
+                <div className="flex flex-col items-center py-6 text-center">
+                  <p className="cf-display text-[18px]">No forms yet.</p>
+                </div>
+              ) : (
+                stats.recentForms.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/dashboard/sketches/${item.id}`}
+                    className="cf-panel cf-raised cf-press group relative flex items-center justify-between gap-4 p-3 bg-white"
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute top-0 right-0 h-2.5 w-2.5 border-b border-l border-(--cf-line-strong)"
+                      style={{
+                        background: item.isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)",
+                      }}
+                    />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-8 shrink-0 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
+                        <FileText className="size-3.5" style={{ color: "var(--cf-orange)" }} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="cf-display truncate text-[14px] leading-tight">
+                          {item.title}
+                        </h4>
+                        <p className="mt-0.5 text-[10px] text-(--cf-ink-soft)">
+                          {item.isPublished ? "Published" : "Draft"}
+                          <span className="mx-1">·</span>
+                          {new Date(item.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </p>
                       </div>
-                    );
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="var(--cf-orange)"
-                  strokeWidth={2.5}
-                  fill="url(#cf-trend-gradient)"
-                  activeDot={{
-                    r: 4,
-                    stroke: "var(--cf-orange)",
-                    strokeWidth: 2,
-                    fill: "var(--cf-cream)",
-                  }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 pr-1 font-mono text-[11px] text-(--cf-ink-soft)">
+                      <span className="tabular-nums text-(--cf-ink) font-bold">
+                        {item.submissionsCount}
+                      </span>
+                      <span>resp.</span>
+                    </div>
+                  </Link>
+                ))
+              )}
 
-      {/* ───── recent forms ───── */}
-      <div className="space-y-4">
-        <div className="flex items-end justify-between gap-4 border-b border-(--cf-line-strong) pb-3">
-          <div>
-            <p className="cf-meta">Recent</p>
-            <h3 className="cf-display mt-2 text-[22px] leading-tight sm:text-[28px]">
-              Forms
-              <span style={{ color: "var(--cf-orange)" }}>.</span>
-            </h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="cf-meta hidden sm:inline">{stats?.recentForms.length ?? 0} shown</span>
-            <Link
-              href="/dashboard/sketches"
-              className="group inline-flex items-center gap-1 text-[13px] font-medium transition-opacity hover:opacity-70"
-            >
-              View all
-              <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {isLoading ? (
-            <div className="cf-meta py-8 text-center md:col-span-2">Loading</div>
-          ) : !stats || stats.recentForms.length === 0 ? (
-            <div className="cf-panel flex flex-col items-center px-6 py-12 text-center md:col-span-2">
-              <p className="cf-display text-[24px] leading-none sm:text-[32px]">No forms yet.</p>
-              <p className="mt-3 max-w-sm text-[13.5px] leading-relaxed text-(--cf-ink-soft)">
-                Your workspace is empty. Create your first form and it will show up here.
-              </p>
-            </div>
-          ) : (
-            stats.recentForms.map((item) => (
-              <Link
-                key={item.id}
-                href={`/dashboard/sketches/${item.id}`}
-                className="cf-panel cf-raised cf-press group relative flex items-center justify-between gap-4 p-4"
+              <button
+                onClick={openCreateFormModal}
+                className="group flex h-12 cursor-pointer items-center justify-center border border-dashed border-(--cf-line-strong) bg-(--cf-cream-2) transition-colors hover:bg-white"
               >
-                <span
-                  aria-hidden
-                  className="absolute top-0 right-0 h-3.5 w-3.5 border-b border-l border-(--cf-line-strong)"
-                  style={{
-                    background: item.isPublished ? "var(--cf-orange)" : "var(--cf-ink-soft)",
-                  }}
-                />
-                <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center border border-(--cf-line-strong) bg-(--cf-cream)">
-                    <FileText className="size-4" style={{ color: "var(--cf-orange)" }} />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="cf-display truncate text-[17px] leading-tight">{item.title}</h4>
-                    <p className="mt-1 text-[12px] text-(--cf-ink-soft)">
-                      {item.isPublished ? "Published" : "Draft"}
-                      <span className="mx-1.5">·</span>
-                      {new Date(item.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 pr-2 font-mono text-[12px] text-(--cf-ink-soft)">
-                  <span className="tabular-nums text-(--cf-ink)">{item.submissionsCount}</span>
-                  <span>resp.</span>
-                </div>
-              </Link>
-            ))
-          )}
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-(--cf-ink-soft) transition-colors group-hover:text-(--cf-ink)">
+                  <Plus className="size-3.5" />
+                  Start a new form
+                </span>
+              </button>
+            </div>
+          </div>
 
-          <button
-            onClick={openCreateFormModal}
-            className="group flex min-h-22 cursor-pointer items-center justify-center border border-dashed border-(--cf-line-strong) p-5 transition-colors hover:bg-(--cf-cream-2)"
+          <Link
+            href="/dashboard/sketches"
+            className="w-full py-2 border border-(--cf-line-strong) font-mono text-[10px] font-bold uppercase tracking-wider hover:bg-(--cf-cream-2) transition-colors text-center mt-4 block bg-white"
           >
-            <span className="inline-flex items-center gap-2 text-[13px] font-medium text-(--cf-ink-soft) transition-colors group-hover:text-(--cf-ink)">
-              <Plus className="size-4" />
-              Start a new form
-            </span>
-          </button>
+            View all forms
+          </Link>
         </div>
       </div>
     </div>

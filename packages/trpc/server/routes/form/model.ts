@@ -97,6 +97,8 @@ export {
   transferOwnershipOutput as transferOwnershipOutputModel,
   updateFormSettingsInput as updateFormSettingsInputModel,
   updateFormSettingsOutput as updateFormSettingsOutputModel,
+  archiveFormOutput as archiveFormOutputModel,
+  unarchiveFormOutput as unarchiveFormOutputModel,
 } from "@repo/services/form/model";
 
 export {
