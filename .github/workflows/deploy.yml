@@ -23,9 +23,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Prepare production build
+        run: |
+          mkdir -p dist/api dist/db
+          pnpm --filter @repo/api deploy --prod dist/api
+          pnpm --filter @repo/database deploy --prod dist/db
+
       - name: Create release zip
         run: |
-          zip -r release.zip . -x "node_modules/*" ".git/*" ".next/*" "apps/web/.next/*" "apps/api/dist/*" "stress-tests/*"
+          zip -r release.zip \
+            docker-compose.prod.yml \
+            docker/Dockerfile.api \
+            docker/Dockerfile.web \
+            dist/ \
+            apps/web/public \
+            apps/web/.next/standalone \
+            apps/web/.next/static
 
       - name: Write .env from secret
         env:
