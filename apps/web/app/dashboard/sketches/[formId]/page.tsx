@@ -127,8 +127,12 @@ function BuilderCanvas() {
   } = useBuilderState();
 
   const searchParams = useSearchParams();
-  const activeTabParam = searchParams?.get("tab") || "questions";
-  const activeTab = (activeTabParam === "responses" || activeTabParam === "summary") ? "responses" : "questions";
+  const isArchived = !!form?.isArchived;
+  const activeTabParam = searchParams?.get("tab") || (isArchived ? "responses" : "questions");
+  const activeTab =
+    isArchived || activeTabParam === "responses" || activeTabParam === "summary"
+      ? "responses"
+      : "questions";
 
   if (formLoading || fieldsLoading) {
     return (
@@ -277,10 +281,11 @@ function BuilderCanvas() {
                       onClick={() => setIsLocked(!isLocked)}
                       aria-pressed={isLocked}
                       title={isLocked ? "Unlock canvas" : "Lock canvas"}
-                      className={`inline-flex h-5.5 shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${isLocked
-                        ? "border-(--cf-orange) text-(--cf-orange)"
-                        : "border-(--cf-line-strong) text-(--cf-ink-soft) hover:text-(--cf-ink)"
-                        }`}
+                      className={`inline-flex h-5.5 shrink-0 cursor-pointer items-center gap-1.5 border px-2 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                        isLocked
+                          ? "border-(--cf-orange) text-(--cf-orange)"
+                          : "border-(--cf-line-strong) text-(--cf-ink-soft) hover:text-(--cf-ink)"
+                      }`}
                     >
                       {isLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
                       {isLocked ? "Locked" : "Unlocked"}
@@ -380,7 +385,10 @@ function BuilderCanvas() {
             </div>
 
             <div className="flex flex-1 flex-col overflow-hidden bg-(--cf-cream) lg:hidden">
-              <div className="shrink-0 border-b" style={{ borderBottomColor: "var(--cf-line-strong)" }}>
+              <div
+                className="shrink-0 border-b"
+                style={{ borderBottomColor: "var(--cf-line-strong)" }}
+              >
                 <button
                   type="button"
                   onClick={() => setMobileSegmentsOpen((prev) => !prev)}
@@ -397,7 +405,8 @@ function BuilderCanvas() {
                   <span className="inline-flex items-center gap-2">
                     {selectedSegmentId && (
                       <span className="max-w-32 truncate font-mono text-[10px] tracking-wider text-(--cf-orange) uppercase">
-                        {visibleSegments.find((s) => s.id === selectedSegmentId)?.title ?? "filtered"}
+                        {visibleSegments.find((s) => s.id === selectedSegmentId)?.title ??
+                          "filtered"}
                       </span>
                     )}
                     {mobileSegmentsOpen ? (
@@ -467,9 +476,9 @@ function BuilderCanvas() {
               onEditBranching={
                 selectedField
                   ? () => {
-                    handleCloseMobileEditor();
-                    setBranchingFieldId(selectedField.id);
-                  }
+                      handleCloseMobileEditor();
+                      setBranchingFieldId(selectedField.id);
+                    }
                   : undefined
               }
               isLastInSegment={isSelectedFieldLastInSegment}
@@ -483,8 +492,12 @@ function BuilderCanvas() {
           segments={visibleSegments}
           submissionsCount={form?.submissionsCount ?? 0}
           formTitle={form.title}
-          onNavigateTab={(tab) => router.replace(`/dashboard/sketches/${formId}?tab=${tab}`, { scroll: false })}
+          onNavigateTab={(tab) =>
+            router.replace(`/dashboard/sketches/${formId}?tab=${tab}`, { scroll: false })
+          }
           onShare={() => setShowShareDialog(true)}
+          isArchived={isArchived}
+          role={form.role}
         />
       ) : null}
 

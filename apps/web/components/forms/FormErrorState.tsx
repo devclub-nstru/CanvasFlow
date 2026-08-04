@@ -12,7 +12,8 @@ interface FormErrorStateProps {
     | "closed"
     | "expired"
     | "sign-in-required"
-    | "domain-not-allowed";
+    | "domain-not-allowed"
+    | "archived";
   allowedDomains?: string[];
   signInHref?: string;
   onRespondAgain?: () => void;
@@ -57,6 +58,11 @@ const STATES: Record<
     eyebrow: "Not found",
     title: "We can't find this form",
     body: "The form may have been deleted, or the link is incorrect. Double-check the URL.",
+  },
+  archived: {
+    eyebrow: "Archived",
+    title: "This form is archived",
+    body: "The author has archived this form. It is no longer accepting responses and cannot be visited.",
   },
 };
 

@@ -30,6 +30,8 @@ import {
 import { useGetSubmissions } from "~/hooks/api/analytics";
 import { getFieldOptionsArray } from "~/components/builder/FormFieldNode";
 import { apiOrigin, downloadUrlFor } from "~/lib/upload";
+import { useUnarchiveForm } from "~/hooks/api/form";
+import { toast } from "sonner";
 
 // Helper to resolve absolute API URL if path is relative
 const resolveFileUrl = (urlVal: string | null | undefined): string => {
@@ -54,7 +56,10 @@ const FileUploadCell = ({ val }: { val: any }) => {
     <span className="flex flex-col gap-1.5">
       {items.map((item, idx) => {
         const url = typeof item === "string" ? item : item?.url;
-        const name = typeof item === "string" ? item.split("/").pop() : item?.originalName || item?.name || "Uploaded File";
+        const name =
+          typeof item === "string"
+            ? item.split("/").pop()
+            : item?.originalName || item?.name || "Uploaded File";
         const fileUrl = resolveFileUrl(url);
         const dlUrl = downloadUrlFor(fileUrl, name);
 
@@ -115,6 +120,8 @@ interface ResponsesViewProps {
   formTitle?: string;
   onNavigateTab?: (tab: "questions" | "responses") => void;
   onShare?: () => void;
+  isArchived?: boolean;
+  role?: "owner" | "editor" | "viewer";
 }
 
 export function ResponsesView({
@@ -123,8 +130,11 @@ export function ResponsesView({
   formTitle = "Onboarding Survey",
   onNavigateTab,
   onShare,
+  isArchived = false,
+  role,
 }: ResponsesViewProps) {
   const { submissions, isLoading } = useGetSubmissions(formId);
+  const { unarchiveFormAsync, isPending: isUnarchiving } = useUnarchiveForm();
   const [subTab, setSubTab] = useState<"summary" | "question" | "responses">("summary");
 
   // Selected question for the Question sub-tab
@@ -234,11 +244,14 @@ export function ResponsesView({
           });
         } else if (field.type === "TOGGLE") {
           answers.forEach((ans) => {
-            const label = ans.value === true || String(ans.value).toLowerCase() === "true" ? "Yes" : "No";
+            const label =
+              ans.value === true || String(ans.value).toLowerCase() === "true" ? "Yes" : "No";
             counts[label] = (counts[label] || 0) + 1;
           });
         } else if (field.type === "RATING") {
-          [1, 2, 3, 4, 5].forEach((num) => { counts[String(num)] = 0; });
+          [1, 2, 3, 4, 5].forEach((num) => {
+            counts[String(num)] = 0;
+          });
           answers.forEach((ans) => {
             const label = String(ans.value);
             if (counts[label] !== undefined) counts[label]++;
@@ -312,27 +325,60 @@ export function ResponsesView({
             <span className="text-[13px] text-(--cf-ink-soft) font-medium">CanvasFlow</span>
             <span className="text-[13px] text-(--cf-ink-soft) font-medium">·</span>
             <span className="text-[16px] sm:text-[18px] font-bold tracking-tight">{formTitle}</span>
+            {isArchived && (
+              <span className="border border-red-500 bg-red-50 text-red-500 px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase">
+                Archived
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onNavigateTab?.("questions")}
-            className="cf-btn-outline h-8 px-3 text-[12px] font-medium inline-flex items-center gap-1.5"
-          >
-            <Edit3 className="size-3.5" />
-            Edit
-          </button>
-          <button
-            onClick={onShare}
-            className="cf-btn h-8 px-4 text-[12px] font-medium bg-(--cf-ink) text-(--cf-cream) hover:bg-black transition-colors"
-          >
-            <Share2 className="size-3.5 inline mr-1.5" />
-            Share
-          </button>
+          {!isArchived && (
+            <button
+              onClick={() => onNavigateTab?.("questions")}
+              className="cf-btn-outline h-8 px-3 text-[12px] font-medium inline-flex items-center gap-1.5"
+            >
+              <Edit3 className="size-3.5" />
+              Edit
+            </button>
+          )}
+          {!isArchived && (
+            <button
+              onClick={onShare}
+              className="cf-btn h-8 px-4 text-[12px] font-medium bg-(--cf-ink) text-(--cf-cream) hover:bg-black transition-colors"
+            >
+              <Share2 className="size-3.5 inline mr-1.5" />
+              Share
+            </button>
+          )}
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto w-full px-6 py-8 space-y-6 pb-24">
+        {isArchived && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-[13.5px]">
+              <span className="font-bold">This form is archived.</span> It is not accepting new
+              submissions and editing is disabled.
+            </div>
+            {role === "owner" && (
+              <button
+                onClick={async () => {
+                  try {
+                    await unarchiveFormAsync({ id: formId });
+                    toast.success("Form unarchived");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed to unarchive");
+                  }
+                }}
+                disabled={isUnarchiving}
+                className="cf-btn h-8 px-4 text-[12px] font-medium bg-red-600 hover:bg-red-700 text-white transition-colors shrink-0 disabled:opacity-50"
+              >
+                {isUnarchiving ? "Restoring..." : "Unarchive"}
+              </button>
+            )}
+          </div>
+        )}
         {/* ── Main Title Area ── */}
         <div>
           <h1 className="cf-display text-[30px] font-bold leading-tight text-(--cf-ink) uppercase">
@@ -421,7 +467,10 @@ export function ResponsesView({
             ) : (
               <div className="space-y-6">
                 {questionSummaries.map(({ field, answers, chartData, isChoice, ratingAvg }) => (
-                  <div key={field.id} className="bg-white border border-(--cf-line-strong) p-5 sm:p-6 cf-panel cf-raised space-y-4">
+                  <div
+                    key={field.id}
+                    className="bg-white border border-(--cf-line-strong) p-5 sm:p-6 cf-panel cf-raised space-y-4"
+                  >
                     <div className="flex items-start justify-between gap-3 border-b border-(--cf-line) pb-3 mb-2">
                       <div>
                         <h4 className="text-[15px] font-bold text-(--cf-ink) leading-snug">
@@ -437,7 +486,9 @@ export function ResponsesView({
                     </div>
 
                     {answers.length === 0 ? (
-                      <p className="text-[12px] italic text-(--cf-ink-soft) py-2">No answers submitted yet for this field.</p>
+                      <p className="text-[12px] italic text-(--cf-ink-soft) py-2">
+                        No answers submitted yet for this field.
+                      </p>
                     ) : isChoice ? (
                       <div className="space-y-4">
                         {field.type === "RATING" && (
@@ -464,7 +515,10 @@ export function ResponsesView({
                                     nameKey="name"
                                   >
                                     {chartData.map((_, index) => (
-                                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                      <Cell
+                                        key={`cell-${index}`}
+                                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                      />
                                     ))}
                                   </Pie>
                                   <Tooltip formatter={(val) => `${val} response(s)`} />
@@ -473,17 +527,34 @@ export function ResponsesView({
                             </div>
                             <div className="flex flex-col gap-1.5 max-h-44 overflow-y-auto w-full max-w-xs">
                               {chartData.map((d, index) => {
-                                const pct = answers.length > 0 ? ((d.count / answers.length) * 100).toFixed(1) : 0;
+                                const pct =
+                                  answers.length > 0
+                                    ? ((d.count / answers.length) * 100).toFixed(1)
+                                    : 0;
                                 return (
-                                  <div key={d.name} className="flex items-center justify-between text-[11px] font-mono">
+                                  <div
+                                    key={d.name}
+                                    className="flex items-center justify-between text-[11px] font-mono"
+                                  >
                                     <span className="flex items-center gap-2 min-w-0">
                                       <span
                                         className="size-2.5 border shrink-0"
-                                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length], borderColor: "var(--cf-line-strong)" }}
+                                        style={{
+                                          backgroundColor:
+                                            CHART_COLORS[index % CHART_COLORS.length],
+                                          borderColor: "var(--cf-line-strong)",
+                                        }}
                                       />
-                                      <span className="truncate max-w-32 font-medium text-(--cf-ink)" title={d.name}>{d.name}</span>
+                                      <span
+                                        className="truncate max-w-32 font-medium text-(--cf-ink)"
+                                        title={d.name}
+                                      >
+                                        {d.name}
+                                      </span>
                                     </span>
-                                    <span className="text-(--cf-ink-soft) shrink-0">{d.count} ({pct}%)</span>
+                                    <span className="text-(--cf-ink-soft) shrink-0">
+                                      {d.count} ({pct}%)
+                                    </span>
                                   </div>
                                 );
                               })}
@@ -492,13 +563,32 @@ export function ResponsesView({
                         ) : (
                           <div className="h-56 w-full pt-2">
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
-                                <XAxis type="number" stroke="var(--cf-line-strong)" fontSize={10} fontFamily="monospace" />
-                                <YAxis type="category" dataKey="name" stroke="var(--cf-line-strong)" fontSize={10} fontFamily="monospace" width={110} />
+                              <BarChart
+                                data={chartData}
+                                layout="vertical"
+                                margin={{ left: 10, right: 10, top: 5, bottom: 5 }}
+                              >
+                                <XAxis
+                                  type="number"
+                                  stroke="var(--cf-line-strong)"
+                                  fontSize={10}
+                                  fontFamily="monospace"
+                                />
+                                <YAxis
+                                  type="category"
+                                  dataKey="name"
+                                  stroke="var(--cf-line-strong)"
+                                  fontSize={10}
+                                  fontFamily="monospace"
+                                  width={110}
+                                />
                                 <Tooltip formatter={(val) => `${val} response(s)`} />
                                 <Bar dataKey="count" fill="var(--cf-orange)" radius={[0, 4, 4, 0]}>
                                   {chartData.map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                    />
                                   ))}
                                 </Bar>
                               </BarChart>
@@ -509,7 +599,10 @@ export function ResponsesView({
                     ) : (
                       <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                         {answers.map((ans, aIdx) => (
-                          <div key={aIdx} className="bg-(--cf-cream-2) border border-(--cf-line) p-3">
+                          <div
+                            key={aIdx}
+                            className="bg-(--cf-cream-2) border border-(--cf-line) p-3"
+                          >
                             <p className="text-[13px] whitespace-pre-wrap leading-relaxed text-(--cf-ink)">
                               {field.type === "FILE_UPLOAD" ? (
                                 <FileUploadCell val={ans.value} />
@@ -536,7 +629,9 @@ export function ResponsesView({
         {subTab === "question" && (
           <div className="space-y-4">
             {fields.length === 0 ? (
-              <p className="text-[13px] text-(--cf-ink-soft) text-center py-8">No fields in this form.</p>
+              <p className="text-[13px] text-(--cf-ink-soft) text-center py-8">
+                No fields in this form.
+              </p>
             ) : (
               <>
                 {/* Selector */}
@@ -570,7 +665,9 @@ export function ResponsesView({
                         const idx = fields.findIndex((f) => f.id === selectedFieldId);
                         if (idx < fields.length - 1) setSelectedFieldId(fields[idx + 1].id);
                       }}
-                      disabled={fields.findIndex((f) => f.id === selectedFieldId) >= fields.length - 1}
+                      disabled={
+                        fields.findIndex((f) => f.id === selectedFieldId) >= fields.length - 1
+                      }
                       className="cf-btn-outline size-8.5 flex items-center justify-center disabled:opacity-30"
                     >
                       <ChevronRight className="size-4" />
@@ -586,16 +683,22 @@ export function ResponsesView({
                         {selectedQuestionSummary.field.label || "Untitled Question"}
                       </h3>
                       <p className="text-[11px] text-(--cf-ink-soft) mt-1 font-mono">
-                        {selectedQuestionSummary.answers.length} {selectedQuestionSummary.answers.length === 1 ? "response" : "responses"}
+                        {selectedQuestionSummary.answers.length}{" "}
+                        {selectedQuestionSummary.answers.length === 1 ? "response" : "responses"}
                       </p>
                     </div>
 
                     <div className="border-t border-(--cf-line) pt-4 space-y-3">
                       {selectedQuestionSummary.answers.length === 0 ? (
-                        <p className="text-[12px] italic text-(--cf-ink-soft) py-2">No answers submitted for this question.</p>
+                        <p className="text-[12px] italic text-(--cf-ink-soft) py-2">
+                          No answers submitted for this question.
+                        </p>
                       ) : (
                         selectedQuestionSummary.answers.map((ans, idx) => (
-                          <div key={idx} className="bg-(--cf-cream) border border-(--cf-line) p-4 flex flex-col gap-2">
+                          <div
+                            key={idx}
+                            className="bg-(--cf-cream) border border-(--cf-line) p-4 flex flex-col gap-2"
+                          >
                             <p className="text-[13.5px] leading-relaxed text-(--cf-ink) font-medium">
                               {selectedQuestionSummary.field.type === "FILE_UPLOAD" ? (
                                 <FileUploadCell val={ans.value} />
@@ -647,7 +750,9 @@ export function ResponsesView({
                         {sub.respondentEmail || "Anonymous"}
                       </p>
                       <p className="text-[11.5px] font-mono text-(--cf-ink-soft) mt-1 flex items-center gap-3">
-                        <span className="flex items-center gap-1"><Clock className="size-3" /> {new Date(sub.createdAt).toLocaleString()}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3" /> {new Date(sub.createdAt).toLocaleString()}
+                        </span>
                         <span>·</span>
                         <span className="capitalize">{sub.deviceType || "Desktop"}</span>
                       </p>
@@ -678,7 +783,8 @@ export function ResponsesView({
                   <span style={{ color: "var(--cf-orange)" }}>.</span>
                 </h3>
                 <p className="text-[11px] font-mono text-(--cf-ink-soft) mt-1">
-                  {viewingSub.respondentEmail || "Anonymous"} · {new Date(viewingSub.createdAt).toLocaleString()}
+                  {viewingSub.respondentEmail || "Anonymous"} ·{" "}
+                  {new Date(viewingSub.createdAt).toLocaleString()}
                 </p>
               </div>
               <button
@@ -694,7 +800,9 @@ export function ResponsesView({
               {fields.map((field) => {
                 const valObj = viewingSub.values?.find((v: any) => v.formFieldId === field.id);
                 const val = valObj?.value;
-                let display: React.ReactNode = <span className="italic text-(--cf-ink-soft)">No answer submitted</span>;
+                let display: React.ReactNode = (
+                  <span className="italic text-(--cf-ink-soft)">No answer submitted</span>
+                );
 
                 if (val !== undefined && val !== null && val !== "") {
                   if (field.type === "FILE_UPLOAD") {
@@ -707,11 +815,16 @@ export function ResponsesView({
                 }
 
                 return (
-                  <div key={field.id} className="bg-(--cf-cream) border border-(--cf-line-strong) p-4">
+                  <div
+                    key={field.id}
+                    className="bg-(--cf-cream) border border-(--cf-line-strong) p-4"
+                  >
                     <p className="text-[10px] font-mono text-(--cf-ink-soft) uppercase tracking-wider mb-1.5">
                       {field.label || "Untitled Question"}
                     </p>
-                    <p className="text-[13.5px] text-(--cf-ink) font-medium leading-relaxed">{display}</p>
+                    <p className="text-[13.5px] text-(--cf-ink) font-medium leading-relaxed">
+                      {display}
+                    </p>
                   </div>
                 );
               })}

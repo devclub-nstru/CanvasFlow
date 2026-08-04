@@ -118,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <VerticalScale className="absolute inset-y-0 right-0" />
         </div>
 
-        <main className="relative z-10 mx-auto w-full max-w-350 px-4 py-10 sm:px-8 sm:py-14 lg:py-20">
+        <main className="relative z-20 mx-auto w-full max-w-350 px-4 py-10 sm:px-8 sm:py-14 lg:py-20">
           {children}
         </main>
 

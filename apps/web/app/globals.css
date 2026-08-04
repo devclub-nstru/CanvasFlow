@@ -1068,3 +1068,11 @@
     transition: none;
   }
 }
+
+body:has(.cf-scrim) {
+  overflow: hidden !important;
+}
+
+body:has(.cf-scrim) nav {
+  display: none !important;
+}

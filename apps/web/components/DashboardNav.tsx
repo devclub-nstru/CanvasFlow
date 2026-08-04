@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -22,6 +22,20 @@ export default function DashboardNav() {
   const { userInfo } = useGetLoggedInUserInfo();
   const { me } = useGetMe();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasScrim, setHasScrim] = useState(false);
+
+  useEffect(() => {
+    const checkScrim = () => {
+      setHasScrim(!!document.querySelector(".cf-scrim"));
+    };
+
+    checkScrim();
+
+    const observer = new MutationObserver(checkScrim);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
 
   const fullName = me?.name || userInfo?.fullName || "";
   const email = me?.email || userInfo?.email || "";
@@ -31,6 +45,8 @@ export default function DashboardNav() {
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+
+  if (hasScrim) return null;
 
   return (
     <>

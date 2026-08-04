@@ -356,6 +356,70 @@ export const usePublishForm = () => {
   };
 };
 
+export const useArchiveForm = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: archiveFormAsync,
+    mutate: archiveForm,
+    error,
+    failureCount,
+    isError,
+    isIdle,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.archiveForm.useMutation({
+    onSuccess: async () => {
+      await utils.form.invalidate();
+    },
+  });
+
+  return {
+    archiveFormAsync,
+    archiveForm,
+    error,
+    isError,
+    isIdle,
+    isPending,
+    isSuccess,
+    status,
+    failureCount,
+  };
+};
+
+export const useUnarchiveForm = () => {
+  const utils = trpc.useUtils();
+
+  const {
+    mutateAsync: unarchiveFormAsync,
+    mutate: unarchiveForm,
+    error,
+    failureCount,
+    isError,
+    isIdle,
+    isPending,
+    isSuccess,
+    status,
+  } = trpc.form.unarchiveForm.useMutation({
+    onSuccess: async () => {
+      await utils.form.invalidate();
+    },
+  });
+
+  return {
+    unarchiveFormAsync,
+    unarchiveForm,
+    error,
+    isError,
+    isIdle,
+    isPending,
+    isSuccess,
+    status,
+    failureCount,
+  };
+};
+
 export const useSubmitForm = () => {
   const utils = trpc.useUtils();
 

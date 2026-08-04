@@ -39,6 +39,9 @@ class FormSubmissionService {
     }
 
     const form = bundle.form;
+    if (form.isArchived) {
+      throw new Error("Form is archived");
+    }
     if (!form.isPublished) {
       throw new Error("Form is not published yet");
     }

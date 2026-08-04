@@ -259,7 +259,7 @@ export function FormSettingsDialog({
 
   return (
     <div className="cf-scrim z-300">
-      <div className="cf-dialog max-h-[88vh] max-w-lg">
+      <div className="cf-dialog max-h-[88vh] max-w-3xl w-full">
         <div className="cf-dialog-bar">
           <span className="min-w-0 truncate">Settings · {form.title}</span>
           <div className="flex shrink-0 items-center gap-2">
@@ -285,283 +285,291 @@ export function FormSettingsDialog({
         </div>
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="cf-dialog-body space-y-5">
-            <div>
-              <label htmlFor="cf-set-title" className="cf-meta mb-2 block">
-                Form title
-              </label>
-              <input
-                id="cf-set-title"
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="cf-input px-3 py-2 text-[13px]"
-                placeholder="My form"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="cf-set-desc" className="cf-meta mb-2 block">
-                Description
-              </label>
-              <textarea
-                id="cf-set-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="cf-input resize-none px-3 py-2 text-[13px]"
-                placeholder="A short note for respondents..."
-              />
-            </div>
-
-            <div>
-              <p className="cf-meta mb-2">Layout</p>
-              <div className="space-y-1.5">
-                {LAYOUT_CHOICES.map((choice) => {
-                  const on = questionLayout === choice.value;
-                  const blocked = choice.value === "ALL_AT_ONCE" && !onePageAllowed;
-
-                  return (
-                    <button
-                      key={choice.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      aria-disabled={blocked}
-                      disabled={blocked}
-                      onClick={() => setQuestionLayout(choice.value)}
-                      className={`flex w-full items-start gap-2.5 border px-3 py-2.5 text-left transition-colors ${
-                        blocked ? "cursor-not-allowed opacity-55" : "cursor-pointer"
-                      }`}
-                      style={{
-                        borderColor: on ? "var(--cf-orange)" : "var(--cf-line-strong)",
-                        background: on ? "var(--cf-cream)" : "var(--cf-cream-2)",
-                        boxShadow: on && !blocked ? "3px 3px 0 0 var(--cf-orange)" : undefined,
-                      }}
-                    >
-                      <span
-                        aria-hidden
-                        className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center border"
-                        style={{
-                          borderColor: on ? "var(--cf-orange)" : "var(--cf-line-strong)",
-                          background: on ? "var(--cf-orange)" : "#fff",
-                        }}
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-[13px] font-medium text-(--cf-ink)">
-                          {choice.title}
-                          {choice.value === "AUTO" && (
-                            <span className="ml-1.5 font-mono text-[9.5px] tracking-wider text-(--cf-ink-soft) uppercase">
-                              default
-                            </span>
-                          )}
-                          {blocked && (
-                            <span className="ml-1.5 font-mono text-[9.5px] tracking-wider text-(--cf-orange) uppercase">
-                              unavailable
-                            </span>
-                          )}
-                        </span>
-                        <span className="block text-[11.5px] leading-relaxed text-(--cf-ink-soft)">
-                          {blocked ? onePageBlockedReason : choice.hint}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {questionLayout === "AUTO" && (
-                <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-ink-soft)">
-                  {segmentCount > 1
-                    ? `This form has ${segmentCount} segments, so respondents get one segment per page.`
-                    : "This form has one segment, so respondents get one question per page."}
-                </p>
-              )}
-              {questionLayout === "ALL_AT_ONCE" && !onePageAllowed && (
-                <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-orange)">
-                  Saved as one page, but not in use: {onePageBlockedReason} Respondents currently
-                  get {segmentCount > 1 ? "one segment per page" : "one question per page"}.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <p className="cf-meta mb-2">Availability</p>
-              <div className="space-y-2">
-                <Row title="Accepting submissions" hint="Manually open or close this form">
-                  <Toggle on={isOpen} onChange={setIsOpen} label="Accepting submissions" />
-                </Row>
-
-                <div className="space-y-2">
-                  <Row
-                    icon={Calendar}
-                    title="Expiration date"
-                    hint="Stop accepting after a given time"
-                  >
-                    <Toggle
-                      on={enableExpiration}
-                      onChange={setEnableExpiration}
-                      label="Set an expiration date"
-                    />
-                  </Row>
-                  {enableExpiration && (
-                    <input
-                      type="datetime-local"
-                      required
-                      value={expiresAt}
-                      onChange={(e) => setExpiresAt(e.target.value)}
-                      className="cf-input px-3 py-2 text-[13px]"
-                    />
-                  )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              {/* Left Column */}
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="cf-set-title" className="cf-meta mb-2 block">
+                    Form title
+                  </label>
+                  <input
+                    id="cf-set-title"
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="cf-input px-3 py-2 text-[13px]"
+                    placeholder="My form"
+                  />
                 </div>
-              </div>
-            </div>
 
-            <div>
-              <p className="cf-meta mb-2">Who can respond</p>
-              <div className="space-y-2">
-                <Row
-                  icon={Lock}
-                  title="Require sign-in"
-                  hint={
-                    signInImplied
-                      ? `Held on by ${impliedBy.join(" and ")}.`
-                      : "Respondents sign in to a CanvasFlow account before answering."
-                  }
-                >
-                  <Toggle
-                    on={signInEffective}
-                    onChange={setRequireSignIn}
-                    label="Require sign-in"
-                    disabled={signInImplied}
+                <div>
+                  <label htmlFor="cf-set-desc" className="cf-meta mb-2 block">
+                    Description
+                  </label>
+                  <textarea
+                    id="cf-set-desc"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    className="cf-input resize-none px-3 py-2 text-[13px]"
+                    placeholder="A short note for respondents..."
                   />
-                </Row>
+                </div>
 
-                <Row
-                  icon={Mail}
-                  title="Record respondent email"
-                  hint="Saves each respondent's account email with their response. Turns on sign-in."
-                >
-                  <Toggle
-                    on={collectRespondentEmail}
-                    onChange={setCollectRespondentEmail}
-                    label="Record respondent email"
-                  />
-                </Row>
+                <div>
+                  <p className="cf-meta mb-2">Layout</p>
+                  <div className="space-y-1.5">
+                    {LAYOUT_CHOICES.map((choice) => {
+                      const on = questionLayout === choice.value;
+                      const blocked = choice.value === "ALL_AT_ONCE" && !onePageAllowed;
 
-                <Row
-                  icon={UserCheck}
-                  title="One response per person"
-                  hint="Off by default, so people can answer more than once. Turns on sign-in."
-                >
-                  <Toggle
-                    on={oneResponsePerRespondent}
-                    onChange={setOneResponsePerRespondent}
-                    label="One response per person"
-                  />
-                </Row>
-
-                <div className="space-y-2">
-                  <Row
-                    icon={AtSign}
-                    title="Restrict to an organisation"
-                    hint="Only accounts on these email domains can answer. Turns on sign-in."
-                  >
-                    <Toggle
-                      on={restrictDomains}
-                      onChange={setRestrictDomains}
-                      label="Restrict to an organisation"
-                    />
-                  </Row>
-
-                  {restrictDomains && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={domainInput}
-                          onChange={(e) => setDomainInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === ",") {
-                              e.preventDefault();
-                              addDomain();
-                            }
-                          }}
-                          className="cf-input px-3 py-2 text-[13px]"
-                          placeholder="rishihood.edu.in"
-                          aria-label="Add an email domain"
-                        />
+                      return (
                         <button
+                          key={choice.value}
                           type="button"
-                          onClick={addDomain}
-                          className="cf-btn-outline h-auto shrink-0 px-3 text-[12px]"
+                          role="radio"
+                          aria-checked={on}
+                          aria-disabled={blocked}
+                          disabled={blocked}
+                          onClick={() => setQuestionLayout(choice.value)}
+                          className={`flex w-full items-start gap-2.5 border px-3 py-2.5 text-left transition-colors ${
+                            blocked ? "cursor-not-allowed opacity-55" : "cursor-pointer"
+                          }`}
+                          style={{
+                            borderColor: on ? "var(--cf-orange)" : "var(--cf-line-strong)",
+                            background: on ? "var(--cf-cream)" : "var(--cf-cream-2)",
+                            boxShadow: on && !blocked ? "3px 3px 0 0 var(--cf-orange)" : undefined,
+                          }}
                         >
-                          <Plus className="size-3.5" />
-                          Add
+                          <span
+                            aria-hidden
+                            className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center border"
+                            style={{
+                              borderColor: on ? "var(--cf-orange)" : "var(--cf-line-strong)",
+                              background: on ? "var(--cf-orange)" : "#fff",
+                            }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-[13px] font-medium text-(--cf-ink)">
+                              {choice.title}
+                              {choice.value === "AUTO" && (
+                                <span className="ml-1.5 font-mono text-[9.5px] tracking-wider text-(--cf-ink-soft) uppercase">
+                                  default
+                                </span>
+                              )}
+                              {blocked && (
+                                <span className="ml-1.5 font-mono text-[9.5px] tracking-wider text-(--cf-orange) uppercase">
+                                  unavailable
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-[11.5px] leading-relaxed text-(--cf-ink-soft)">
+                              {blocked ? onePageBlockedReason : choice.hint}
+                            </span>
+                          </span>
                         </button>
-                      </div>
-
-                      {domains.length > 0 ? (
-                        <ul className="flex flex-wrap gap-1.5">
-                          {domains.map((domain) => (
-                            <li key={domain}>
-                              <span
-                                className="inline-flex items-center gap-1 border px-2 py-1 font-mono text-[11px]"
-                                style={{
-                                  borderColor: "var(--cf-line-strong)",
-                                  background: "var(--cf-cream)",
-                                }}
-                              >
-                                @{domain}
-                                <button
-                                  type="button"
-                                  onClick={() => removeDomain(domain)}
-                                  aria-label={`Remove ${domain}`}
-                                  className="cursor-pointer text-(--cf-ink-soft) hover:text-(--cf-ink)"
-                                >
-                                  <X className="size-3" />
-                                </button>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-[11px] text-(--cf-orange)">
-                          Add at least one domain, or turn the restriction off.
-                        </p>
-                      )}
-                      <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">
-                        Subdomains are included.
-                      </p>
-                    </div>
+                      );
+                    })}
+                  </div>
+                  {questionLayout === "AUTO" && (
+                    <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-ink-soft)">
+                      {segmentCount > 1
+                        ? `This form has ${segmentCount} segments, so respondents get one segment per page.`
+                        : "This form has one segment, so respondents get one question per page."}
+                    </p>
+                  )}
+                  {questionLayout === "ALL_AT_ONCE" && !onePageAllowed && (
+                    <p className="mt-2 text-[11.5px] leading-relaxed text-(--cf-orange)">
+                      Saved as one page, but not in use: {onePageBlockedReason} Respondents
+                      currently get{" "}
+                      {segmentCount > 1 ? "one segment per page" : "one question per page"}.
+                    </p>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* ── After submitting ── */}
-            <div>
-              <label htmlFor="cf-set-thanks" className="cf-meta mb-2 block">
-                Thank-you note
-              </label>
-              <textarea
-                id="cf-set-thanks"
-                value={thankYouMessage}
-                onChange={(e) => setThankYouMessage(e.target.value)}
-                rows={3}
-                maxLength={MAX_THANK_YOU}
-                className="cf-input resize-none px-3 py-2 text-[13px]"
-                placeholder="We'll be in touch by Friday..."
-              />
-              <div className="mt-1.5 flex items-start justify-between gap-3">
-                <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">
-                  Shown below the standard confirmation, not instead of it — respondents still get
-                  told their answer was recorded.
-                </p>
-                {thankYouMessage.length > 0 && (
-                  <span className="shrink-0 font-mono text-[10px] text-(--cf-ink-soft)">
-                    {thankYouMessage.length}/{MAX_THANK_YOU}
-                  </span>
-                )}
+                <div>
+                  <label htmlFor="cf-set-thanks" className="cf-meta mb-2 block">
+                    Thank-you note
+                  </label>
+                  <textarea
+                    id="cf-set-thanks"
+                    value={thankYouMessage}
+                    onChange={(e) => setThankYouMessage(e.target.value)}
+                    rows={3}
+                    maxLength={MAX_THANK_YOU}
+                    className="cf-input resize-none px-3 py-2 text-[13px]"
+                    placeholder="We'll be in touch by Friday..."
+                  />
+                  <div className="mt-1.5 flex items-start justify-between gap-3">
+                    <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">
+                      Shown below the standard confirmation, not instead of it — respondents still
+                      get told their answer was recorded.
+                    </p>
+                    {thankYouMessage.length > 0 && (
+                      <span className="shrink-0 font-mono text-[10px] text-(--cf-ink-soft)">
+                        {thankYouMessage.length}/{MAX_THANK_YOU}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-5">
+                <div>
+                  <p className="cf-meta mb-2">Availability</p>
+                  <div className="space-y-2">
+                    <Row title="Accepting submissions" hint="Manually open or close this form">
+                      <Toggle on={isOpen} onChange={setIsOpen} label="Accepting submissions" />
+                    </Row>
+
+                    <div className="space-y-2">
+                      <Row
+                        icon={Calendar}
+                        title="Expiration date"
+                        hint="Stop accepting after a given time"
+                      >
+                        <Toggle
+                          on={enableExpiration}
+                          onChange={setEnableExpiration}
+                          label="Set an expiration date"
+                        />
+                      </Row>
+                      {enableExpiration && (
+                        <input
+                          type="datetime-local"
+                          required
+                          value={expiresAt}
+                          onChange={(e) => setExpiresAt(e.target.value)}
+                          className="cf-input px-3 py-2 text-[13px]"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="cf-meta mb-2">Who can respond</p>
+                  <div className="space-y-2">
+                    <Row
+                      icon={Lock}
+                      title="Require sign-in"
+                      hint={
+                        signInImplied
+                          ? `Held on by ${impliedBy.join(" and ")}.`
+                          : "Respondents sign in to a CanvasFlow account before answering."
+                      }
+                    >
+                      <Toggle
+                        on={signInEffective}
+                        onChange={setRequireSignIn}
+                        label="Require sign-in"
+                        disabled={signInImplied}
+                      />
+                    </Row>
+
+                    <Row
+                      icon={Mail}
+                      title="Record respondent email"
+                      hint="Saves each respondent's account email with their response. Turns on sign-in."
+                    >
+                      <Toggle
+                        on={collectRespondentEmail}
+                        onChange={setCollectRespondentEmail}
+                        label="Record respondent email"
+                      />
+                    </Row>
+
+                    <Row
+                      icon={UserCheck}
+                      title="One response per person"
+                      hint="Off by default, so people can answer more than once. Turns on sign-in."
+                    >
+                      <Toggle
+                        on={oneResponsePerRespondent}
+                        onChange={setOneResponsePerRespondent}
+                        label="One response per person"
+                      />
+                    </Row>
+
+                    <div className="space-y-2">
+                      <Row
+                        icon={AtSign}
+                        title="Restrict to an organisation"
+                        hint="Only accounts on these email domains can answer. Turns on sign-in."
+                      >
+                        <Toggle
+                          on={restrictDomains}
+                          onChange={setRestrictDomains}
+                          label="Restrict to an organisation"
+                        />
+                      </Row>
+
+                      {restrictDomains && (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={domainInput}
+                              onChange={(e) => setDomainInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addDomain();
+                                }
+                              }}
+                              className="cf-input px-3 py-2 text-[13px]"
+                              placeholder="rishihood.edu.in"
+                              aria-label="Add an email domain"
+                            />
+                            <button
+                              type="button"
+                              onClick={addDomain}
+                              className="cf-btn-outline h-auto shrink-0 px-3 text-[12px]"
+                            >
+                              <Plus className="size-3.5" />
+                              Add
+                            </button>
+                          </div>
+
+                          {domains.length > 0 ? (
+                            <ul className="flex flex-wrap gap-1.5">
+                              {domains.map((domain) => (
+                                <li key={domain}>
+                                  <span
+                                    className="inline-flex items-center gap-1 border px-2 py-1 font-mono text-[11px]"
+                                    style={{
+                                      borderColor: "var(--cf-line-strong)",
+                                      background: "var(--cf-cream)",
+                                    }}
+                                  >
+                                    @{domain}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeDomain(domain)}
+                                      aria-label={`Remove ${domain}`}
+                                      className="cursor-pointer text-(--cf-ink-soft) hover:text-(--cf-ink)"
+                                    >
+                                      <X className="size-3" />
+                                    </button>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-(--cf-orange)">
+                              Add at least one domain, or turn the restriction off.
+                            </p>
+                          )}
+                          <p className="text-[11px] leading-relaxed text-(--cf-ink-soft)">
+                            Subdomains are included.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -3,11 +3,7 @@ import { Queue, Worker, type ConnectionOptions, type Processor } from "bullmq";
 import { blockingConnection, isRedisConfigured, redisEnv } from "@repo/redis";
 
 import { env as queueEnv } from "./env";
-import {
-  QUEUE_UPLOADS,
-  JOB_PROCESS_UPLOAD,
-  type ProcessUploadJob,
-} from "./jobs";
+import { QUEUE_UPLOADS, JOB_PROCESS_UPLOAD, type ProcessUploadJob } from "./jobs";
 
 export * from "./jobs";
 export { queueEnv };

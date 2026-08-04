@@ -123,6 +123,16 @@ export const publishFormOutput = z.object({
 });
 export type PublishFormOutputType = z.infer<typeof publishFormOutput>;
 
+export const archiveFormOutput = z.object({
+  success: z.boolean().describe("Whether archiving was successful"),
+});
+export type ArchiveFormOutputType = z.infer<typeof archiveFormOutput>;
+
+export const unarchiveFormOutput = z.object({
+  success: z.boolean().describe("Whether unarchiving was successful"),
+});
+export type UnarchiveFormOutputType = z.infer<typeof unarchiveFormOutput>;
+
 export const deleteFormInput = z.object({
   id: z.string().uuid().describe("Form ID to delete"),
 });

@@ -8,6 +8,7 @@ import {
   Eye,
   LayoutGrid,
   ListOrdered,
+  MessageSquare,
   MoreVertical,
   Save,
   Settings,
@@ -21,17 +22,17 @@ export type BuilderView = "canvas" | "outline";
 
 interface BuilderHeaderProps {
   form:
-  | {
-    title: string;
-    description?: string | null;
-    isPublished: boolean;
-    ownerEmail?: string | null;
-    role?: "owner" | "editor" | "viewer";
-    permissions?: any;
-    submissionsCount?: number | null;
-  }
-  | null
-  | undefined;
+    | {
+        title: string;
+        description?: string | null;
+        isPublished: boolean;
+        ownerEmail?: string | null;
+        role?: "owner" | "editor" | "viewer";
+        permissions?: any;
+        submissionsCount?: number | null;
+      }
+    | null
+    | undefined;
   formId: string;
   isDirty: boolean;
   isSaving: boolean;
@@ -126,14 +127,16 @@ export function BuilderHeader({
 
         {/* status pill — always visible */}
         <span
-          className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${isPublished
-            ? "border-(--cf-orange) text-(--cf-orange)"
-            : "border-(--cf-line-strong) text-(--cf-ink-soft)"
-            }`}
+          className={`inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase ${
+            isPublished
+              ? "border-(--cf-orange) text-(--cf-orange)"
+              : "border-(--cf-line-strong) text-(--cf-ink-soft)"
+          }`}
         >
           <span
-            className={`size-1.5 rounded-full ${isPublished ? "bg-(--cf-orange)" : "bg-(--cf-ink-soft)"
-              }`}
+            className={`size-1.5 rounded-full ${
+              isPublished ? "bg-(--cf-orange)" : "bg-(--cf-ink-soft)"
+            }`}
           />
           {isPublished ? "Live" : "Draft"}
         </span>
@@ -148,56 +151,58 @@ export function BuilderHeader({
 
       {/* right: actions */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div
-              role="group"
-              aria-label="Builder view"
-              className="hidden shrink-0 items-center border lg:inline-flex"
-              style={{ borderColor: "var(--cf-line-strong)" }}
-            >
-              {(
-                [
-                  { id: "canvas", label: "Canvas", Icon: LayoutGrid },
-                  { id: "outline", label: "Outline", Icon: ListOrdered },
-                ] as const
-              ).map(({ id, label, Icon }) => {
-                const active = view === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => onViewChange(id)}
-                    aria-pressed={active}
-                    title={id === "canvas" ? "Canvas builder" : "Outline builder"}
-                    className={`inline-flex h-7.5 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${active
-                      ? "bg-(--cf-ink) text-(--cf-cream)"
-                      : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
-                      }`}
-                  >
-                    <Icon className="size-3.5" />
-                    <span className="hidden xl:inline">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="hidden h-5 w-px lg:block" style={{ background: "var(--cf-line-strong)" }} />
-
-            {/* Save — always visible, icon-only on phone */}
-            <button
-              onClick={handleSave}
-              disabled={(!isDirty && !justSaved) || isSaving}
-              title="Save changes"
-              aria-label="Save"
-              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${justSaved && !isSaving
-                ? "border-(--cf-orange) text-(--cf-orange)"
-                : "cf-btn-outline disabled:opacity-35"
+        <div
+          role="group"
+          aria-label="Builder view"
+          className="hidden shrink-0 items-center border lg:inline-flex"
+          style={{ borderColor: "var(--cf-line-strong)" }}
+        >
+          {(
+            [
+              { id: "canvas", label: "Canvas", Icon: LayoutGrid },
+              { id: "outline", label: "Outline", Icon: ListOrdered },
+            ] as const
+          ).map(({ id, label, Icon }) => {
+            const active = view === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onViewChange(id)}
+                aria-pressed={active}
+                title={id === "canvas" ? "Canvas builder" : "Outline builder"}
+                className={`inline-flex h-7.5 cursor-pointer items-center gap-1.5 px-2.5 font-mono text-[10px] tracking-wider uppercase transition-colors ${
+                  active
+                    ? "bg-(--cf-ink) text-(--cf-cream)"
+                    : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
                 }`}
-            >
-              {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
-              <span className="hidden sm:inline">
-                {isSaving ? "Saving..." : justSaved ? "Saved" : "Save"}
-              </span>
-            </button>
+              >
+                <Icon className="size-3.5" />
+                <span className="hidden xl:inline">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="hidden h-5 w-px lg:block" style={{ background: "var(--cf-line-strong)" }} />
+
+        {/* Save — always visible, icon-only on phone */}
+        <button
+          onClick={handleSave}
+          disabled={(!isDirty && !justSaved) || isSaving}
+          title="Save changes"
+          aria-label="Save"
+          className={`inline-flex h-8 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed sm:px-3 ${
+            justSaved && !isSaving
+              ? "border-(--cf-orange) text-(--cf-orange)"
+              : "cf-btn-outline disabled:opacity-35"
+          }`}
+        >
+          {justSaved && !isSaving ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
+          <span className="hidden sm:inline">
+            {isSaving ? "Saving..." : justSaved ? "Saved" : "Save"}
+          </span>
+        </button>
 
         <Link
           href={`/forms/${formId}?preview=1`}
@@ -226,6 +231,22 @@ export function BuilderHeader({
           <Settings className="size-3.5" />
           <span className="hidden md:inline">Settings</span>
         </button>
+
+        <Link
+          href={`/dashboard/sketches/${formId}?tab=responses`}
+          onClick={(e) => {
+            if (isDirty) {
+              e.preventDefault();
+              pendingNavRef.current = `/dashboard/sketches/${formId}?tab=responses`;
+              setShowUnsavedDialog(true);
+            }
+          }}
+          title="View responses"
+          className="cf-btn-outline hidden h-8 px-3 text-[12px] sm:inline-flex"
+        >
+          <MessageSquare className="size-3.5" />
+          <span className="hidden md:inline">Responses</span>
+        </Link>
 
         {canDelete && (
           <>
@@ -269,6 +290,21 @@ export function BuilderHeader({
               >
                 <Eye className="size-3.5" />
                 Preview
+              </Link>
+              <Link
+                href={`/dashboard/sketches/${formId}?tab=responses`}
+                onClick={(e) => {
+                  setMenuOpen(false);
+                  if (isDirty) {
+                    e.preventDefault();
+                    pendingNavRef.current = `/dashboard/sketches/${formId}?tab=responses`;
+                    setShowUnsavedDialog(true);
+                  }
+                }}
+                className="cf-menu-item flex items-center gap-2.5 py-2! text-[13px]"
+              >
+                <MessageSquare className="size-3.5" />
+                Responses
               </Link>
               <button
                 onClick={() => {
