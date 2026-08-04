@@ -48,7 +48,7 @@ jobs:
 
       - name: Create release zip
         run: |
-          zip -r release.zip \
+          zip -qq -r release.zip \
             docker-compose.prod.yml \
             docker/Dockerfile.api \
             docker/Dockerfile.web \
