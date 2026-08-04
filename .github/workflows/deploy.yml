@@ -91,6 +91,9 @@ jobs:
             set -eu
             cd /home/dittya/projects/canvasflow
             
+            # Clean up old build folders to avoid symlink overwrite conflicts
+            rm -rf dist apps/web/.next apps/web/public
+
             # Extract release bundle
             tar -xzf release.tar.gz
             rm release.tar.gz
