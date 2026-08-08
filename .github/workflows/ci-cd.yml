@@ -1,0 +1,143 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # PRs must be buildable without access to production secrets. The real
+      # environment is used for main so public Next.js variables are embedded
+      # into the production build.
+      - name: Create CI environment file
+        run: cp .env.example .env
+
+      - name: Load production build environment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV }}
+        run: |
+          test -n "$ENV_FILE_CONTENT" || { echo "Missing required ENV secret"; exit 1; }
+          printf '%s\n' "$ENV_FILE_CONTENT" > .env
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check types
+        run: pnpm check-types
+
+      - name: Build project
+        env:
+          SKIP_ENV_VALIDATION: "true"
+        run: pnpm build
+
+      - name: Assemble deployment bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          rm -rf deploy canvasflow-deploy.tar.gz
+          mkdir -p deploy/apps/api deploy/apps/worker deploy/apps/web deploy/packages/database
+
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs docker-compose.prod.yml deploy/
+          cp apps/api/package.json deploy/apps/api/
+          cp -R apps/api/dist deploy/apps/api/dist
+          cp apps/worker/package.json deploy/apps/worker/
+          cp -R apps/worker/dist deploy/apps/worker/dist
+          cp apps/web/package.json deploy/apps/web/
+          mkdir -p deploy/apps/web/.next
+          cp -R apps/web/.next/standalone deploy/apps/web/.next/standalone
+
+          # Next's standalone output does not include these static assets.
+          mkdir -p deploy/apps/web/.next/standalone/apps/web/.next
+          cp -R apps/web/.next/static deploy/apps/web/.next/standalone/apps/web/.next/static
+          cp -R apps/web/public deploy/apps/web/.next/standalone/apps/web/public
+
+          cp packages/database/package.json packages/database/migrate.mjs deploy/packages/database/
+          cp -R packages/database/drizzle deploy/packages/database/drizzle
+          for package in packages/*; do
+            mkdir -p "deploy/$package"
+            cp "$package/package.json" "deploy/$package/package.json"
+          done
+
+          tar -czf canvasflow-deploy.tar.gz -C deploy .
+
+      - name: Copy deployment bundle to server
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: canvasflow-deploy.tar.gz
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Deploy and restart services
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_DIR: ${{ secrets.DEPLOY_PATH }}
+          ENV_FILE_CONTENT: ${{ secrets.ENV }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DEPLOY_DIR,ENV_FILE_CONTENT
+          script: |
+            set -euo pipefail
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            export PATH="$PATH:$HOME/.local/share/pnpm:$HOME/.npm-global/bin"
+
+            mkdir -p "$DEPLOY_DIR"
+            printf '%s\n' "$ENV_FILE_CONTENT" > "$DEPLOY_DIR/.env"
+            tar -xzf "$DEPLOY_DIR/canvasflow-deploy.tar.gz" -C "$DEPLOY_DIR"
+            rm -f "$DEPLOY_DIR/canvasflow-deploy.tar.gz"
+
+            cd "$DEPLOY_DIR"
+            corepack enable
+            pnpm install --prod --frozen-lockfile
+
+            docker compose -f docker-compose.prod.yml up -d --wait postgres redis
+
+            set -a
+            . "$DEPLOY_DIR/.env"
+            set +a
+            (
+              cd "$DEPLOY_DIR/packages/database"
+              node migrate.mjs
+            )
+
+            pm2 startOrReload ecosystem.config.cjs --update-env
+            pm2 save
