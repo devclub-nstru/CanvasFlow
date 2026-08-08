@@ -13,17 +13,16 @@
  * NSG should only have 22/80/443 open externally.
  */
 
-const BASE = "/home/dittya/projects/canvasflow";
+const path = require("path");
+
+const BASE = process.env.DEPLOY_DIR || __dirname;
 
 module.exports = {
   apps: [
     {
       name: "canvasflow-api",
-      cwd: `${BASE}/api`,
+      cwd: path.join(BASE, "dist/api"),
       script: "./dist/index.js",
-      // pm2 inherits the process env; our code reads .env via
-      // `dotenv/config`, which reads from cwd. release.sh symlinks
-      // the canonical .env into each cwd.
       env: {
         NODE_ENV: "production",
         PORT: "8000",
@@ -36,14 +35,11 @@ module.exports = {
     },
     {
       name: "canvasflow-web",
-      // Next.js standalone places the server at this nested path
-      // because tracing preserves the workspace layout.
-      cwd: `${BASE}/web/apps/web`,
+      cwd: path.join(BASE, "apps/web/.next/standalone/apps/web"),
       script: "./server.js",
       env: {
         NODE_ENV: "production",
         PORT: "3000",
-        // Bind to loopback only — nginx proxies into it.
         HOSTNAME: "127.0.0.1",
       },
       instances: 1,
@@ -54,3 +50,4 @@ module.exports = {
     },
   ],
 };
+

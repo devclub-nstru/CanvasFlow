@@ -2,20 +2,16 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
-  workflow_dispatch: # manual button — also lets you redeploy any commit
-                    # (this is our "rollback")
+    branches:
+      - main
+  workflow_dispatch:
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
-
-env:
-  # NEXT_PUBLIC_* env vars are inlined into the client JS at BUILD time,
-  # so they must be present here, not just on the VM.
-  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL_PROD }}
 
 jobs:
   build-and-deploy:
@@ -23,7 +19,8 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -39,76 +36,87 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Create .env file
+        if: github.ref == 'refs/heads/main'
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV }}
+        run: |
+          echo "$ENV_FILE_CONTENT" > .env
+          bash setup.sh
+
       - name: Build project
         run: pnpm build
 
       - name: Prepare production build
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p dist/api dist/db
           pnpm --filter @repo/api deploy --prod dist/api
           pnpm --filter @repo/database deploy --prod dist/db
 
+          # Copy Next.js static files and public directory into standalone app
+          cp -r apps/web/public apps/web/.next/standalone/apps/web/public
+          cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+
       - name: Create release tarball
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main'
         run: |
           tar -czf release.tar.gz \
+            ecosystem.config.cjs \
             docker-compose.prod.yml \
-            docker/Dockerfile.api \
-            docker/Dockerfile.web \
             dist/ \
-            apps/web/public \
             apps/web/.next/standalone \
-            apps/web/.next/static
+            .env
 
-      - name: Write .env from secret
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-        env:
-          PROD_ENV: ${{ secrets.PROD_ENV }}
-        run: |
-          printf '%s\n' "$PROD_ENV" > _env
-
-      - name: Copy files to VM
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+      - name: Copy files to server
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          source: "release.tar.gz,_env"
-          target: "/home/dittya/projects/canvasflow"
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "release.tar.gz"
+          target: "~/projects/canvasflow"
 
-      - name: Deploy via Docker Compose
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+      - name: Execute post-deployment commands
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            set -eu
-            cd /home/dittya/projects/canvasflow
-            
-            # Clean up old build folders to avoid symlink overwrite conflicts
-            rm -rf dist apps/web/.next apps/web/public
+            # Load Node.js environment (for NVM users)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # Fallback for standard bash profile
+            source ~/.bash_profile || source ~/.profile || source ~/.bashrc || true
+
+            # Add standard paths just in case
+            export PATH=$PATH:$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:$HOME/.local/share/pnpm
+
+            mkdir -p ~/projects/canvasflow
+            cd ~/projects/canvasflow
 
             # Extract release bundle
             tar -xzf release.tar.gz
-            rm release.tar.gz
-            mv _env .env
+            rm -f release.tar.gz
             chmod 600 .env
 
-            # Build and deploy Docker containers
-            docker compose -f docker-compose.prod.yml up --build -d
+            # Start Postgres and Redis containers (wait for healthy status)
+            docker compose -f docker-compose.prod.yml up -d --wait || docker compose -f docker-compose.prod.yml up -d
 
-            # Cleanup builder artifacts and dangling cache
-            docker image prune -f
+            # Run database migrations
+            if [ -d "dist/db" ]; then
+              cd dist/db && node migrate.mjs && cd ../..
+            fi
 
-      - name: Summary
-        if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && success()
-        run: |
-          echo "### ✅ Deployed from \`${{ github.sha }}\` via Docker Compose" >> "$GITHUB_STEP_SUMMARY"
-          echo "- web: https://canvasflow.dittya.dev"     >> "$GITHUB_STEP_SUMMARY"
-          echo "- api: https://api.canvasflow.dittya.dev" >> "$GITHUB_STEP_SUMMARY"
+            # Start or reload PM2 processes
+            pm2 startOrReload ecosystem.config.cjs --env production
+
+            pm2 save
+
+
