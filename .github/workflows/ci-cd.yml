@@ -90,6 +90,25 @@ jobs:
 
           tar -czf canvasflow-deploy.tar.gz -C deploy .
 
+      - name: Prepare server deployment directory
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_DIR: ${{ secrets.DEPLOY_PATH || format('/home/{0}/projects/canvasflow', secrets.SSH_USER) }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DEPLOY_DIR
+          script: |
+            set -eu
+            case "$DEPLOY_DIR" in
+              /*) ;;
+              *) echo "DEPLOY_PATH must be an absolute path" >&2; exit 1 ;;
+            esac
+            mkdir -p "$DEPLOY_DIR"
+            test -w "$DEPLOY_DIR"
+
       - name: Copy deployment bundle to server
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: appleboy/scp-action@v0.1.7
@@ -98,13 +117,13 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           source: canvasflow-deploy.tar.gz
-          target: ${{ secrets.DEPLOY_PATH }}
+          target: ${{ secrets.DEPLOY_PATH || format('/home/{0}/projects/canvasflow', secrets.SSH_USER) }}
 
       - name: Deploy and restart services
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_PATH || format('/home/{0}/projects/canvasflow', secrets.SSH_USER) }}
           ENV_FILE_CONTENT: ${{ secrets.ENV }}
         with:
           host: ${{ secrets.SSH_HOST }}
