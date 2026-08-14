@@ -36,6 +36,9 @@ services:
     container_name: canvasflow-redis-prod
     restart: unless-stopped
 
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
     command:
       - redis-server
       - --maxmemory
