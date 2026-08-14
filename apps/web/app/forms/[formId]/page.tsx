@@ -302,6 +302,36 @@ export default function PublicFormPage() {
     [flow, pages, answers, currentPageIndex, pagePath],
   );
 
+  const visitedFieldIds = useMemo(
+    () => pagePath.flatMap((pageIndex) => pages[pageIndex]?.fieldIds ?? []),
+    [pagePath, pages],
+  );
+
+  const estimatedRemainingFieldIds = useMemo(() => {
+    const path = [...pagePath.slice(0, -1)];
+    let cursor = currentPageIndex;
+    const remainingFields: string[] = [];
+
+    for (let hops = 0; hops < pages.length; hops++) {
+      const step = resolveNextPage({
+        flow,
+        pages,
+        answers,
+        currentPageIndex: cursor,
+        visitedPageIndexes: path,
+      });
+      if (step.kind === "end") break;
+      const nextPage = pages[step.pageIndex];
+      if (nextPage) {
+        remainingFields.push(...nextPage.fieldIds);
+      }
+      path.push(cursor);
+      cursor = step.pageIndex;
+    }
+
+    return remainingFields;
+  }, [flow, pages, answers, currentPageIndex, pagePath]);
+
   const progressPercent = useMemo(() => {
     if (pages.length === 0) return 0;
 
@@ -317,14 +347,20 @@ export default function PublicFormPage() {
       return Math.round((answered / visible) * 100);
     }
 
-    const total = pagePath.length + estimatedRemainingPages;
-    return total > 0 ? Math.round((pagePath.length / total) * 100) : 0;
-  }, [pages.length, layout, currentFields, answers, pagePath.length, estimatedRemainingPages]);
+    const totalFields = visitedFieldIds.length + estimatedRemainingFieldIds.length;
+    if (totalFields === 0) return 0;
 
-  const visitedFieldIds = useMemo(
-    () => pagePath.flatMap((pageIndex) => pages[pageIndex]?.fieldIds ?? []),
-    [pagePath, pages],
-  );
+    const answeredCount = [...visitedFieldIds, ...estimatedRemainingFieldIds].filter((fieldId) => {
+      const val = answers[fieldId];
+      const field = flow.fieldById.get(fieldId);
+      if (!field) return false;
+      if (field.type === "TOGGLE") return val !== undefined;
+      if (Array.isArray(val)) return val.length > 0;
+      return val !== undefined && val !== null && val !== "";
+    }).length;
+
+    return Math.min(99, Math.round((answeredCount / totalFields) * 100));
+  }, [pages.length, layout, currentFields, answers, visitedFieldIds, estimatedRemainingFieldIds, flow]);
 
   const answeredPathFields = useMemo(
     () =>
@@ -336,10 +372,13 @@ export default function PublicFormPage() {
 
   const segmentLabel = useMemo(() => {
     if (!currentPage?.segment) return null;
-    const position = flow.segments.findIndex((s) => s.id === currentPage.segment?.id);
+    const activeSegments = flow.segments.filter((s) =>
+      flow.order.some((f) => f.segmentId === s.id)
+    );
+    const position = activeSegments.findIndex((s) => s.id === currentPage.segment?.id);
     if (position === -1) return null;
-    return `Segment ${position + 1} of ${flow.segments.length} · ${currentPage.segment.title}`;
-  }, [currentPage, flow.segments]);
+    return `Segment ${position + 1} of ${activeSegments.length} · ${currentPage.segment.title}`;
+  }, [currentPage, flow.segments, flow.order]);
 
   const validateField = (field: FlowField): string | null => {
     const value = answers[field.id];

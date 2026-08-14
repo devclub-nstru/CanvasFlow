@@ -51,7 +51,7 @@ const sessionCache = (() => {
 
         if (ttl && ttl > 0) await client.set(redisKey("auth", key), value, "EX", ttl);
         else await client.set(redisKey("auth", key), value, "EX", 86_400);
-      } catch {}
+      } catch { }
     },
 
     delete: async (key: string): Promise<void> => {
@@ -59,7 +59,7 @@ const sessionCache = (() => {
         const client = await redisReady();
         if (!client) return;
         await client.del(redisKey("auth", key));
-      } catch {}
+      } catch { }
     },
   };
 })();
@@ -87,6 +87,12 @@ export const auth = betterAuth({
     storeSessionInDatabase: true,
   },
   socialProviders,
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "github"],
+    },
+  },
   trustedOrigins: [
     "http://localhost:3000",
     "https://canvas-flow-web.vercel.app",

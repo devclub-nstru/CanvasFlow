@@ -1,27 +1,71 @@
 "use client";
 
 import React from "react";
-import { ChevronDown, ChevronUp, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Layers, Pencil, Plus } from "lucide-react";
 import { getFieldIcon } from "./FormFieldNode";
 
-interface FieldLike {
+export interface FieldLike {
   id: string;
   type: string;
   label: string;
   isRequired: boolean;
+  segmentId?: string | null;
+}
+
+export interface SegmentLike {
+  id: string;
+  title: string;
+  description?: string | null;
 }
 
 interface FieldOutlineProps {
   fields: FieldLike[];
+  segments: SegmentLike[];
   onTapField: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
   selectedId?: string | null;
   onAdd?: () => void;
+  selectedSegmentId?: string | null;
+  onSelectSegment?: (id: string | null) => void;
 }
 
-export function FieldOutline({ fields, onTapField, onMove, selectedId, onAdd }: FieldOutlineProps) {
+export function FieldOutline({
+  fields,
+  segments,
+  onTapField,
+  onMove,
+  selectedId,
+  onAdd,
+  selectedSegmentId,
+  onSelectSegment,
+}: FieldOutlineProps) {
+  const unassignedFields = fields.filter((f) => !f.segmentId);
+
+  const groups = [
+    ...(unassignedFields.length > 0
+      ? [
+          {
+            id: "unassigned",
+            title: "Unassigned Questions",
+            description: "These questions are displayed at the beginning of the form.",
+            fields: unassignedFields,
+            isSegment: false,
+            index: 0,
+          },
+        ]
+      : []),
+    ...segments.map((seg, idx) => ({
+      id: seg.id,
+      title: seg.title || `Segment ${idx + 1}`,
+      description: seg.description,
+      fields: fields.filter((f) => f.segmentId === seg.id),
+      isSegment: true,
+      index: idx + 1,
+    })),
+  ];
+
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
+    <div className="relative flex flex-1 flex-col overflow-hidden" id="outline-top">
       <div className="cf-pane-bar">
         <div className="flex min-w-0 items-center gap-2">
           <span className="cf-meta">Arrangement</span>
@@ -32,24 +76,68 @@ export function FieldOutline({ fields, onTapField, onMove, selectedId, onAdd }: 
       </div>
 
       <div
-        className={`mx-auto w-full max-w-190 flex-1 space-y-3 overflow-y-auto px-4 pt-4 ${
+        className={`mx-auto w-full max-w-190 flex-1 space-y-6 overflow-y-auto px-4 pt-4 ${
           onAdd ? "pb-28" : "pb-6"
         }`}
       >
         {fields.length === 0 ? (
           <EmptyState onAdd={onAdd} />
         ) : (
-          fields.map((field, idx) => (
-            <FieldCard
-              key={field.id}
-              field={field}
-              position={idx + 1}
-              isFirst={idx === 0}
-              isLast={idx === fields.length - 1}
-              selected={selectedId === field.id}
-              onTap={() => onTapField(field.id)}
-              onMove={(direction) => onMove(field.id, direction)}
-            />
+          groups.map((group) => (
+            <div
+              key={group.id}
+              id={group.isSegment ? `outline-segment-${group.id}` : undefined}
+              className={`space-y-3 rounded-lg border-2 p-4 transition-colors ${
+                group.isSegment && selectedSegmentId === group.id
+                  ? "border-(--cf-orange) bg-(--cf-cream-2)/50"
+                  : "border-(--cf-line-strong) bg-(--cf-cream)/30"
+              }`}
+            >
+              {/* Group Header */}
+              <div className="pb-2 border-b border-(--cf-line)">
+                <div className="flex items-center gap-2">
+                  <Layers className={`size-4 ${group.isSegment ? "text-(--cf-orange)" : "text-(--cf-ink-soft)"}`} />
+                  <h3 className="cf-display text-[16px] leading-tight font-bold">
+                    {group.isSegment ? `Page ${group.index}: ` : ""}
+                    {group.title}
+                  </h3>
+                </div>
+                {group.description && (
+                  <p className="mt-1 text-[12px] leading-relaxed text-(--cf-ink-soft)">
+                    {group.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Group Fields */}
+              <div className="space-y-3">
+                {group.fields.length === 0 ? (
+                  <p className="text-[12px] text-center py-4 border border-dashed border-(--cf-line-strong) text-(--cf-ink-soft)">
+                    No questions in this section yet.
+                  </p>
+                ) : (
+                  group.fields.map((field) => {
+                    const globalIdx = fields.findIndex((f) => f.id === field.id);
+                    const isFirst = globalIdx === 0;
+                    const isLast = globalIdx === fields.length - 1;
+                    const position = globalIdx + 1;
+
+                    return (
+                      <FieldCard
+                        key={field.id}
+                        field={field}
+                        position={position}
+                        isFirst={isFirst}
+                        isLast={isLast}
+                        selected={selectedId === field.id}
+                        onTap={() => onTapField(field.id)}
+                        onMove={(direction) => onMove(field.id, direction)}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            </div>
           ))
         )}
       </div>

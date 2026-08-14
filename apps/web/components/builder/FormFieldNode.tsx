@@ -8,6 +8,7 @@ import {
   Calendar,
   CheckSquare,
   Clock,
+  Layers,
   Link2,
   List,
   Mail,
@@ -15,6 +16,7 @@ import {
   Phone,
   Star,
   ToggleLeft,
+  Trash2,
   Type,
 } from "lucide-react";
 
@@ -265,6 +267,81 @@ function FieldPreview({ field }: { field: any }) {
   );
 }
 
+export const SegmentHeaderNode = ({ data, selected }: { data: any; selected: boolean }) => {
+  const { segment, position, onRename, onUpdateDescription, onDelete } = data;
+
+  return (
+    <div
+      className={`w-72 cursor-pointer border-2 bg-(--cf-cream) p-3 transition-shadow select-none ${
+        selected
+          ? "border-(--cf-orange) shadow-[5px_5px_0_0_var(--cf-orange)]"
+          : "border-(--cf-orange) border-dashed shadow-[4px_4px_0_0_rgba(26,29,41,0.1)] hover:shadow-[4px_4px_0_0_rgba(26,29,41,0.2)]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-dashed border-(--cf-line-strong) mb-2">
+        <div className="flex items-center gap-1.5">
+          <Layers className="size-3.5 text-(--cf-orange)" />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-(--cf-orange)">
+            Page {position}
+          </span>
+        </div>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="text-(--cf-ink-soft) hover:text-red-600 transition-colors"
+            aria-label="Delete segment"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <input
+          value={segment.title || ""}
+          onChange={(e) => onRename(e.target.value)}
+          placeholder={`Segment ${position} Title`}
+          className="cf-input w-full h-8 px-2 text-[13px] font-semibold"
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <textarea
+          value={segment.description || ""}
+          onChange={(e) => onUpdateDescription(e.target.value)}
+          placeholder="Segment description (optional)..."
+          className="cf-input w-full min-h-12 p-2 text-[11px] leading-relaxed resize-none"
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+      </div>
+
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{
+          width: 8,
+          height: 8,
+          background: "var(--cf-orange)",
+          border: "2px solid var(--cf-ink)",
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{
+          width: 8,
+          height: 8,
+          background: "var(--cf-orange)",
+          border: "2px solid var(--cf-ink)",
+        }}
+      />
+    </div>
+  );
+};
+
 export const nodeTypes = {
   formField: FormFieldNode,
+  segmentHeader: SegmentHeaderNode,
 };

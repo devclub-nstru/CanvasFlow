@@ -802,41 +802,124 @@ export function useBuilderState() {
   const { screenToFlowPosition, zoomIn, zoomOut, fitView } = useReactFlow();
 
   useEffect(() => {
-    const visible = localFields
-      .filter((f) => !pendingDeletes.has(f.id))
-      .filter((f) => selectedSegmentId === null || f.segmentId === selectedSegmentId)
-      .sort((a, b) => {
-        const d = parseIndex(a.index) - parseIndex(b.index);
-        return d !== 0 ? d : a.id.localeCompare(b.id);
-      });
+    const fields = localFields.filter((f) => !pendingDeletes.has(f.id));
+    const segmentsOrderMap = new Map(
+      visibleSegments.map((s, idx) => [s.id, idx])
+    );
+
+    const visible = [...fields].sort((a, b) => {
+      const aSegIdx = a.segmentId ? (segmentsOrderMap.get(a.segmentId) ?? -1) : -1;
+      const bSegIdx = b.segmentId ? (segmentsOrderMap.get(b.segmentId) ?? -1) : -1;
+
+      if (aSegIdx !== bSegIdx) {
+        return aSegIdx - bSegIdx;
+      }
+
+      const d = parseIndex(a.index) - parseIndex(b.index);
+      return d !== 0 ? d : a.id.localeCompare(b.id);
+    });
+
+    const sequentialIds: string[] = [];
+    const unassignedFields = visible.filter((f) => !f.segmentId);
+    unassignedFields.forEach((f) => sequentialIds.push(f.id));
+
+    visibleSegments.forEach((segment) => {
+      sequentialIds.push(`segment-header-${segment.id}`);
+      const segmentFields = visible.filter((f) => f.segmentId === segment.id);
+      segmentFields.forEach((f) => sequentialIds.push(f.id));
+    });
+
     setNodes((prevNodes) => {
       const prevById = new Map(prevNodes.map((n) => [n.id, n]));
-      return visible.map((field, idx) => {
+      const flowNodes: Node[] = [];
+      let currentY = 80;
+
+      // 1. Unassigned Fields
+      unassignedFields.forEach((field) => {
         const existing = prevById.get(field.id);
         if (existing) {
-          return { ...existing, data: { field } };
+          flowNodes.push({ ...existing, data: { field } });
+          currentY = Math.max(currentY, existing.position.y + 240);
+        } else {
+          const p = (typeof field.options === "object" && field.options ? (field.options as any) : {})
+            .position || { x: 300, y: currentY };
+          flowNodes.push({
+            id: field.id,
+            type: "formField",
+            position: p,
+            data: { field },
+          });
+          currentY = p.y + 240;
         }
-        const p = (typeof field.options === "object" && field.options ? (field.options as any) : {})
-          .position || { x: 300, y: idx * 200 + 80 };
-        return {
-          id: field.id,
-          type: "formField",
-          position: p,
-          data: { field },
-        };
       });
-    });
-    const mappedEdges: Edge[] = [];
-    const onCanvas = new Set(visible.map((f) => f.id));
 
-    for (let i = 0; i < visible.length - 1; i++) {
-      const s = visible[i];
-      const t = visible[i + 1];
-      if (s && t)
+      // 2. Segments & their fields
+      visibleSegments.forEach((segment, segIdx) => {
+        const segmentFields = visible.filter((f) => f.segmentId === segment.id);
+        const headerId = `segment-header-${segment.id}`;
+        const existingHeader = prevById.get(headerId);
+
+        let headerPos = { x: 300, y: currentY };
+        if (existingHeader) {
+          headerPos = existingHeader.position;
+        } else {
+          const firstField = segmentFields[0];
+          if (firstField) {
+            const firstFieldPos = (typeof firstField.options === "object" && firstField.options ? (firstField.options as any) : {}).position;
+            if (firstFieldPos) {
+              headerPos = { x: firstFieldPos.x, y: firstFieldPos.y - 120 };
+            }
+          }
+        }
+
+        flowNodes.push({
+          id: headerId,
+          type: "segmentHeader",
+          position: headerPos,
+          data: {
+            segment,
+            position: segIdx + 1,
+            onRename: (title: string) => updateSegmentLocal(segment.id, { title }),
+            onUpdateDescription: (description: string) => updateSegmentLocal(segment.id, { description }),
+            onDelete: () => handleDeleteSegment(segment.id),
+          },
+        });
+
+        currentY = Math.max(currentY, headerPos.y + 160);
+
+        segmentFields.forEach((field) => {
+          const existing = prevById.get(field.id);
+          if (existing) {
+            flowNodes.push({ ...existing, data: { field } });
+            currentY = Math.max(currentY, existing.position.y + 240);
+          } else {
+            const p = (typeof field.options === "object" && field.options ? (field.options as any) : {})
+              .position || { x: 300, y: currentY };
+            flowNodes.push({
+              id: field.id,
+              type: "formField",
+              position: p,
+              data: { field },
+            });
+            currentY = p.y + 240;
+          }
+        });
+      });
+
+      return flowNodes;
+    });
+
+    const mappedEdges: Edge[] = [];
+    const onCanvas = new Set(sequentialIds);
+
+    for (let i = 0; i < sequentialIds.length - 1; i++) {
+      const sId = sequentialIds[i];
+      const tId = sequentialIds[i + 1];
+      if (sId && tId)
         mappedEdges.push({
-          id: `e-${s.id}-${t.id}`,
-          source: s.id,
-          target: t.id,
+          id: `e-${sId}-${tId}`,
+          source: sId,
+          target: tId,
           animated: true,
           style: {
             stroke: "#f66f00",
@@ -854,7 +937,7 @@ export function useBuilderState() {
     ): string | null => {
       if (action === "JUMP_TO_FIELD") return fieldTarget ?? null;
       if (action === "JUMP_TO_SEGMENT" && segmentTarget) {
-        return visible.find((f) => f.segmentId === segmentTarget)?.id ?? null;
+        return `segment-header-${segmentTarget}`;
       }
       return null;
     };
@@ -905,7 +988,7 @@ export function useBuilderState() {
 
     setEdges(mappedEdges);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localFields, pendingDeletes, selectedSegmentId, localRules, pendingRuleDeletes]);
+  }, [localFields, pendingDeletes, visibleSegments, localRules, pendingRuleDeletes, updateSegmentLocal, handleDeleteSegment]);
 
   const segmentQuestionCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1134,17 +1217,24 @@ export function useBuilderState() {
   const [mobileAddOpen, setMobileAddOpen] = useState(false);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
 
-  const visibleSortedFields = useMemo(
-    () =>
-      localFields
-        .filter((f) => !pendingDeletes.has(f.id))
-        .filter((f) => selectedSegmentId === null || f.segmentId === selectedSegmentId)
-        .sort((a, b) => {
-          const d = parseIndex(a.index) - parseIndex(b.index);
-          return d !== 0 ? d : a.id.localeCompare(b.id);
-        }),
-    [localFields, pendingDeletes, selectedSegmentId],
-  );
+  const visibleSortedFields = useMemo(() => {
+    const fields = localFields.filter((f) => !pendingDeletes.has(f.id));
+    const segmentsOrderMap = new Map(
+      visibleSegments.map((s, idx) => [s.id, idx])
+    );
+
+    return [...fields].sort((a, b) => {
+      const aSegIdx = a.segmentId ? (segmentsOrderMap.get(a.segmentId) ?? -1) : -1;
+      const bSegIdx = b.segmentId ? (segmentsOrderMap.get(b.segmentId) ?? -1) : -1;
+
+      if (aSegIdx !== bSegIdx) {
+        return aSegIdx - bSegIdx;
+      }
+
+      const d = parseIndex(a.index) - parseIndex(b.index);
+      return d !== 0 ? d : a.id.localeCompare(b.id);
+    });
+  }, [localFields, pendingDeletes, visibleSegments]);
 
   const handleMobileTapField = useCallback((id: string) => {
     setSelectedNodeId(id);
@@ -1164,6 +1254,17 @@ export function useBuilderState() {
       const j = direction === "up" ? i - 1 : i + 1;
       if (j < 0 || j >= list.length) return;
 
+      const currentField = list[i];
+      if (!currentField) return;
+
+      const targetField = list[j];
+      if (!targetField) return;
+
+      const patch: Partial<LocalField> = {};
+      if (targetField.segmentId !== currentField.segmentId) {
+        patch.segmentId = targetField.segmentId;
+      }
+
       const beforeField = direction === "up" ? list[j - 1] : list[j];
       const afterField = direction === "up" ? list[j] : list[j + 1];
 
@@ -1173,18 +1274,25 @@ export function useBuilderState() {
       );
 
       if (next !== null) {
-        updateLocal(id, { index: next });
+        updateLocal(id, { index: next, ...patch });
         return;
       }
 
       const reordered = [...list];
       const [moved] = reordered.splice(i, 1);
+      if (moved && targetField) {
+        moved.segmentId = targetField.segmentId;
+      }
       reordered.splice(j, 0, moved!);
 
       const base = maxLocalIndex() + 1;
       const patches = new Map<string, Partial<LocalField>>();
       reordered.forEach((f, k) => {
-        patches.set(f.id, { index: formatIndex(base + k) });
+        const fieldPatch: Partial<LocalField> = { index: formatIndex(base + k) };
+        if (f.id === id && targetField) {
+          fieldPatch.segmentId = targetField.segmentId;
+        }
+        patches.set(f.id, fieldPatch);
       });
       updateManyLocal(patches);
     },
@@ -1235,6 +1343,32 @@ export function useBuilderState() {
     [appendField],
   );
 
+  const handleSelectSegment = useCallback(
+    (id: string | null) => {
+      setSelectedSegmentId(id);
+      if (view === "canvas") {
+        if (!id) {
+          void fitView({ duration: 800 });
+        } else {
+          const headerId = `segment-header-${id}`;
+          void fitView({
+            nodes: [{ id: headerId }],
+            duration: 800,
+            minZoom: 1,
+            maxZoom: 1,
+          });
+        }
+      } else {
+        const targetId = id ? `outline-segment-${id}` : "outline-top";
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    },
+    [fitView, view],
+  );
+
   return {
     formId,
     reactFlowWrapper,
@@ -1264,7 +1398,7 @@ export function useBuilderState() {
     setDirtyRuleIds,
     setPendingRuleDeletes,
     selectedSegmentId,
-    setSelectedSegmentId,
+    setSelectedSegmentId: handleSelectSegment,
     mobileSegmentsOpen,
     setMobileSegmentsOpen,
     isSaving,

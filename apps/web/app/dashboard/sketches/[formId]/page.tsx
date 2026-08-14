@@ -255,9 +255,11 @@ function BuilderCanvas() {
                 >
                   <FieldOutline
                     fields={visibleSortedFields}
+                    segments={visibleSegments}
                     onTapField={setSelectedNodeId}
                     onMove={handleMobileMove}
                     selectedId={selectedNodeId}
+                    selectedSegmentId={selectedSegmentId}
                   />
                 </main>
               ) : (
@@ -302,6 +304,7 @@ function BuilderCanvas() {
                       onNodeClick={onNodeClick}
                       onPaneClick={onPaneClick}
                       onNodeDragStop={onNodeDragStop}
+                      deleteKeyCode={null}
                       fitView
                       minZoom={0.5}
                       maxZoom={1.5}
@@ -434,9 +437,11 @@ function BuilderCanvas() {
 
               <FieldOutline
                 fields={visibleSortedFields}
+                segments={visibleSegments}
                 onTapField={handleMobileTapField}
                 onMove={handleMobileMove}
                 selectedId={selectedNodeId}
+                selectedSegmentId={selectedSegmentId}
                 onAdd={() => setMobileAddOpen(true)}
               />
             </div>

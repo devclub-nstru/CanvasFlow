@@ -34,8 +34,6 @@ export function SegmentPanel({
   onMoveSegment,
   onDeleteSegment,
 }: SegmentPanelProps) {
-  const totalQuestions =
-    unassignedCount + segments.reduce((sum, s) => sum + (questionCounts[s.id] ?? 0), 0);
 
   return (
     <div className="flex flex-col border-b" style={{ borderBottomColor: "var(--cf-line-strong)" }}>
@@ -50,20 +48,14 @@ export function SegmentPanel({
       </div>
 
       <div className="max-h-64 space-y-2 overflow-y-auto px-3 py-3">
-        {segments.length > 0 && (
-          <button
-            type="button"
-            onClick={() => onSelectSegment(null)}
-            className={`flex w-full items-center justify-between border px-3 py-2 text-left text-[12.5px] transition-colors ${
-              selectedSegmentId === null
-                ? "border-(--cf-orange) bg-(--cf-cream-2)"
-                : "border-(--cf-line-strong) bg-(--cf-cream) hover:bg-(--cf-cream-2)"
-            }`}
-          >
-            <span className="font-medium">All questions</span>
-            <span className="font-mono text-[10px] text-(--cf-ink-soft)">{totalQuestions}</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onAddSegment}
+          className="cf-btn cf-press h-9 w-full text-[12.5px]"
+        >
+          <Plus className="size-3.5" />
+          {segments.length === 0 ? "Split into segments" : "Add segment"}
+        </button>
 
         {unassignedCount > 0 && segments.length > 0 && (
           <div
@@ -97,15 +89,6 @@ export function SegmentPanel({
             />
           ))
         )}
-
-        <button
-          type="button"
-          onClick={onAddSegment}
-          className="cf-btn cf-press h-9 w-full text-[12.5px]"
-        >
-          <Plus className="size-3.5" />
-          {segments.length === 0 ? "Split into segments" : "Add segment"}
-        </button>
       </div>
     </div>
   );
