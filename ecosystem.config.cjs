@@ -25,6 +25,7 @@ module.exports = {
       cwd: path.join(BASE, "apps/api"),
       script: "./dist/index.js",
       env: {
+        ...process.env,
         NODE_ENV: "production",
         PORT: "8000",
       },
@@ -39,6 +40,7 @@ module.exports = {
       cwd: path.join(BASE, "apps/worker"),
       script: "./dist/index.js",
       env: {
+        ...process.env,
         NODE_ENV: "production",
       },
       instances: 1,
@@ -52,6 +54,7 @@ module.exports = {
       cwd: path.join(BASE, "apps/web/.next/standalone/apps/web"),
       script: "./server.js",
       env: {
+        ...process.env,
         NODE_ENV: "production",
         PORT: "3000",
         HOSTNAME: "127.0.0.1",
