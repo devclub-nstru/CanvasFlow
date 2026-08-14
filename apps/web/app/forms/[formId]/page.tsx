@@ -10,7 +10,6 @@ import {
   buildPages,
   resolveLayout,
   resolveNextPage,
-  estimateRemainingPages,
   answersOnPath,
   type FlowField,
   type FlowSegment,
@@ -287,20 +286,6 @@ export default function PublicFormPage() {
   );
 
   const isLast = nextPage.kind === "end";
-
-  const estimatedRemainingPages = useMemo(
-    () =>
-      pages.length === 0
-        ? 0
-        : estimateRemainingPages({
-            flow,
-            pages,
-            answers,
-            currentPageIndex,
-            visitedPageIndexes: pagePath.slice(0, -1),
-          }),
-    [flow, pages, answers, currentPageIndex, pagePath],
-  );
 
   const visitedFieldIds = useMemo(
     () => pagePath.flatMap((pageIndex) => pages[pageIndex]?.fieldIds ?? []),

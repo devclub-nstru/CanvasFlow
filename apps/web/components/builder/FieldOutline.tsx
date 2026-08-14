@@ -37,7 +37,6 @@ export function FieldOutline({
   selectedId,
   onAdd,
   selectedSegmentId,
-  onSelectSegment,
 }: FieldOutlineProps) {
   const unassignedFields = fields.filter((f) => !f.segmentId);
 
