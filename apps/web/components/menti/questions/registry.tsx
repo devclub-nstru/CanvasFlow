@@ -41,7 +41,7 @@ export function SlideQuestionViewer({
         />
       );
     case "WORD_CLOUD":
-      return <WordCloudViewer slide={slide} isPreview={isPreview} />;
+      return <WordCloudViewer slide={slide} isPreview={isPreview} hideResults={hideResults} />;
     case "SCALES":
       return <ScalesViewer slide={slide} isPreview={isPreview} hideResults={hideResults} />;
     case "CONTENT":
