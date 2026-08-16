@@ -3,56 +3,116 @@
 import React from "react";
 import { MentiSlide } from "~/lib/menti";
 import { SlideQuestionViewer } from "../questions/registry";
-import { BarChart3, QrCode } from "lucide-react";
+import { Pencil, CornerDownLeft, Sparkles, Star, QrCode } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
-  slide: MentiSlide;
+  slide?: MentiSlide | null;
   joinCode?: string;
+  isInspectorOpen?: boolean;
+  onOpenNewSlideModal: () => void;
 }
 
-export function SlideCanvasStage({ slide, joinCode }: Props) {
+export function SlideCanvasStage({
+  slide,
+  joinCode = "8239 2324",
+  isInspectorOpen = true,
+  onOpenNewSlideModal,
+}: Props) {
+  // If the slide is unconfigured / new or has default placeholder, show the 3 creation cards
+  const isInitialState = !slide || (!slide.question && slide.options?.length === 0);
+
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-6 bg-neutral-100/60 overflow-hidden relative select-none">
-      {/* Top Banner (Screenshot 1: "You have results from X participants") */}
-      <div className="absolute top-4 left-6 right-6 flex items-center justify-between text-xs text-neutral-600 bg-white/80 backdrop-blur border border-neutral-200 px-4 py-2 rounded-lg">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-blue-600" />
-          <span>
-            You have results from <strong>{slide.totalResponses || 0} participants</strong>.
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-neutral-500 font-medium">
-          <span className="cursor-pointer hover:text-neutral-900">View results</span>
-          <span className="cursor-pointer hover:text-red-600">Clear results</span>
-        </div>
-      </div>
+    <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 bg-(--cf-cream) overflow-hidden relative select-none">
+      {isInitialState ? (
+        /* Empty / Initial Choice Screen (Exact Screenshot Match) */
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl">
+            {/* 1. Start from scratch */}
+            <button
+              type="button"
+              onClick={onOpenNewSlideModal}
+              className="cf-panel cf-raised cf-press flex flex-col items-center text-center p-8 bg-white rounded-3xl border border-(--cf-line-strong) transition-all group"
+            >
+              <div className="size-16 rounded-2xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Pencil className="w-8 h-8 rotate-12" />
+              </div>
+              <h3 className="text-base font-bold text-(--cf-ink) mb-2">
+                Start from scratch
+              </h3>
+              <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+                Gain insights with word clouds, polls, quizzes, and more.
+              </p>
+            </button>
 
-      {/* Main 16:9 Presentation Stage */}
-      <div className="w-full max-w-4xl aspect-[16/9] bg-white rounded-2xl border border-neutral-200 shadow-xl overflow-hidden flex flex-col justify-between p-8 relative mt-6">
-        {/* Stage Watermark / Branding */}
-        {slide.designSettings.showLogo && (
-          <div className="absolute top-6 right-6 flex items-center gap-1.5 opacity-40">
-            <div className="w-2.5 h-2.5 bg-blue-600 rounded-sm" />
-            <span className="text-xs font-bold tracking-tight text-neutral-900">CanvasFlow Menti</span>
+            {/* 2. Import slides */}
+            <button
+              type="button"
+              onClick={() => toast.info("Slide import (PPTX/PDF) coming soon!")}
+              className="cf-panel cf-raised cf-press flex flex-col items-center text-center p-8 bg-white rounded-3xl border border-(--cf-line-strong) transition-all group"
+            >
+              <div className="size-16 rounded-2xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <CornerDownLeft className="w-8 h-8 -rotate-45" />
+              </div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <h3 className="text-base font-bold text-(--cf-ink)">Import slides</h3>
+                <Star className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+              </div>
+              <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+                Upload a Powerpoint, Keynote, or PDF file to Mentimeter.
+              </p>
+            </button>
+
+            {/* 3. Start with AI */}
+            <button
+              type="button"
+              onClick={() => toast.info("AI Survey Generator coming soon!")}
+              className="cf-panel cf-raised cf-press flex flex-col items-center text-center p-8 bg-white rounded-3xl border border-(--cf-line-strong) transition-all group"
+            >
+              <div className="size-16 rounded-2xl bg-blue-100/70 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-bold text-(--cf-ink) mb-2">
+                Start with AI
+              </h3>
+              <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+                Use AI to build personalized quizzes, polls and surveys!
+              </p>
+            </button>
           </div>
-        )}
-
-        {/* Question Viewer Rendered dynamically based on question type */}
-        <div className="flex-1 flex items-center justify-center w-full">
-          <SlideQuestionViewer slide={slide} isPreview={true} />
         </div>
+      ) : (
+        /* Active 16:9 Presentation Stage (Scales smoothly when right sidebar is collapsed/expanded) */
+        <div
+          className={`relative flex flex-col items-center justify-center w-full aspect-[16/9] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
+            isInspectorOpen
+              ? "max-w-4xl max-h-[72vh] p-6 sm:p-8"
+              : "max-w-6xl max-h-[82vh] p-8 sm:p-12"
+          }`}
+        >
+          {/* Top joining information banner */}
+          {(slide?.designSettings?.showJoiningInfo ?? true) && (
+            <div className="absolute top-4 left-6 right-6 flex items-center justify-between text-xs text-(--cf-ink-soft) animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-(--cf-ink)" />
+                <span className="cf-meta text-[11px] font-bold text-(--cf-ink)">
+                  Join at <strong className="text-(--cf-orange)">menti.com</strong> with code:{" "}
+                  <span className="font-mono tracking-wider">{joinCode}</span>
+                </span>
+              </div>
+            </div>
+          )}
 
-        {/* Bottom Stage Instructions (Join info) */}
-        <div className="flex items-center justify-between text-xs text-neutral-400 border-t border-neutral-100 pt-3">
-          <div className="flex items-center gap-2">
-            <QrCode className="w-3.5 h-3.5" />
-            <span>
-              Go to <strong>menti.com</strong> and use code <strong>{joinCode || "8239 2324"}</strong>
-            </span>
+          {/* Render Slide Question Preview */}
+          <div
+            className={`w-full h-full flex items-center justify-center transition-all duration-300 ${
+              (slide?.designSettings?.showJoiningInfo ?? true) ? "pt-6" : ""
+            }`}
+          >
+            <SlideQuestionViewer slide={slide} isPreview={true} />
           </div>
-          <span>Slide {slide.index}</span>
         </div>
-      </div>
+      )}
     </main>
   );
 }

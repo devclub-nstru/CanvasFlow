@@ -17,6 +17,7 @@ export interface MentiSlideDesignSettings {
   textColor?: string;
   accentColor?: string;
   showLogo?: boolean;
+  showJoiningInfo?: boolean;
 }
 
 export interface MentiSlideResponseSettings {

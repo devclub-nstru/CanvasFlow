@@ -1,0 +1,255 @@
+"use client";
+
+import React, { useEffect, useRef } from "react";
+import { MentiPresentation, MentiSlide } from "~/lib/menti";
+import { Users, Download, Lock, CheckCircle2, Star, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+
+interface Props {
+  presentation: MentiPresentation;
+  onVisibleSlideChange?: (slideId: string) => void;
+}
+
+export function ResultsSlideFeed({ presentation, onVisibleSlideChange }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Set up intersection observer to detect active slide in view
+  useEffect(() => {
+    if (!onVisibleSlideChange) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            onVisibleSlideChange(entry.target.id);
+          }
+        });
+      },
+      { root: containerRef.current, threshold: 0.5 }
+    );
+
+    presentation.slides.forEach((slide) => {
+      const el = document.getElementById(`results-slide-${slide.id}`);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [presentation.slides, onVisibleSlideChange]);
+
+  const totalResponsesAcrossDeck = presentation.slides.reduce(
+    (acc, s) => acc + (s.totalResponses || 0),
+    0
+  );
+
+  return (
+    <main
+      ref={containerRef}
+      className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 select-none bg-(--cf-cream)"
+    >
+      {/* 1. Feed Header Bar */}
+      <div className="flex items-center justify-between pb-4 border-b border-(--cf-line-strong) max-w-4xl mx-auto">
+        <div className="flex items-center gap-3">
+          <h2 className="cf-display text-xl sm:text-2xl text-(--cf-ink)">
+            Responses
+          </h2>
+          <span className="cf-meta px-2 py-0.5 rounded-full bg-(--cf-cream-2) border border-(--cf-line) text-(--cf-ink)">
+            {totalResponsesAcrossDeck} total votes
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => toast.info("Exporting all responses to CSV...")}
+          className="cf-btn-outline px-3 py-1.5 text-xs font-semibold rounded-(--hex-radius) flex items-center gap-1.5"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export All (CSV)
+        </button>
+      </div>
+
+      {/* 2. Slide Results Cards List */}
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {presentation.slides.map((slide, index) => (
+          <SlideResultCard
+            key={slide.id}
+            slide={slide}
+            index={index}
+            participantCount={presentation.participantCount}
+          />
+        ))}
+      </div>
+    </main>
+  );
+}
+
+/* ─── Individual Slide Card ─────────────────────────────────────────── */
+
+function SlideResultCard({
+  slide,
+  index,
+  participantCount,
+}: {
+  slide: MentiSlide;
+  index: number;
+  participantCount: number;
+}) {
+  const total = slide.totalResponses || 0;
+  const maxOptionVotes = Math.max(...slide.options.map((o) => o.voteCount || 0), 1);
+
+  // For scales: compute average score
+  let averageScaleScore = 0;
+  if (slide.type === "SCALES" && total > 0) {
+    const sum = slide.options.reduce((acc, opt, i) => acc + (i + 1) * (opt.voteCount || 0), 0);
+    averageScaleScore = Number((sum / total).toFixed(1));
+  }
+
+  return (
+    <div
+      id={`results-slide-${slide.id}`}
+      className="cf-panel cf-raised p-6 bg-white rounded-2xl border-2 border-(--cf-line-strong) space-y-6"
+    >
+      {/* 1. Card Header */}
+      <div className="flex items-start justify-between gap-4 pb-4 border-b border-(--cf-line)">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="cf-meta size-7 shrink-0 rounded-(--hex-radius) bg-(--cf-cream) border border-(--cf-line-strong) flex items-center justify-center font-bold text-xs text-(--cf-ink)">
+            {index + 1}
+          </span>
+          <div className="space-y-0.5">
+            <h3 className="font-bold text-base text-(--cf-ink) leading-snug">
+              {slide.question || "Untitled question"}
+            </h3>
+            {slide.description && (
+              <p className="text-xs text-(--cf-ink-soft)">{slide.description}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-(--cf-ink-soft) font-mono bg-(--cf-cream) px-2.5 py-1 rounded-(--hex-radius) border border-(--cf-line)">
+            <Users className="w-3.5 h-3.5 text-(--cf-ink)" />
+            <span className="font-bold text-(--cf-ink)">{total}</span> / {participantCount}
+          </div>
+          <button
+            type="button"
+            onClick={() => toast.info(`Exporting data for slide ${index + 1}...`)}
+            className="p-1.5 text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream) rounded transition-colors"
+            title="Download slide data"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Card Body Visualization */}
+      <div className="space-y-3">
+        {slide.type === "BAR_GRAPH" && (
+          <div className="space-y-3">
+            {slide.options.map((opt) => {
+              const count = opt.voteCount || 0;
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+              const fillPct = total > 0 ? (count / maxOptionVotes) * 100 : 0;
+
+              return (
+                <div key={opt.id} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-(--cf-ink) truncate max-w-md">{opt.label}</span>
+                    <span className="text-(--cf-ink-soft) font-mono tabular-nums">
+                      <strong className="text-(--cf-ink)">{count}</strong> ({pct}%)
+                    </span>
+                  </div>
+                  {/* Visual Bar Track */}
+                  <div className="h-3 w-full bg-(--cf-cream) rounded-full overflow-hidden border border-(--cf-line)">
+                    <div
+                      className="h-full bg-(--cf-orange) rounded-full transition-all duration-500"
+                      style={{ width: `${fillPct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {slide.type === "WORD_CLOUD" && (
+          <div className="p-4 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) flex flex-wrap items-center justify-center gap-3 min-h-[120px]">
+            {slide.options.map((opt, i) => {
+              const count = opt.voteCount || 0;
+              const ratio = count / maxOptionVotes;
+              const fontSize = 12 + Math.round(ratio * 16); // 12px to 28px range
+
+              return (
+                <div
+                  key={i}
+                  className="cf-panel cf-raised px-3 py-1.5 bg-white rounded-lg border border-(--cf-line-strong) flex items-center gap-2 hover:scale-105 transition-transform"
+                >
+                  <span
+                    className="font-bold text-(--cf-ink)"
+                    style={{ fontSize: `${fontSize}px` }}
+                  >
+                    {opt.label}
+                  </span>
+                  <span className="cf-meta text-[9px] px-1.5 py-0.2 rounded-full bg-(--cf-orange) text-white font-bold">
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {slide.type === "SCALES" && (
+          <div className="p-5 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="cf-eyebrow text-(--cf-ink-soft)">
+                Rating Spectrum ({slide.responseSettings.ratingLowLabel || "Low"} → {slide.responseSettings.ratingHighLabel || "High"})
+              </span>
+              <div className="flex items-center gap-1.5 text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-300">
+                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                <span>Average: {averageScaleScore} / 5.0</span>
+              </div>
+            </div>
+
+            {/* 1-5 Score Distribution */}
+            <div className="grid grid-cols-5 gap-2">
+              {slide.options.map((opt, idx) => {
+                const count = opt.voteCount || 0;
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                const fillPct = total > 0 ? (count / maxOptionVotes) * 100 : 0;
+
+                return (
+                  <div key={idx} className="flex flex-col items-center gap-1.5 text-center">
+                    <div className="w-full h-20 bg-white rounded-lg border border-(--cf-line-strong) flex flex-col justify-end p-1 overflow-hidden">
+                      <div
+                        className="w-full bg-(--cf-ink) rounded-sm transition-all duration-500"
+                        style={{ height: `${fillPct}%` }}
+                      />
+                    </div>
+                    <span className="font-bold text-xs text-(--cf-ink)">{idx + 1}★</span>
+                    <span className="text-[10px] font-mono text-(--cf-ink-soft)">{count} ({pct}%)</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Card Footer Tags */}
+      <div className="pt-3 border-t border-(--cf-line) flex items-center justify-between text-xs text-(--cf-ink-soft)">
+        <div className="flex items-center gap-2">
+          <span className="cf-meta uppercase text-[10px] px-2 py-0.5 rounded bg-(--cf-cream) border border-(--cf-line) font-bold text-(--cf-ink)">
+            {slide.type.replace("_", " ")}
+          </span>
+          {slide.responseSettings.multipleSelection && (
+            <span className="cf-meta text-[10px] text-(--cf-ink-soft)">Multi-choice</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 font-mono text-[10px]">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Responses recorded</span>
+        </div>
+      </div>
+    </div>
+  );
+}

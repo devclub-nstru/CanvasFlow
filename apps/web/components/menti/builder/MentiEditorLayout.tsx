@@ -15,6 +15,7 @@ interface Props {
 }
 
 export function MentiEditorLayout({ initialPresentation }: Props) {
+  const [isInspectorOpen, setIsInspectorOpen] = React.useState(true);
   const {
     presentation,
     activeSlide,
@@ -31,7 +32,7 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
   } = useMentiEditor(initialPresentation);
 
   return (
-    <div className="flex flex-col w-full h-screen overflow-hidden bg-white">
+    <div className="flex flex-col w-full h-screen overflow-hidden bg-(--cf-cream)">
       {/* 1. Global Editor Header */}
       <MentiEditorHeader
         presentation={presentation}
@@ -40,10 +41,10 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
         onTitleChange={updateTitle}
       />
 
-      {/* 2. Body Switch: Create Tab vs Results Tab */}
+      {/* 2. Main Builder Layout: Create Tab vs Results Tab */}
       {activeTab === "create" ? (
         <div className="flex flex-1 overflow-hidden">
-          {/* Left: Slide Thumbnails */}
+          {/* Left Slide Thumbnails Sidebar */}
           <SlideThumbnailSidebar
             slides={presentation.slides}
             activeSlideId={activeSlideId}
@@ -52,29 +53,31 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
             onDeleteSlide={deleteSlide}
           />
 
-          {/* Center: Interactive Slide Canvas */}
-          {activeSlide && (
-            <SlideCanvasStage
-              slide={activeSlide}
-              joinCode={presentation.joinCode}
-            />
-          )}
+          {/* Center Interactive Presentation Stage */}
+          <SlideCanvasStage
+            slide={activeSlide}
+            joinCode={presentation.joinCode}
+            isInspectorOpen={isInspectorOpen}
+            onOpenNewSlideModal={() => setIsNewSlideModalOpen(true)}
+          />
 
-          {/* Right: Slide Inspector & Options */}
+          {/* Right Inspector Drawer */}
           {activeSlide && (
             <SlideInspectorPanel
               slide={activeSlide}
+              isOpen={isInspectorOpen}
+              onToggleOpen={() => setIsInspectorOpen((prev) => !prev)}
               onChange={(updated) => updateSlide(activeSlide.id, updated)}
               onOpenTypePicker={() => setIsNewSlideModalOpen(true)}
             />
           )}
         </div>
       ) : (
-        /* Results Tab View (Screenshot 2) */
+        /* Results Analytics View */
         <MentiResultsView presentation={presentation} />
       )}
 
-      {/* 3. New Slide Picker Modal (Screenshot 4) */}
+      {/* 3. New Slide Type Picker Modal */}
       <NewSlidePickerModal
         isOpen={isNewSlideModalOpen}
         onClose={() => setIsNewSlideModalOpen(false)}

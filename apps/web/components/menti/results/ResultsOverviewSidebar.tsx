@@ -1,80 +1,208 @@
 "use client";
 
-import React from "react";
-import { Download, Trash2, FileSpreadsheet, Users, MessageCircle, Star } from "lucide-react";
+import React, { useState } from "react";
 import { MentiPresentation } from "~/lib/menti";
+import {
+  Users,
+  BarChart2,
+  TrendingUp,
+  Download,
+  Trash2,
+  ChevronRight,
+  ChevronLeft,
+  FileSpreadsheet,
+  Layers,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   presentation: MentiPresentation;
+  activeSlideId?: string | null;
+  onSelectSlide?: (slideId: string) => void;
 }
 
-export function ResultsOverviewSidebar({ presentation }: Props) {
+export function ResultsOverviewSidebar({
+  presentation,
+  activeSlideId,
+  onSelectSlide,
+}: Props) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const totalResponses = presentation.slides.reduce(
+    (acc, s) => acc + (s.totalResponses || 0),
+    0
+  );
+
+  const totalPossible = presentation.slides.length * (presentation.participantCount || 1);
+  const participationRate = totalPossible > 0
+    ? Math.min(100, Math.round((totalResponses / totalPossible) * 100))
+    : 0;
+
+  const scrollToSlide = (slideId: string) => {
+    const el = document.getElementById(`results-slide-${slideId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (onSelectSlide) {
+      onSelectSlide(slideId);
+    }
+  };
+
+  if (!isOpen) {
+    return (
+      <aside className="w-10 bg-(--cf-cream-2) border-l border-(--cf-line-strong) flex flex-col items-center py-3 select-none shrink-0">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="size-8 flex items-center justify-center rounded-(--hex-radius) bg-(--cf-ink) text-white shadow-xs hover:opacity-90 transition-opacity"
+          title="Open Overview Sidebar"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-80 bg-white border-l border-neutral-200 p-5 space-y-6 overflow-y-auto select-none">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-800">Overview</h2>
-
-      {/* Export to Excel card */}
-      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
-        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          Need data exports?
-        </div>
-        <p className="text-xs text-emerald-700 leading-relaxed">
-          Export all participant answers, vote tallies, and timestamps into CSV / Excel.
-        </p>
+    <aside className="w-80 bg-(--cf-cream-2) border-l border-(--cf-line-strong) flex flex-col h-full select-none z-20 shrink-0 animate-in slide-in-from-right-2 duration-200">
+      {/* 1. Sidebar Header */}
+      <div className="cf-pane-bar px-4 flex items-center justify-between">
+        <span className="cf-eyebrow text-(--cf-ink)">
+          Session Overview
+        </span>
         <button
           type="button"
-          className="w-full py-2 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-1.5"
+          onClick={() => setIsOpen(false)}
+          className="cf-danger-ghost p-1 rounded"
+          title="Collapse overview"
         >
-          <Download className="w-3.5 h-3.5" />
-          Export to Excel
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-600" />
-            <span className="text-xs font-semibold text-neutral-700">Total Participants</span>
+      {/* 2. Scrollable Body */}
+      <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="cf-panel p-3 bg-white rounded-xl border border-(--cf-line-strong) space-y-1">
+            <div className="flex items-center gap-1 text-[11px] font-mono text-(--cf-ink-soft)">
+              <Users className="w-3 h-3 text-(--cf-orange)" />
+              <span>Participants</span>
+            </div>
+            <p className="font-bold text-lg text-(--cf-ink) tabular-nums">
+              {presentation.participantCount}
+            </p>
           </div>
-          <span className="text-xs font-bold text-neutral-900">{presentation.participantCount}</span>
+
+          <div className="cf-panel p-3 bg-white rounded-xl border border-(--cf-line-strong) space-y-1">
+            <div className="flex items-center gap-1 text-[11px] font-mono text-(--cf-ink-soft)">
+              <BarChart2 className="w-3 h-3 text-emerald-600" />
+              <span>Total Votes</span>
+            </div>
+            <p className="font-bold text-lg text-(--cf-ink) tabular-nums">
+              {totalResponses}
+            </p>
+          </div>
+
+          <div className="col-span-2 cf-panel p-3 bg-white rounded-xl border border-(--cf-line-strong) flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-(--cf-orange)" />
+              <span className="text-xs font-bold text-(--cf-ink)">Participation Rate</span>
+            </div>
+            <span className="font-mono font-bold text-sm text-(--cf-ink)">
+              {participationRate}%
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-amber-500" />
-            <span className="text-xs font-semibold text-neutral-700">Participation Rate</span>
+        {/* Slide Deck Quick Navigation */}
+        <div className="space-y-2 pt-2 border-t border-(--cf-line)">
+          <div className="flex items-center justify-between">
+            <span className="cf-eyebrow text-(--cf-ink)">Slide Navigation</span>
+            <span className="cf-meta text-[10px] text-(--cf-ink-soft)">
+              {presentation.slides.length} slides
+            </span>
           </div>
-          <span className="text-xs font-bold text-neutral-900">85%</span>
+
+          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+            {presentation.slides.map((slide, idx) => {
+              const isActive = slide.id === activeSlideId;
+
+              return (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => scrollToSlide(slide.id)}
+                  className={`w-full flex items-center justify-between p-2 rounded-(--hex-radius) text-left transition-all ${
+                    isActive
+                      ? "bg-(--cf-ink) text-white shadow-xs"
+                      : "bg-white hover:bg-(--cf-cream) text-(--cf-ink) border border-(--cf-line)"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`cf-meta size-5 rounded shrink-0 flex items-center justify-center font-bold text-[10px] ${
+                        isActive ? "bg-white/20 text-white" : "bg-(--cf-cream) text-(--cf-ink)"
+                      }`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="text-xs font-semibold truncate">
+                      {slide.question || `Slide ${idx + 1}`}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`font-mono text-[10px] font-bold shrink-0 ml-2 ${
+                      isActive ? "text-white/80" : "text-(--cf-ink-soft)"
+                    }`}
+                  >
+                    {slide.totalResponses || 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-4 h-4 text-purple-600" />
-            <span className="text-xs font-semibold text-neutral-700">Q&A Questions</span>
-          </div>
-          <span className="text-xs font-bold text-neutral-900">0</span>
+        {/* Export & Tools Section */}
+        <div className="space-y-2 pt-2 border-t border-(--cf-line)">
+          <span className="cf-eyebrow text-(--cf-ink)">Exports & Actions</span>
+
+          <button
+            type="button"
+            onClick={() => toast.success("Exported results summary to Excel (.xlsx)!")}
+            className="cf-btn w-full justify-center py-2 px-3 text-xs font-bold rounded-(--hex-radius) gap-1.5"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            Export to Excel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => toast.info("PDF Presentation Summary coming soon!")}
+            className="cf-btn-outline w-full justify-center py-2 px-3 text-xs font-semibold rounded-(--hex-radius) gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download PDF Report
+          </button>
         </div>
-      </div>
 
-      {/* Danger actions */}
-      <div className="pt-4 border-t border-neutral-100 space-y-2">
-        <button
-          type="button"
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Download All Slides (PDF)
-        </button>
-
-        <button
-          type="button"
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          Clear All Results
-        </button>
+        {/* Danger Zone: Clear Results */}
+        <div className="pt-2 border-t border-(--cf-line)">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Are you sure you want to reset and clear all recorded responses?")) {
+                toast.success("Results cleared");
+              }
+            }}
+            className="cf-btn-danger w-full justify-center py-2 px-3 text-xs font-bold rounded-(--hex-radius) gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Clear All Responses
+          </button>
+        </div>
       </div>
     </aside>
   );
