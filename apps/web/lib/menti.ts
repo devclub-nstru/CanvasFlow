@@ -16,6 +16,7 @@ export interface MentiSlideDesignSettings {
   backgroundColor?: string;
   textColor?: string;
   accentColor?: string;
+  wordCloudColors?: string[];
   showLogo?: boolean;
   showJoiningInfo?: boolean;
 }

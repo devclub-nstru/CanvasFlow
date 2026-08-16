@@ -1,81 +1,220 @@
 "use client";
 
-import React from "react";
-import { MentiSlide } from "~/lib/menti";
-import { motion } from "motion/react";
 import { Cloud } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MentiOption, MentiSlide } from "~/lib/menti";
 
-interface Props {
-  slide: MentiSlide;
-  isPreview?: boolean;
-}
+interface Props { slide: MentiSlide; isPreview?: boolean; showQuestion?: boolean; muted?: boolean; }
+interface CloudWord { text: string; value: number; color: string; angle: 0 | 90 | -90; }
+interface PositionedWord extends CloudWord { x: number; y: number; size: number; }
 
-const CLOUD_COLORS = [
-  "#2d5cf6",
-  "#e11d48",
-  "#10b981",
-  "#8b5cf6",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
-  "#3b82f6",
+export const DEFAULT_WORD_CLOUD_COLORS = ["#5268e8", "#ff7378", "#313c8e", "#9189eb", "#43b7a6", "#e4a23e"];
+
+const previewWords: MentiOption[] = [
+  { id: "p1", label: "creative",      voteCount: 12 },
+  { id: "p2", label: "leader",        voteCount: 8  },
+  { id: "p3", label: "focus",         voteCount: 7  },
+  { id: "p4", label: "bold",          voteCount: 5  },
+  { id: "p5", label: "collaboration", voteCount: 4  },
+  { id: "p6", label: "inspiration",   voteCount: 3  },
+  { id: "p7", label: "growth",        voteCount: 6  },
+  { id: "p8", label: "energy",        voteCount: 2  },
 ];
 
-export function WordCloudViewer({ slide, isPreview }: Props) {
-  const words = slide.options || [];
-  const maxCount = Math.max(...words.map((w) => w.voteCount || 1), 1);
-  const minCount = Math.min(...words.map((w) => w.voteCount || 1), 1);
+/** Deterministic per-word hash — stable across renders. */
+function wordHash(str: string): number {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0;
+  return h;
+}
 
-  const getFontSize = (count: number) => {
-    if (maxCount === minCount) return isPreview ? "1.1rem" : "1.75rem";
-    const minSize = isPreview ? 0.85 : 1.25;
-    const maxSize = isPreview ? 2.0 : 3.5;
-    const normalized = (count - minCount) / (maxCount - minCount);
-    const size = minSize + normalized * (maxSize - minSize);
-    return `${size.toFixed(2)}rem`;
+// Only 0° and ±90° — diagonal angles inflate AABB and look messy.
+// Top-2 words are always 0° for impact. ~20 % of the rest go vertical.
+function pickAngle(rank: number, text: string): 0 | 90 | -90 {
+  if (rank < 2) return 0;
+  const h = wordHash(text);
+  if (h % 5 === 0) return (h >> 4) & 1 ? 90 : -90;
+  return 0;
+}
+
+/**
+ * AABB half-extents for a word at a given rotation.
+ * For 0°  → hw = textW/2,   hh = textH/2
+ * For 90° → hw = textH/2,   hh = textW/2
+ */
+function aabb(textW: number, textH: number, angleDeg: number) {
+  if (angleDeg === 0) return { hw: textW / 2, hh: textH / 2 };
+  // ±90° swaps width and height exactly.
+  return { hw: textH / 2, hh: textW / 2 };
+}
+
+// Average glyph width for Inter/system sans-serif: ~0.55× em for mixed-case.
+const CHAR_W = 0.55;
+const LINE_H = 1.10;
+// 1.5px visual gap between any two words.
+const GAP = 1.5;
+
+function packWords(words: CloudWord[], width: number, height: number, isPreview: boolean): PositionedWord[] {
+  if (!words.length) return [];
+
+  const maxValue = Math.max(...words.map((w) => w.value), 1);
+
+  // maxSize shrinks slightly as more words compete for the same space.
+  const crowdFactor = Math.max(0.52, 1 - (words.length - 1) * 0.011);
+  const maxSize = Math.min(
+    isPreview ? 52 : 92,
+    (isPreview ? height / 2.8 : height / 2.4) * crowdFactor,
+  );
+  const minSize = Math.max(isPreview ? 10 : 14, maxSize * 0.21);
+
+  // Power curve 0.55: more visual separation between ranks than pure sqrt.
+  const wordSize = (value: number, scale: number) =>
+    (minSize + (maxSize - minSize) * Math.pow(value / maxValue, 0.55)) * scale;
+
+  const limit = Math.hypot(width, height) / 2;
+
+  const tryPack = (scale: number): PositionedWord[] | null => {
+    // Store boxes WITHOUT pre-added gap so collision threshold is exact:
+    //   new_hw + gap  +  existing_hw  =  clear single-gap separation.
+    const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
+    const placed: PositionedWord[] = [];
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]!;
+      const size  = wordSize(word.value, scale);
+      const textW = word.text.length * size * CHAR_W;
+      const textH = size * LINE_H;
+      const { hw, hh } = aabb(textW, textH, word.angle);
+
+      let x = 0, y = 0, found = i === 0;
+
+      for (let radius = 1; !found && radius < limit; radius += 1) {
+        // ~4px arc resolution — fine enough to find tight gaps.
+        const steps = Math.max(32, Math.ceil((2 * Math.PI * radius) / 4));
+        const startAngle = i * 2.399; // golden-angle offset per word
+
+        for (let s = 0; s < steps; s++) {
+          const a = startAngle + (s / steps) * 2 * Math.PI;
+          // Elliptical spiral (0.72 y-squash) keeps cloud wider than tall.
+          const nx = Math.cos(a) * radius;
+          const ny = Math.sin(a) * radius * 0.72;
+
+          // Bounds: keep the full AABB inside the canvas with a 2px margin.
+          if (Math.abs(nx) + hw + GAP > width  / 2 - 2) continue;
+          if (Math.abs(ny) + hh + GAP > height / 2 - 2) continue;
+
+          let collides = false;
+          for (const b of boxes) {
+            // Gap on the NEW word's side only — b already stores un-padded extents.
+            if (
+              Math.abs(nx - b.x) < hw + GAP + b.hw &&
+              Math.abs(ny - b.y) < hh + GAP + b.hh
+            ) {
+              collides = true;
+              break;
+            }
+          }
+
+          if (!collides) { x = nx; y = ny; found = true; break; }
+        }
+      }
+
+      if (!found) return null;
+      boxes.push({ x, y, hw, hh }); // store clean (no gap baked in)
+      placed.push({ ...word, x, y, size });
+    }
+    return placed;
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center w-full h-full max-w-5xl px-6 mx-auto">
-      <h2
-        className={`font-semibold text-center leading-tight mb-8 ${
-          isPreview ? "text-2xl" : "text-4xl md:text-5xl"
-        }`}
-        style={{ color: slide.designSettings.textColor || "#1a1d29" }}
-      >
-        {slide.question || "Enter your word cloud question..."}
-      </h2>
+  for (let s = 1.0; s >= 0.40; s -= 0.04) {
+    const result = tryPack(s);
+    if (result) return result;
+  }
+  return tryPack(0.36) ?? [];
+}
 
-      {words.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-neutral-300 text-neutral-400">
-          <Cloud className="w-12 h-12 mb-2 opacity-50" />
-          <p className="text-sm font-medium">Waiting for word cloud entries...</p>
+export function WordCloudViewer({ slide, isPreview, showQuestion = true, muted = false }: Props) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<[number, number]>(isPreview ? [360, 200] : [1200, 650]);
+
+  const source = slide.options.length ? slide.options : isPreview ? previewWords : [];
+  const colors = slide.designSettings.wordCloudColors?.length
+    ? slide.designSettings.wordCloudColors
+    : DEFAULT_WORD_CLOUD_COLORS;
+
+  const words = useMemo<CloudWord[]>(
+    () =>
+      [...source]
+        .sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0) || a.label.localeCompare(b.label))
+        .slice(0, 40)
+        .map((w, i) => ({
+          text:  w.label,
+          value: w.voteCount || 0,
+          color: w.color || colors[i % colors.length]!,
+          angle: pickAngle(i, w.label),
+        })),
+    [source, colors],
+  );
+
+  const positionedWords = useMemo(
+    () => packWords(words, size[0], size[1], !!isPreview),
+    [words, size, isPreview],
+  );
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry!.contentRect;
+      if (width && height) setSize([Math.floor(width), Math.floor(height)]);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <section
+      className="flex h-full w-full flex-col"
+      style={{ color: slide.designSettings.textColor || "#17171c" }}
+    >
+      {showQuestion && (
+        <h2
+          className={`shrink-0 font-medium leading-[1.08] tracking-[-0.05em] ${
+            isPreview ? "mb-4 text-2xl" : "mb-8 text-4xl md:text-6xl"
+          }`}
+        >
+          {slide.question || "What word comes to mind?"}
+        </h2>
+      )}
+
+      {words.length ? (
+        <div
+          ref={hostRef}
+          className={`relative min-h-0 flex-1 overflow-hidden transition-opacity duration-300 ${
+            muted ? "opacity-30" : "opacity-100"
+          }`}
+        >
+          {positionedWords.map((word) => (
+            <span
+              key={word.text}
+              className="absolute left-1/2 top-1/2 whitespace-nowrap font-semibold leading-none tracking-[-0.04em]"
+              style={{
+                color:      word.color,
+                fontSize:   word.size,
+                transition: "font-size 600ms ease-out, transform 600ms ease-out, color 400ms ease",
+                transform:  `translate(calc(-50% + ${word.x}px), calc(-50% + ${word.y}px)) rotate(${word.angle}deg)`,
+              }}
+            >
+              {word.text}
+            </span>
+          ))}
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-center w-full gap-4 p-6 md:gap-8">
-          {words.map((word, idx) => {
-            const count = word.voteCount || 1;
-            const color = CLOUD_COLORS[idx % CLOUD_COLORS.length];
-
-            return (
-              <motion.span
-                key={word.id || idx}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 120, damping: 14, delay: idx * 0.03 }}
-                style={{
-                  fontSize: getFontSize(count),
-                  color,
-                }}
-                className="font-bold tracking-tight cursor-default select-none hover:scale-110 transition-transform"
-                title={`${word.label}: ${count} votes`}
-              >
-                {word.label}
-              </motion.span>
-            );
-          })}
+        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
+          <Cloud className="mb-3 size-10" />
+          <p className="text-sm font-medium">Waiting for responses</p>
         </div>
       )}
-    </div>
+    </section>
   );
 }
