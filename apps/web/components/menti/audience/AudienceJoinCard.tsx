@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, QrCode } from "lucide-react";
 import { VerticalScale } from "~/components/Scale";
@@ -8,6 +8,7 @@ import Noise from "~/components/Noise";
 
 interface Props {
   onJoin: (code: string, name: string) => void;
+  defaultCode?: string;
 }
 
 export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
@@ -78,7 +79,11 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 6);
     if (!pasted) return;
 
     const newDigits = Array(6).fill("");
@@ -123,22 +128,44 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
 
       {/* 2. Main Hero Join Card */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-6 w-full max-w-lg mx-auto">
-        <div className="cf-panel cf-raised w-full p-5 sm:p-9 bg-white border-2 border-(--cf-line-strong) rounded-2xl sm:rounded-3xl shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 duration-200">
-          {/* Header & Eyebrow */}
+        <div className="cf-panel cf-raised w-full p-5 sm:p-8 bg-white border-2 border-(--cf-line-strong) rounded-2xl sm:rounded-3xl shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          {/* Header & Title */}
           <div className="text-center space-y-1">
             <h1 className="cf-display text-2xl sm:text-3xl font-black text-(--cf-ink) tracking-tight">
               Join Presentation
             </h1>
             <p className="text-xs text-(--cf-ink-soft)">
-              Enter the 6-character code shown on the screen
+              Enter your name and the 6-character code shown on the screen
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Participant Name Input */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="menti-name-input"
+                className="cf-meta block text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider"
+              >
+                Your Name <span className="text-(--cf-orange)">*</span>
+              </label>
+              <input
+                id="menti-name-input"
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="e.g. Alex"
+                maxLength={30}
+                autoFocus
+                required
+                autoComplete="name"
+                className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 font-bold text-sm sm:text-base bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:border-(--cf-orange) focus:bg-white transition-all text-(--cf-ink) placeholder:text-neutral-300"
+              />
+            </div>
+
             {/* 6-Character Split Alphanumeric Code Input */}
-            <div className="space-y-2">
-              <label className="cf-meta text-[11px] text-(--cf-ink-soft) block">
-                PRESENTATION CODE
+            <div className="space-y-1.5">
+              <label className="cf-meta block text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider">
+                Presentation Code <span className="text-(--cf-orange)">*</span>
               </label>
 
               <div
@@ -157,13 +184,12 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    autoFocus={idx === 0}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
+                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
                   />
                 ))}
 
                 {/* Divider */}
-                <div className="text-center font-bold text-base text-(--cf-ink-soft) select-none">
+                <div className="text-center font-mono font-bold text-lg text-(--cf-ink-soft) select-none">
                   -
                 </div>
 
@@ -179,43 +205,19 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
+                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
                   />
                 ))}
-              </div>
-            </div>
-
-            {/* Presentation Code Input Field */}
-            <div className="space-y-1">
-              <label
-                htmlFor="menti-code-input"
-                className="cf-meta block text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider"
-              >
-                Presentation Code <span className="text-(--cf-orange)">*</span>
-              </label>
-
-              <div className="relative">
-                <input
-                  id="menti-code-input"
-                  type="text"
-                  value={code}
-                  onChange={handleCodeChange}
-                  placeholder="8239 2324"
-                  maxLength={9}
-                  required
-                  autoComplete="off"
-                  className="w-full py-3 sm:py-3.5 px-4 text-center font-mono font-black text-xl sm:text-2xl md:text-3xl tracking-widest bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:border-(--cf-orange) focus:bg-white transition-all shadow-inner text-(--cf-ink) placeholder:text-neutral-300"
-                />
               </div>
             </div>
 
             {/* Join Submit Button */}
             <button
               type="submit"
-              disabled={!isValid}
-              className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-black rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-lg transition-all mt-1"
+              disabled={!isFormValid || isSubmitting}
+              className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-black rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-lg transition-all mt-2"
             >
-              <span>Join Presentation</span>
+              <span>{isSubmitting ? "Joining..." : "Join Presentation"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -238,4 +240,3 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
     </div>
   );
 }
-

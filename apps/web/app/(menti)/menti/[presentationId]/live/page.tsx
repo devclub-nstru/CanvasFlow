@@ -8,6 +8,8 @@ import { useMentiRealtime } from "~/hooks/useMentiRealtime";
 import type { MentiPresentation } from "~/lib/menti";
 import Noise from "~/components/Noise";
 
+import { MOCK_PRESENTATION } from "~/lib/mock-menti";
+
 interface Props {
   params: Promise<{ presentationId: string }>;
 }
@@ -76,19 +78,20 @@ export default function MentiLiveAudiencePage({ params }: Props) {
 
   const formattedJoinCode = sessionState?.session?.code
     ? sessionState.session.code.replace(/(.{3})/g, "$1 ").trim()
-    : presentation?.joinCode || "----";
+    : presentation?.joinCode || MOCK_PRESENTATION.joinCode;
+
+  const effectivePresentation: MentiPresentation = presentation || {
+    ...MOCK_PRESENTATION,
+    id: presentationId,
+  };
 
   return (
     <AudienceLayout
       presentation={{
-        ...(presentation || {
-          id: presentationId,
-          title: "Live Presentation",
-          slides: [],
-        }),
+        ...effectivePresentation,
         joinCode: formattedJoinCode,
       }}
-      currentSlide={sessionState?.currentSlide || presentation?.slides[0]}
+      currentSlide={sessionState?.currentSlide || effectivePresentation.slides[0]}
       activeSlideIndex={activeSlideIndex >= 0 ? activeSlideIndex : 0}
       sessionStatus={sessionState?.session?.status || "live"}
       onSubmitAnswer={submitResponse}
