@@ -15,18 +15,27 @@ import {
   Minimize2,
   LayoutGrid,
   QrCode,
+  AlertTriangle,
+  Copy,
+  Check,
+  Users,
 } from "lucide-react";
 import { VerticalScale } from "~/components/Scale";
 import { motion, AnimatePresence } from "motion/react";
 
+import { useMentiRealtime } from "~/hooks/useMentiRealtime";
+
 interface Props {
   presentation: MentiPresentation;
+  sessionId?: string;
 }
 
-export function PresenterLayout({ presentation }: Props) {
+export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showConfirmEndModal, setShowConfirmEndModal] = useState(false);
+  const [headerCopied, setHeaderCopied] = useState(false);
 
   const {
     isIntro,
@@ -42,6 +51,42 @@ export function PresenterLayout({ presentation }: Props) {
     toggleJoinCode,
     toggleLock,
   } = useMentiPresenter(presentation);
+
+  // Connect Host to WebSocket store
+  const {
+    sessionState,
+    changeSlide,
+    toggleVotingLock: socketToggleLock,
+    changeSessionStatus,
+  } = useMentiRealtime({
+    sessionId,
+    isHost: true,
+    disabled: !sessionId,
+  });
+
+  const activeJoinCode = sessionState?.session?.code
+    ? sessionState.session.code.replace(/(.{3})/g, "$1 ").trim()
+    : (presentation.joinCode || "----");
+
+  const handleCopyHeaderCode = () => {
+    if (!activeJoinCode) return;
+    const cleanCode = activeJoinCode.replace(/\s+/g, "");
+    navigator.clipboard.writeText(cleanCode);
+    setHeaderCopied(true);
+    setTimeout(() => setHeaderCopied(false), 2000);
+  };
+
+  // Sync active slide change with WebSocket server when host navigates
+  useEffect(() => {
+    if (!isIntro && currentSlide?.id && sessionId) {
+      changeSlide(currentSlide.id);
+      changeSessionStatus("live");
+    } else if (isIntro && sessionId) {
+      changeSessionStatus("waiting");
+    }
+  }, [currentStep, isIntro, currentSlide?.id, sessionId, changeSlide, changeSessionStatus]);
+
+  const participantCount = sessionState?.participantCount ?? presentation.participantCount ?? 0;
 
   const [hideResults, setHideResults] = useState(
     currentSlide?.responseSettings?.hideResultsFromAudience ?? false
@@ -88,7 +133,16 @@ export function PresenterLayout({ presentation }: Props) {
   }, []);
 
   const handleEndPresentation = () => {
-    router.push(`/menti/${presentation.id}/results`);
+    setShowConfirmEndModal(true);
+  };
+
+  const handleConfirmEndPresentation = async () => {
+    try {
+      await changeSessionStatus("finished");
+    } catch (err) {
+      console.error("Failed to close session:", err);
+    }
+    router.push("/dashboard/menti");
   };
 
   return (
@@ -108,13 +162,14 @@ export function PresenterLayout({ presentation }: Props) {
       <div className="absolute top-5 left-6 right-6 z-20 flex items-center justify-between pointer-events-none">
         {/* Top-Left Cluster: Exit + Fullscreen (Reveals on Hover) */}
         <div className="flex items-center gap-2 pointer-events-auto opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-          <Link
-            href={`/menti/${presentation.id}/edit`}
-            className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
+          <button
+            type="button"
+            onClick={() => setShowConfirmEndModal(true)}
+            className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-rose-600 hover:text-white border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
             title="Exit presentation"
           >
             <X className="w-4 h-4" />
-          </Link>
+          </button>
 
           <button
             type="button"
@@ -150,7 +205,7 @@ export function PresenterLayout({ presentation }: Props) {
         </div>
       </div>
 
-      {/* 2. Top-Middle: Absolutely Centered & Prominent Join Code */}
+      {/* 2. Top-Middle: Absolutely Centered & Clickable Join Code */}
       {!isIntro && (
         <div className="absolute top-4 sm:top-5 left-0 right-0 z-20 pointer-events-none flex items-center justify-center">
           <AnimatePresence>
@@ -160,21 +215,33 @@ export function PresenterLayout({ presentation }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.15 }}
-                className="flex items-center gap-3 sm:gap-4 select-none text-center"
+                className="pointer-events-auto"
               >
-                <span className="text-base sm:text-lg md:text-xl font-medium text-(--cf-ink-soft) tracking-tight">
-                  Join at{" "}
-                  <strong className="text-(--cf-ink) font-bold underline underline-offset-4 decoration-2 decoration-(--cf-orange)">
-                    menti.com
-                  </strong>
-                </span>
-                <span className="text-base sm:text-lg text-(--cf-ink-soft)">•</span>
-                <span className="text-base sm:text-lg md:text-xl font-medium text-(--cf-ink-soft)">
-                  Code:{" "}
-                  <span className="text-xl sm:text-2xl md:text-3xl font-black text-(--cf-ink) font-mono tracking-widest pl-1.5">
-                    {presentation.joinCode}
+                <button
+                  type="button"
+                  onClick={handleCopyHeaderCode}
+                  className="flex items-center gap-3 sm:gap-4 select-none text-center px-4 sm:px-5 py-2 rounded-full bg-white/95 hover:bg-white border-2 border-(--cf-line-strong) cf-raised cf-press cursor-pointer shadow-md transition-all group"
+                  title="Click to copy code"
+                >
+                  <span className="text-sm sm:text-base md:text-lg font-medium text-(--cf-ink-soft) tracking-tight">
+                    Join at{" "}
+                    <strong className="text-(--cf-ink) font-bold underline underline-offset-4 decoration-2 decoration-(--cf-orange)">
+                      menti.com
+                    </strong>
                   </span>
-                </span>
+                  <span className="text-sm sm:text-base text-(--cf-ink-soft)">•</span>
+                  <span className="text-sm sm:text-base md:text-lg font-medium text-(--cf-ink-soft) flex items-center gap-1.5">
+                    Code:{" "}
+                    <span className="text-lg sm:text-xl md:text-2xl font-black text-(--cf-ink) font-mono tracking-widest pl-1">
+                      {headerCopied ? "COPIED!" : activeJoinCode}
+                    </span>
+                    {headerCopied ? (
+                      <Check className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-(--cf-ink-soft) group-hover:text-(--cf-orange)" />
+                    )}
+                  </span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -196,8 +263,8 @@ export function PresenterLayout({ presentation }: Props) {
               >
                 <PresenterIntroStage
                   title={presentation.title}
-                  joinCode={presentation.joinCode}
-                  participantCount={presentation.participantCount}
+                  joinCode={activeJoinCode}
+                  participantCount={participantCount}
                   onStart={nextStep}
                 />
               </motion.div>
@@ -243,6 +310,52 @@ export function PresenterLayout({ presentation }: Props) {
         onToggleHideResults={() => setHideResults((prev) => !prev)}
         onTogglePercentage={() => setShowAsPercentage((prev) => !prev)}
       />
+
+      {/* 4. Bottom-Right Live Participant Count Badge */}
+      <div className="absolute bottom-4 sm:bottom-5 right-5 sm:right-6 z-30 pointer-events-auto">
+        <div className="px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-full flex items-center gap-2 shadow-md" title="Live connected participants">
+          <Users className="w-4 h-4 text-(--cf-orange)" />
+          <span className="text-xs sm:text-sm font-black font-mono text-(--cf-ink) tabular-nums">
+            {participantCount}
+          </span>
+          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+        </div>
+      </div>
+
+      {/* 5. End Presentation Confirmation Modal */}
+      {showConfirmEndModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="cf-panel cf-raised max-w-sm w-full p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl space-y-4 text-center shadow-2xl z-50">
+            <div className="size-12 mx-auto rounded-full bg-rose-50 border-2 border-rose-200 text-rose-600 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-(--cf-ink)">
+                End presentation?
+              </h3>
+              <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+                Are you sure you want to end this presentation? This will close the session instantly and disconnect all connected participants.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmEndModal(false)}
+                className="cf-btn-outline flex-1 py-2.5 text-xs font-bold rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmEndPresentation}
+                className="cf-btn cf-raised cf-press flex-1 py-2.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-2 border-(--cf-line-strong)"
+              >
+                End presentation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

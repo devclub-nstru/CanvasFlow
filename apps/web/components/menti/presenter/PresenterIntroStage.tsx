@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { QrCode, Users, ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import { QrCode, Users, ArrowRight, Copy, Check } from "lucide-react";
 
 interface Props {
   title: string;
@@ -16,6 +16,16 @@ export function PresenterIntroStage({
   participantCount = 0,
   onStart,
 }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    if (!joinCode) return;
+    const cleanCode = joinCode.replace(/\s+/g, "");
+    navigator.clipboard.writeText(cleanCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="flex flex-col items-center justify-between h-full w-full max-w-5xl mx-auto px-6 py-6 sm:py-8 select-none text-center">
       {/* 1. Presentation Title */}
@@ -46,15 +56,25 @@ export function PresenterIntroStage({
           </div>
         </div>
 
-        {/* Matching-Width Code Box Directly Below QR */}
-        <div className="w-56 sm:w-64 md:w-72 p-2.5 sm:p-3 bg-white border-2 border-(--cf-line-strong) rounded-(--hex-radius) cf-raised text-center shadow-md">
-          <p className="cf-meta text-[10px] sm:text-[11px] text-(--cf-ink-soft) font-bold uppercase tracking-widest mb-0.5">
-            Use Code
+        {/* Clickable Code Box Directly Below QR */}
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          className="w-56 sm:w-64 md:w-72 p-2.5 sm:p-3 bg-white hover:bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-(--hex-radius) cf-raised cf-press text-center shadow-md cursor-pointer transition-all group relative"
+          title="Click to copy code"
+        >
+          <p className="cf-meta text-[10px] sm:text-[11px] text-(--cf-ink-soft) font-bold uppercase tracking-widest mb-0.5 flex items-center justify-center gap-1">
+            <span>{copied ? "Copied to clipboard!" : "Use Code (click to copy)"}</span>
+            {copied ? (
+              <Check className="w-3 h-3 text-emerald-600" />
+            ) : (
+              <Copy className="w-3 h-3 text-(--cf-ink-soft) group-hover:text-(--cf-orange)" />
+            )}
           </p>
           <p className="text-2xl sm:text-3xl md:text-4xl font-black tracking-widest text-(--cf-ink) font-mono tabular-nums">
             {joinCode}
           </p>
-        </div>
+        </button>
 
         {/* Connected Participant Status */}
         <div className="flex items-center gap-2 pt-1 text-xs sm:text-sm font-semibold text-(--cf-ink-soft)">

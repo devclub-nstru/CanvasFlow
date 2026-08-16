@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
-  const [digits, setDigits] = useState<string[]>(Array(8).fill(""));
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -19,8 +19,8 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
   // Initialize with defaultCode if provided
   useEffect(() => {
     if (defaultCode) {
-      const clean = defaultCode.replace(/\D/g, "").slice(0, 8);
-      const newDigits = Array(8).fill("");
+      const clean = defaultCode.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+      const newDigits = Array(6).fill("");
       for (let i = 0; i < clean.length; i++) {
         newDigits[i] = clean[i] || "";
       }
@@ -31,17 +31,17 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
   const fullCode = digits.join("");
 
   const handleDigitChange = (index: number, val: string) => {
-    const raw = val.replace(/\D/g, "");
+    const raw = val.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-    // Handling pasted multi-digit string
+    // Handling pasted multi-character string
     if (raw.length > 1) {
-      const pasteDigits = raw.slice(0, 8).split("");
+      const pasteDigits = raw.slice(0, 6).split("");
       const updated = [...digits];
       pasteDigits.forEach((d, idx) => {
-        if (index + idx < 8) updated[index + idx] = d;
+        if (index + idx < 6) updated[index + idx] = d;
       });
       setDigits(updated);
-      const nextIndex = Math.min(index + pasteDigits.length, 7);
+      const nextIndex = Math.min(index + pasteDigits.length, 5);
       inputRefs.current[nextIndex]?.focus();
       return;
     }
@@ -51,7 +51,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
     setDigits(updated);
 
     // Auto-advance to next input
-    if (raw && index < 7) {
+    if (raw && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -70,35 +70,33 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
       }
     } else if (e.key === "ArrowLeft" && index > 0) {
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < 7) {
+    } else if (e.key === "ArrowRight" && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8);
+    const pasted = e.clipboardData.getData("text").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
     if (!pasted) return;
 
-    const newDigits = Array(8).fill("");
+    const newDigits = Array(6).fill("");
     for (let i = 0; i < pasted.length; i++) {
       newDigits[i] = pasted[i] || "";
     }
     setDigits(newDigits);
-    const focusTarget = Math.min(pasted.length, 7);
+    const focusTarget = Math.min(pasted.length, 5);
     inputRefs.current[focusTarget]?.focus();
   };
 
-  const isFormValid = fullCode.length === 8 && nickname.trim().length > 0;
+  const isFormValid = fullCode.length === 6 && nickname.trim().length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      onJoin(fullCode, nickname.trim());
-    }, 200);
+    onJoin(fullCode, nickname.trim());
   };
 
   return (
@@ -120,37 +118,35 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
               Join presentation
             </h1>
             <p className="text-xs text-(--cf-ink-soft)">
-              Enter the 8-digit code shown on the screen
+              Enter the 6-character code shown on the screen
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 8-Digit Split PIN Input */}
+            {/* 6-Character Split Alphanumeric Code Input */}
             <div className="space-y-2">
               <label className="cf-meta text-[11px] text-(--cf-ink-soft) block">
-                PIN
+                PRESENTATION CODE
               </label>
 
               <div
-                className="grid grid-cols-9 gap-1 sm:gap-1.5 items-center"
+                className="grid grid-cols-7 gap-1 sm:gap-1.5 items-center"
                 onPaste={handlePaste}
               >
-                {/* First 4 Digits */}
-                {[0, 1, 2, 3].map((idx) => (
+                {/* First 3 Characters */}
+                {[0, 1, 2].map((idx) => (
                   <input
                     key={idx}
                     ref={(el) => {
                       inputRefs.current[idx] = el;
                     }}
                     type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={idx === 0 ? 8 : 1}
+                    maxLength={idx === 0 ? 6 : 1}
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
                     autoFocus={idx === 0}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all caret-transparent"
+                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
                   />
                 ))}
 
@@ -159,21 +155,19 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                   -
                 </div>
 
-                {/* Second 4 Digits */}
-                {[4, 5, 6, 7].map((idx) => (
+                {/* Second 3 Characters */}
+                {[3, 4, 5].map((idx) => (
                   <input
                     key={idx}
                     ref={(el) => {
                       inputRefs.current[idx] = el;
                     }}
                     type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
                     maxLength={1}
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all caret-transparent"
+                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
                   />
                 ))}
               </div>
@@ -217,3 +211,4 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
     </div>
   );
 }
+

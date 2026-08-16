@@ -1,23 +1,45 @@
 "use client";
 
 import React, { useState } from "react";
-import { MentiPresentation } from "~/lib/menti";
+import { MentiPresentation, MentiSlide } from "~/lib/menti";
 import { SlideAudienceInput } from "../questions/registry";
-import { ThumbsUp, Heart, Smile } from "lucide-react";
+import { ThumbsUp, Heart, Smile, XCircle } from "lucide-react";
 import Noise from "~/components/Noise";
 
 interface Props {
   presentation: MentiPresentation;
+  currentSlide?: MentiSlide | null;
   activeSlideIndex?: number;
+  sessionStatus?: "waiting" | "live" | "paused" | "finished" | "cancelled";
+  onSubmitAnswer?: (answer: any) => void;
 }
 
-export function AudienceLayout({ presentation, activeSlideIndex = 0 }: Props) {
+export function AudienceLayout({
+  presentation,
+  currentSlide: customCurrentSlide,
+  activeSlideIndex = 0,
+  sessionStatus = "live",
+  onSubmitAnswer,
+}: Props) {
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const currentSlide = presentation.slides[activeSlideIndex] || presentation.slides[0];
+
+  const rawSlide = customCurrentSlide || presentation.slides[activeSlideIndex] || presentation.slides[0];
+  const currentSlide = rawSlide
+    ? {
+        ...rawSlide,
+        id: rawSlide.id || (rawSlide as any)._id,
+      }
+    : null;
 
   const handleVoteSubmit = (val: any) => {
     setHasSubmitted(true);
+    if (onSubmitAnswer) {
+      onSubmitAnswer(val);
+    }
   };
+
+  const isLobby = sessionStatus === "waiting";
+  const isEnded = sessionStatus === "finished" || sessionStatus === "cancelled";
 
   return (
     <div className="flex flex-col items-center justify-between min-h-screen bg-(--cf-cream) text-(--cf-ink) select-none pb-8 relative">
@@ -36,10 +58,44 @@ export function AudienceLayout({ presentation, activeSlideIndex = 0 }: Props) {
         </span>
       </header>
 
-      {/* Main Question Card Container */}
+      {/* Main Question Card / Lobby Container */}
       <main className="flex-1 flex flex-col justify-center w-full max-w-md p-4 sm:p-6 z-10">
         <div className="cf-panel cf-raised p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl">
-          {currentSlide ? (
+          {isEnded ? (
+            <div className="flex flex-col items-center text-center py-10 space-y-4">
+              <div className="size-12 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-bold text-(--cf-ink)">
+                  Presentation Ended
+                </h3>
+                <p className="text-xs text-(--cf-ink-soft) max-w-xs leading-relaxed">
+                  The host has ended this presentation. Thank you for participating!
+                </p>
+              </div>
+              <a
+                href="/menti/join"
+                className="cf-btn cf-raised cf-press mt-2 px-5 py-2 text-xs font-bold rounded-lg border-2 border-(--cf-line-strong) bg-white text-(--cf-ink)"
+              >
+                Join another presentation
+              </a>
+            </div>
+          ) : isLobby ? (
+            <div className="flex flex-col items-center text-center py-10 space-y-4">
+              <div className="size-12 rounded-full bg-(--cf-orange)/10 text-(--cf-orange) flex items-center justify-center animate-pulse">
+                <div className="size-4 bg-(--cf-orange) rounded-full" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-(--cf-ink)">
+                  You're in!
+                </h3>
+                <p className="text-xs text-(--cf-ink-soft) max-w-xs leading-relaxed">
+                  Waiting for the host to start the presentation. The slide will appear automatically.
+                </p>
+              </div>
+            </div>
+          ) : currentSlide ? (
             <SlideAudienceInput
               slide={currentSlide}
               onSubmit={handleVoteSubmit}

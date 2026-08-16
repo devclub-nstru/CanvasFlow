@@ -5,6 +5,7 @@ import { MentiSlide } from "~/lib/menti";
 
 import { BarGraphViewer } from "./bar-graph/BarGraphViewer";
 import { BarGraphEditor } from "./bar-graph/BarGraphEditor";
+import { BarGraphAudience } from "./bar-graph/BarGraphAudience";
 
 import { WordCloudViewer } from "./word-cloud/WordCloudViewer";
 import { WordCloudEditor } from "./word-cloud/WordCloudEditor";
@@ -106,6 +107,8 @@ export function SlideAudienceInput({
   hasSubmitted?: boolean;
 }) {
   switch (slide.type) {
+    case "BAR_GRAPH":
+      return <BarGraphAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "WORD_CLOUD":
       return <WordCloudAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "SCALES":

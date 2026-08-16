@@ -23,17 +23,13 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
       qLength > 40
         ? "text-3xl sm:text-4xl md:text-5xl"
         : qLength > 20
-        ? "text-4xl sm:text-5xl md:text-6xl"
-        : "text-5xl sm:text-6xl md:text-7xl";
+          ? "text-4xl sm:text-5xl md:text-6xl"
+          : "text-5xl sm:text-6xl md:text-7xl";
 
     return (
       <section className="flex h-full min-h-0 w-full flex-col justify-center items-center p-6 sm:p-10 select-none relative text-center">
         <div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 max-w-3xl w-full my-auto">
           {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[11px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)">
-            <Sparkles className="w-3.5 h-3.5 text-(--cf-orange)" />
-            <span>CanvasFlow</span>
-          </div>
 
           {/* Inline Editable Main Heading */}
           <textarea
@@ -89,7 +85,8 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
       <div className="rounded-xl border border-neutral-200 bg-white p-3.5 space-y-2">
         <p className="cf-eyebrow text-(--cf-ink)">Slide Info</p>
         <p className="text-xs text-neutral-500 leading-relaxed">
-          This is a blank content slide. Participants will see your message without any voting or input form.
+          This is a blank content slide. Participants will see your message without any voting or
+          input form.
         </p>
       </div>
     </div>

@@ -1,14 +1,29 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { Play, BarChart2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Play, BarChart2, Loader2 } from "lucide-react";
+import { useCreateSession } from "~/hooks/api/menti/useCreateSession";
 
 interface Props {
   presentationId: string;
 }
 
 export function ResultsEmptyState({ presentationId }: Props) {
+  const router = useRouter();
+  const { createSession, isLoading } = useCreateSession();
+
+  const handleStartPresentation = async () => {
+    try {
+      const sessionData = await createSession(presentationId);
+      const sessionId = sessionData.session.id || sessionData.session._id;
+      router.push(`/menti/${presentationId}/present?sessionId=${sessionId}`);
+    } catch (err) {
+      console.error("Failed to start session:", err);
+      router.push(`/menti/${presentationId}/present`);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-(--cf-cream) select-none">
       <div className="cf-panel cf-raised max-w-xl w-full p-10 sm:p-14 text-center space-y-6 bg-white rounded-3xl border-2 border-(--cf-line-strong) animate-in fade-in zoom-in-95 duration-200">
@@ -32,15 +47,22 @@ export function ResultsEmptyState({ presentationId }: Props) {
 
         {/* Start Presentation CTA */}
         <div className="pt-2">
-          <Link
-            href={`/menti/${presentationId}/present`}
-            className="cf-btn cf-raised cf-press inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-full"
+          <button
+            type="button"
+            onClick={handleStartPresentation}
+            disabled={isLoading}
+            className="cf-btn cf-raised cf-press inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-full disabled:opacity-50"
           >
-            <Play className="w-4 h-4 fill-white" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 fill-white" />
+            )}
             Start presentation
-          </Link>
+          </button>
         </div>
       </div>
     </div>
   );
 }
+

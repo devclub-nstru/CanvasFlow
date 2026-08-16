@@ -176,7 +176,7 @@ export default function MentiDashboardPage() {
             <input
               id="menti-search"
               type="text"
-              placeholder="Search forms..."
+              placeholder="Search presentations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-11 w-full border border-(--cf-line-strong) bg-(--cf-cream-2) pr-3 pl-11 text-[14px] transition-shadow placeholder:text-(--cf-ink-soft) focus:shadow-[3px_3px_0_0_var(--cf-line-strong)] focus:outline-none"
@@ -221,7 +221,7 @@ export default function MentiDashboardPage() {
 
       {/* ───── result count rule ───── */}
       <div className="flex items-end justify-between gap-4 pb-1">
-        <p className="cf-meta">{hasActiveFilters ? "Filtered" : "All forms"}</p>
+        <p className="cf-meta">{hasActiveFilters ? "Filtered" : "All presentations"}</p>
         <p className="cf-meta">
           {processedPresentations.length}{" "}
           {processedPresentations.length === 1 ? "result" : "results"}
@@ -545,12 +545,12 @@ function EmptyState({
     <div className="cf-panel mx-auto max-w-2xl space-y-4 border-dashed p-10 text-center sm:p-16">
       <p className="cf-meta">{hasFilters ? "Nothing found" : "Empty studio"}</p>
       <h3 className="cf-display text-[30px] leading-tight sm:text-[44px]">
-        {hasFilters ? "No matches" : "Start your first form"}
+        {hasFilters ? "No matches" : "Start your first presentation"}
       </h3>
       <p className="text-[13.5px] text-(--cf-ink-soft) leading-relaxed max-w-sm mx-auto">
         {hasFilters
           ? "Try a different search or clear your filters to see all presentations."
-          : "Sketch on an open canvas in minutes. Free to start, no card required."}
+          : "Create interactive slides and engage your audience in minutes. Free to start, no card required."}
       </p>
       <div className="flex items-center justify-center gap-3 pt-1">
         {hasFilters && (
@@ -560,7 +560,7 @@ function EmptyState({
         )}
         <button onClick={onCreate} className="cf-btn cf-raised cf-press h-10.5 px-6 text-[13px]">
           <Plus className="size-4" />
-          New form
+          New presentation
         </button>
       </div>
     </div>

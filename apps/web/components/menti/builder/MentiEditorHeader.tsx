@@ -2,12 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Play,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { MentiPresentation } from "~/lib/menti";
+import { useCreateSession } from "~/hooks/api/menti/useCreateSession";
 
 interface Props {
   presentation: MentiPresentation;
@@ -26,6 +29,9 @@ export function MentiEditorHeader({
   onOpenSettings,
   onOpenShare,
 }: Props) {
+  const router = useRouter();
+  const { createSession, isLoading: isStartingSession } = useCreateSession();
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(presentation.title);
 
@@ -38,6 +44,18 @@ export function MentiEditorHeader({
     }
   };
 
+  const handleStartPresentation = async () => {
+    try {
+      const sessionData = await createSession(presentation.id);
+      const sessionId = sessionData.session.id || sessionData.session._id;
+      router.push(`/menti/${presentation.id}/present?sessionId=${sessionId}`);
+    } catch (err) {
+      console.error("Failed to start presentation session:", err);
+      // Fallback navigation if session creation errors out
+      router.push(`/menti/${presentation.id}/present`);
+    }
+  };
+
   return (
     <header className="flex flex-col w-full select-none z-30 border-b border-(--cf-line-strong) bg-(--cf-cream-2)">
       {/* Main Builder Navigation Bar */}
@@ -46,7 +64,7 @@ export function MentiEditorHeader({
         <div className="flex items-center gap-3">
           {/* Back button */}
           <Link
-            href="/dashboard"
+            href="/dashboard/menti"
             className="cf-btn-outline size-8 flex items-center justify-center p-0 rounded-(--hex-radius)"
             title="Back to Dashboard"
           >
@@ -123,13 +141,19 @@ export function MentiEditorHeader({
           </Link>
 
           {/* Start Presentation Button */}
-          <Link
-            href={`/menti/${presentation.id}/present`}
-            className="cf-btn cf-raised cf-press px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-(--hex-radius)"
+          <button
+            type="button"
+            onClick={handleStartPresentation}
+            disabled={isStartingSession}
+            className="cf-btn cf-raised cf-press px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-(--hex-radius) disabled:opacity-50"
           >
-            <Play className="w-3.5 h-3.5 fill-white" />
+            {isStartingSession ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-white" />
+            )}
             Start presentation
-          </Link>
+          </button>
         </div>
       </div>
     </header>
