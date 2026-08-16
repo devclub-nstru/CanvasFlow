@@ -37,7 +37,13 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
           ? "New Multiple Choice Poll"
           : type === "WORD_CLOUD"
             ? "New Word Cloud Question"
-            : "New Rating / Scales Question",
+            : type === "SCALES"
+              ? "New Rating / Scales Question"
+              : "Thank you!",
+      description:
+        type === "CONTENT"
+          ? "We appreciate your feedback and participation."
+          : null,
       index: presentation.slides.length + 1,
       options:
         type === "BAR_GRAPH"
@@ -85,10 +91,12 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
   };
 
   const reorderSlides = (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
     const slides = [...presentation.slides];
     const [moved] = slides.splice(fromIdx, 1);
     if (!moved) return;
-    slides.splice(toIdx, 0, moved);
+    const targetIdx = fromIdx < toIdx ? toIdx - 1 : toIdx;
+    slides.splice(targetIdx, 0, moved);
     setPresentation((prev) => ({ ...prev, slides }));
   };
 

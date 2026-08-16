@@ -22,10 +22,14 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
 
   if (hasSubmitted) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <CheckCircle2 className="w-12 h-12 mb-3 text-green-600 animate-bounce" />
-        <h3 className="text-xl font-bold text-neutral-900">Response Submitted!</h3>
-        <p className="mt-1 text-sm text-neutral-500">Look at the big screen to see the word cloud evolve.</p>
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <div className="size-14 rounded-full bg-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised flex items-center justify-center mb-4">
+          <CheckCircle2 className="w-7 h-7 text-(--cf-orange)" />
+        </div>
+        <h3 className="text-lg font-bold tracking-[-0.03em] text-(--cf-ink)">Response Submitted!</h3>
+        <p className="mt-1 text-xs text-(--cf-ink-soft)">
+          Look at the big screen to see the word cloud evolve.
+        </p>
       </div>
     );
   }
@@ -40,25 +44,29 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
       }}
       className="flex flex-col w-full space-y-4"
     >
-      <div className="space-y-1">
-        <h2 className="text-xl font-bold leading-snug text-neutral-900">{slide.question}</h2>
-        <p className="text-xs text-neutral-500">
+      {/* Question header – matches BarGraphAudience style */}
+      <div className="space-y-0.5">
+        <h2 className="text-lg font-bold leading-snug tracking-[-0.03em] text-(--cf-ink)">
+          {slide.question}
+        </h2>
+        <p className="text-xs text-(--cf-ink-soft)">
           {maxEntries === 1
-            ? "Enter your response below"
+            ? "Enter your word or phrase below"
             : `Enter up to ${maxEntries} words`}
         </p>
       </div>
 
-      <div className="space-y-2.5">
+      {/* Input fields */}
+      <div className="space-y-2">
         {maxEntries === 1 ? (
           <textarea
             value={words[0] || ""}
             onChange={(e) => updateWord(0, e.target.value)}
-            placeholder="Type your answer here..."
+            placeholder="Type a word or phrase..."
             rows={3}
             maxLength={100}
             required
-            className="w-full p-4 text-base bg-white border-2 rounded-xl border-neutral-300 focus:outline-none focus:border-blue-600"
+            className="w-full p-3.5 text-sm bg-white border-2 border-neutral-200 rounded-xl text-(--cf-ink) placeholder:text-(--cf-ink-soft) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)/20 resize-none"
           />
         ) : (
           words.map((word, idx) => (
@@ -69,19 +77,20 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
               onChange={(e) => updateWord(idx, e.target.value)}
               placeholder={`Word #${idx + 1}...`}
               maxLength={30}
-              className="w-full p-3.5 text-sm bg-white border-2 rounded-xl border-neutral-300 focus:outline-none focus:border-blue-600"
+              className="w-full p-3 text-sm bg-white border-2 border-neutral-200 rounded-xl text-(--cf-ink) placeholder:text-(--cf-ink-soft) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)/20"
             />
           ))
         )}
       </div>
 
+      {/* Submit – matches design system (cf-btn cf-raised cf-press) */}
       <button
         type="submit"
         disabled={validWords.length === 0}
-        className="flex items-center justify-center w-full py-3.5 px-4 font-semibold text-white transition-all bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 shadow-md"
+        className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3 px-4 font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none"
       >
-        <Send className="w-4 h-4 mr-2" />
-        Submit {maxEntries > 1 && validWords.length > 0 ? `(${validWords.length})` : ""}
+        <Send className="w-4 h-4" />
+        Submit{maxEntries > 1 && validWords.length > 0 ? ` (${validWords.length})` : ""}
       </button>
     </form>
   );

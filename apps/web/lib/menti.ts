@@ -1,4 +1,4 @@
-export type MentiQuestionType = "BAR_GRAPH" | "WORD_CLOUD" | "SCALES";
+export type MentiQuestionType = "BAR_GRAPH" | "WORD_CLOUD" | "SCALES" | "CONTENT";
 
 export type MentiVisualizationType = "BAR" | "DONUT" | "PIE" | "BUBBLES";
 

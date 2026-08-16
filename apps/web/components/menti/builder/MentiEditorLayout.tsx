@@ -29,6 +29,7 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
     updateSlide,
     addSlide,
     deleteSlide,
+    reorderSlides,
   } = useMentiEditor(initialPresentation);
 
   return (
@@ -44,13 +45,14 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
       {/* 2. Main Builder Layout: Create Tab vs Results Tab */}
       {activeTab === "create" ? (
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Slide Thumbnails Sidebar */}
+          {/* Left Slide Thumbnails Sidebar with Drag-and-Drop Reordering */}
           <SlideThumbnailSidebar
             slides={presentation.slides}
             activeSlideId={activeSlideId}
             onSelectSlide={setActiveSlideId}
             onOpenNewSlideModal={() => setIsNewSlideModalOpen(true)}
             onDeleteSlide={deleteSlide}
+            onReorderSlide={reorderSlides}
           />
 
           {/* Center Interactive Presentation Stage */}

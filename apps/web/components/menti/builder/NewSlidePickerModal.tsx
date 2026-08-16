@@ -6,6 +6,7 @@ import {
   BarChart2,
   Cloud,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { MentiQuestionType } from "~/lib/menti";
 
@@ -28,25 +29,32 @@ const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
   {
     type: "BAR_GRAPH",
     title: "Multiple Choice / Poll",
-    desc: "Single & multi-checkbox options with animated live bars and percentage distributions",
+    desc: "Single and multi-selection choices with real-time rising bars, vote counts, and percentage distribution modes.",
     badge: "Choice & Checkbox",
-    icon: <BarChart2 className="w-5 h-5 text-(--cf-orange)" />,
+    icon: <BarChart2 className="w-6 h-6 text-(--cf-orange)" />,
     isPopular: true,
   },
   {
     type: "WORD_CLOUD",
     title: "Word Cloud (Text)",
-    desc: "Dynamic live word cloud where recurring participant answers grow in font scale",
+    desc: "Dynamic live word cloud where recurring participant answers dynamically cluster and expand in visual weight.",
     badge: "Single & Multi-Text",
-    icon: <Cloud className="w-5 h-5 text-rose-600" />,
+    icon: <Cloud className="w-6 h-6 text-rose-600" />,
     isPopular: true,
   },
   {
     type: "SCALES",
     title: "Scales / Rating",
-    desc: "Audience rates questions on a 1-5 Likert scale with live average score calculations",
-    badge: "1-5 Rating Spectrum",
-    icon: <Star className="w-5 h-5 text-amber-500 fill-amber-500" />,
+    desc: "Audience rates statements on a 1–5 spectrum with live computed average score calculations and trends.",
+    badge: "1–5 Rating Spectrum",
+    icon: <Star className="w-6 h-6 text-amber-500 fill-amber-500" />,
+  },
+  {
+    type: "CONTENT",
+    title: "Blank / Thank You",
+    desc: "Clean informational slide with heading and description for title slides, topic transitions, or closing thank you notes.",
+    badge: "Title & Text Slide",
+    icon: <Sparkles className="w-6 h-6 text-indigo-600" />,
   },
 ];
 
@@ -54,10 +62,10 @@ export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none">
-      <div className="flex flex-col w-full max-w-2xl bg-(--cf-cream) rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs select-none">
+      <div className="flex flex-col w-full max-w-4xl bg-(--cf-cream) rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden animate-in fade-in zoom-in-95 duration-150 shadow-2xl">
         {/* Modal Header */}
-        <div className="cf-pane-bar px-6 flex items-center justify-between">
+        <div className="cf-pane-bar px-6 sm:px-8 py-3 flex items-center justify-between">
           <div>
             <span className="cf-eyebrow text-(--cf-ink)">Add a new slide</span>
           </div>
@@ -72,41 +80,44 @@ export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 sm:p-8 space-y-4">
           <h3 className="cf-meta text-(--cf-ink-soft)">
-            Interactive questions
+            Slide types & templates
           </h3>
 
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          {/* 2x2 Grid with Generous Sizing */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             {CORE_QUESTION_TYPES.map((card) => (
               <button
                 key={card.type}
                 type="button"
                 onClick={() => onSelectType(card.type)}
-                className="cf-panel cf-raised cf-press flex flex-col justify-between p-4 text-left bg-white rounded-xl border border-(--cf-line-strong) transition-all group min-h-[160px]"
+                className="cf-panel cf-raised cf-press flex flex-col justify-between p-5 sm:p-6 text-left bg-white rounded-2xl border-2 border-(--cf-line-strong) transition-all group min-h-[190px]"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="p-2 bg-(--cf-cream) border border-(--cf-line) rounded-lg shadow-xs group-hover:scale-105 transition-transform">
+                  <div className="flex items-center justify-between mb-3.5">
+                    <div className="p-2.5 bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl shadow-xs group-hover:scale-105 transition-transform">
                       {card.icon}
                     </div>
                     {card.isPopular && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-bold text-blue-800 bg-blue-100 rounded">
+                      <span className="px-2 py-0.5 text-[10px] font-bold text-blue-800 bg-blue-100 border border-blue-200 rounded">
                         Popular
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-bold text-(--cf-ink) group-hover:text-(--cf-orange) line-clamp-1">
+                  <span className="text-sm sm:text-base font-bold text-(--cf-ink) group-hover:text-(--cf-orange) transition-colors">
                     {card.title}
                   </span>
-                  <p className="mt-1 text-[11px] text-(--cf-ink-soft) line-clamp-3 leading-relaxed">
+                  <p className="mt-1.5 text-xs sm:text-[13px] text-(--cf-ink-soft) leading-relaxed">
                     {card.desc}
                   </p>
                 </div>
 
-                <span className="cf-meta mt-3 inline-block px-1.5 py-0.5 text-[9px] font-bold text-(--cf-ink) bg-(--cf-cream) border border-(--cf-line) rounded">
-                  {card.badge}
-                </span>
+                <div className="mt-4 pt-2">
+                  <span className="cf-meta inline-block px-2.5 py-1 text-[10px] font-bold text-(--cf-ink) bg-(--cf-cream) border border-(--cf-line) rounded-(--hex-radius)">
+                    {card.badge}
+                  </span>
+                </div>
               </button>
             ))}
           </div>

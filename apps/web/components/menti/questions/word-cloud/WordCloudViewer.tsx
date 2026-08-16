@@ -1,10 +1,16 @@
 "use client";
 
+import React from "react";
 import { Cloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MentiOption, MentiSlide } from "~/lib/menti";
 
-interface Props { slide: MentiSlide; isPreview?: boolean; showQuestion?: boolean; muted?: boolean; }
+interface Props {
+  slide: MentiSlide;
+  isPreview?: boolean;
+  showQuestion?: boolean;
+  muted?: boolean;
+}
 interface CloudWord { text: string; value: number; color: string; angle: 0 | 90 | -90; }
 interface PositionedWord extends CloudWord { x: number; y: number; size: number; }
 
@@ -44,22 +50,17 @@ function pickAngle(rank: number, text: string): 0 | 90 | -90 {
  */
 function aabb(textW: number, textH: number, angleDeg: number) {
   if (angleDeg === 0) return { hw: textW / 2, hh: textH / 2 };
-  // ±90° swaps width and height exactly.
   return { hw: textH / 2, hh: textW / 2 };
 }
 
-// Average glyph width for Inter/system sans-serif: ~0.55× em for mixed-case.
 const CHAR_W = 0.55;
 const LINE_H = 1.10;
-// 1.5px visual gap between any two words.
 const GAP = 1.5;
 
 function packWords(words: CloudWord[], width: number, height: number, isPreview: boolean): PositionedWord[] {
   if (!words.length) return [];
 
   const maxValue = Math.max(...words.map((w) => w.value), 1);
-
-  // maxSize shrinks slightly as more words compete for the same space.
   const crowdFactor = Math.max(0.52, 1 - (words.length - 1) * 0.011);
   const maxSize = Math.min(
     isPreview ? 52 : 92,
@@ -67,15 +68,12 @@ function packWords(words: CloudWord[], width: number, height: number, isPreview:
   );
   const minSize = Math.max(isPreview ? 10 : 14, maxSize * 0.21);
 
-  // Power curve 0.55: more visual separation between ranks than pure sqrt.
   const wordSize = (value: number, scale: number) =>
     (minSize + (maxSize - minSize) * Math.pow(value / maxValue, 0.55)) * scale;
 
   const limit = Math.hypot(width, height) / 2;
 
   const tryPack = (scale: number): PositionedWord[] | null => {
-    // Store boxes WITHOUT pre-added gap so collision threshold is exact:
-    //   new_hw + gap  +  existing_hw  =  clear single-gap separation.
     const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
     const placed: PositionedWord[] = [];
 
@@ -89,23 +87,19 @@ function packWords(words: CloudWord[], width: number, height: number, isPreview:
       let x = 0, y = 0, found = i === 0;
 
       for (let radius = 1; !found && radius < limit; radius += 1) {
-        // ~4px arc resolution — fine enough to find tight gaps.
         const steps = Math.max(32, Math.ceil((2 * Math.PI * radius) / 4));
-        const startAngle = i * 2.399; // golden-angle offset per word
+        const startAngle = i * 2.399;
 
         for (let s = 0; s < steps; s++) {
           const a = startAngle + (s / steps) * 2 * Math.PI;
-          // Elliptical spiral (0.72 y-squash) keeps cloud wider than tall.
           const nx = Math.cos(a) * radius;
           const ny = Math.sin(a) * radius * 0.72;
 
-          // Bounds: keep the full AABB inside the canvas with a 2px margin.
           if (Math.abs(nx) + hw + GAP > width  / 2 - 2) continue;
           if (Math.abs(ny) + hh + GAP > height / 2 - 2) continue;
 
           let collides = false;
           for (const b of boxes) {
-            // Gap on the NEW word's side only — b already stores un-padded extents.
             if (
               Math.abs(nx - b.x) < hw + GAP + b.hw &&
               Math.abs(ny - b.y) < hh + GAP + b.hh
@@ -120,7 +114,7 @@ function packWords(words: CloudWord[], width: number, height: number, isPreview:
       }
 
       if (!found) return null;
-      boxes.push({ x, y, hw, hh }); // store clean (no gap baked in)
+      boxes.push({ x, y, hw, hh });
       placed.push({ ...word, x, y, size });
     }
     return placed;
@@ -174,13 +168,15 @@ export function WordCloudViewer({ slide, isPreview, showQuestion = true, muted =
 
   return (
     <section
-      className="flex h-full w-full flex-col"
+      className="flex h-full w-full flex-col select-none"
       style={{ color: slide.designSettings.textColor || "#17171c" }}
     >
       {showQuestion && (
         <h2
-          className={`shrink-0 font-medium leading-[1.08] tracking-[-0.05em] ${
-            isPreview ? "mb-4 text-2xl" : "mb-8 text-4xl md:text-6xl"
+          className={`shrink-0 font-medium leading-[1.1] tracking-[-0.04em] text-center ${
+            isPreview
+              ? "mb-4 text-2xl sm:text-3xl max-w-2xl mx-auto"
+              : "mb-6 sm:mb-8 text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl mx-auto"
           }`}
         >
           {slide.question || "What word comes to mind?"}
@@ -211,8 +207,8 @@ export function WordCloudViewer({ slide, isPreview, showQuestion = true, muted =
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
-          <Cloud className="mb-3 size-10" />
-          <p className="text-sm font-medium">Waiting for responses</p>
+          <Cloud className={`mb-3 ${isPreview ? "size-7" : "size-10"}`} />
+          <p className={`font-medium ${isPreview ? "text-xs" : "text-sm"}`}>Waiting for responses</p>
         </div>
       )}
     </section>

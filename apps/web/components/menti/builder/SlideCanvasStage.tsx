@@ -2,9 +2,8 @@
 
 import React from "react";
 import { MentiSlide } from "~/lib/menti";
-import { SlideQuestionViewer } from "../questions/registry";
-import { BarGraphEditor } from "../questions/bar-graph/BarGraphEditor";
-import { Pencil, CornerDownLeft, Sparkles, Star, QrCode } from "lucide-react";
+import { SlideQuestionViewer, SlideQuestionCanvasEditor } from "../questions/registry";
+import { Pencil, CornerDownLeft, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -93,10 +92,10 @@ export function SlideCanvasStage({
               : "max-w-6xl 2xl:max-w-7xl max-h-[86vh] p-8 sm:p-12"
           }`}
         >
-          {/* Render Slide — editable canvas variant for BAR_GRAPH, read-only viewer for others */}
+          {/* Render Slide — canvas editing variant for supported types (BAR_GRAPH, WORD_CLOUD), read-only viewer for others */}
           <div className="w-full h-full flex items-center justify-center transition-all duration-300">
-            {slide?.type === "BAR_GRAPH" && onChange ? (
-              <BarGraphEditor slide={slide} onChange={onChange} variant="canvas" />
+            {onChange ? (
+              <SlideQuestionCanvasEditor slide={slide} onChange={onChange} />
             ) : (
               <SlideQuestionViewer slide={slide} isPreview={true} />
             )}
