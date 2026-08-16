@@ -43,7 +43,7 @@ export function SlideQuestionViewer({
     case "WORD_CLOUD":
       return <WordCloudViewer slide={slide} isPreview={isPreview} />;
     case "SCALES":
-      return <ScalesViewer slide={slide} isPreview={isPreview} />;
+      return <ScalesViewer slide={slide} isPreview={isPreview} hideResults={hideResults} />;
     case "CONTENT":
       return <ContentViewer slide={slide} isPreview={isPreview} />;
     default:
@@ -86,6 +86,8 @@ export function SlideQuestionCanvasEditor({
       return <BarGraphEditor slide={slide} onChange={onChange} variant="canvas" />;
     case "WORD_CLOUD":
       return <WordCloudEditor slide={slide} onChange={onChange} variant="canvas" />;
+    case "SCALES":
+      return <ScalesEditor slide={slide} onChange={onChange} variant="canvas" />;
     case "CONTENT":
       return <ContentEditor slide={slide} onChange={onChange} variant="canvas" />;
     default:

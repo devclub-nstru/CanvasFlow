@@ -1,7 +1,9 @@
 "use client";
 
+import React from "react";
 import { MentiSlide } from "~/lib/menti";
-import { EyeOff } from "lucide-react";
+import { EyeOff, Star } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
@@ -11,11 +13,15 @@ interface Props {
 }
 
 const ratingsFor = (slide: MentiSlide, min: number, max: number) =>
-  Array.from({ length: max - min + 1 }, (_, index) => {
+  Array.from({ length: Math.max(2, max - min + 1) }, (_, index) => {
     const value = min + index;
     return {
       value,
-      votes: slide.options.find((option) => Number(option.label) === value)?.voteCount || 0,
+      votes:
+        slide.options?.find(
+          (option) =>
+            Number(option.label) === value || option.id === `rate-${value}`
+        )?.voteCount || 0,
     };
   });
 
@@ -25,112 +31,226 @@ export function ScalesViewer({
   showQuestion = true,
   hideResults = false,
 }: Props) {
-  const min = slide.responseSettings.minRating || 1;
-  const max = slide.responseSettings.maxRating || 5;
+  const min =
+    slide.responseSettings?.minRating !== undefined
+      ? slide.responseSettings.minRating
+      : 1;
+  const max =
+    slide.responseSettings?.maxRating !== undefined
+      ? slide.responseSettings.maxRating
+      : 5;
   const ratings = ratingsFor(slide, min, max);
   const total = ratings.reduce((sum, rating) => sum + rating.votes, 0);
   const average = total
     ? ratings.reduce((sum, rating) => sum + rating.value * rating.votes, 0) / total
     : min;
   const maxVotes = Math.max(1, ...ratings.map((rating) => rating.votes));
-  const accent = slide.designSettings.accentColor || "#5268e8";
+  const accent = slide.designSettings?.accentColor || "#e4a23e";
+  const textColor = slide.designSettings?.textColor || "#17171c";
+
   const width = 1000;
-  const left = 36;
-  const right = width - 36;
-  const baseline = 156;
+  const left = 50;
+  const right = width - 50;
+  const baseline = 150;
   const step = (right - left) / Math.max(1, ratings.length - 1);
-  const amplitude = isPreview ? 120 : 175;
-  const sigma = step * 0.32;
+  const amplitude = isPreview ? 100 : 135;
+  const sigma = step * 0.35;
+
   const samples = Array.from({ length: 121 }, (_, index) => {
     const x = left + ((right - left) * index) / 120;
     const density = ratings.reduce((sum, rating, ratingIndex) => {
       const center = left + ratingIndex * step;
-      return sum + (rating.votes / maxVotes) * Math.exp(-((x - center) ** 2) / (2 * sigma ** 2));
+      return (
+        sum +
+        (rating.votes / maxVotes) *
+          Math.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+      );
     }, 0);
     return { x, y: baseline - Math.min(1, density) * amplitude };
   });
+
   const linePath = `M ${samples
     .map((sample) => `${sample.x.toFixed(1)} ${sample.y.toFixed(1)}`)
     .join(" L ")}`;
   const areaPath = `${linePath} L ${right} ${baseline} L ${left} ${baseline} Z`;
-  const progress = ((average - min) / Math.max(1, max - min)) * 100;
+  const progress = Math.max(
+    0,
+    Math.min(100, ((average - min) / Math.max(1, max - min)) * 100)
+  );
 
   return (
     <section
-      className={`flex h-full w-full flex-col ${isPreview ? "px-5 py-4" : "px-[4%] py-[3.2%]"}`}
-      style={{ color: slide.designSettings.textColor || "#17171c" }}
+      className="flex flex-col justify-between items-center h-full w-full max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-5 select-none relative"
+      style={{ color: textColor }}
     >
+      {/* 1. Question Heading & Status Area */}
       {showQuestion && (
-        <h2
-          className={`font-medium leading-[1.08] tracking-[-0.05em] ${
-            isPreview ? "text-2xl" : "text-5xl md:text-7xl"
-          }`}
-        >
-          {slide.question || "Statement 1"}
-        </h2>
+        <div className="w-full flex flex-col items-center text-center">
+          <h2
+            className={`font-medium leading-[1.1] tracking-[-0.04em] ${
+              isPreview
+                ? "text-xl sm:text-2xl max-w-xl"
+                : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl"
+            }`}
+          >
+            {slide.question || `Rate on a scale from ${min} to ${max}`}
+          </h2>
+
+          {/* Fixed height reservation for status badge */}
+          <div className="h-6 flex items-center justify-center mt-1">
+            <AnimatePresence>
+              {hideResults && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.15 }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)"
+                >
+                  <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
+                  <span>Responses hidden</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       )}
-      <div className="mt-auto w-full">
-        {hideResults ? (
-          <div className="flex flex-col items-center justify-center py-10 bg-neutral-50/50 rounded-2xl border border-dashed border-neutral-200">
-            <EyeOff className="w-8 h-8 text-neutral-400 mb-2" />
-            <p className="text-sm font-semibold text-neutral-500">Results hidden by presenter</p>
+
+      {/* 2. Scale Distribution & Live Score Indicator */}
+      <div className="w-full max-w-4xl mx-auto my-auto pt-2 pb-2">
+        <div className="relative w-full">
+          {/* SVG Smooth Density Curve */}
+          <svg
+            viewBox={`0 0 ${width} 170`}
+            preserveAspectRatio="none"
+            className="block h-28 sm:h-36 md:h-44 w-full overflow-visible"
+            aria-label="Rating distribution curve"
+          >
+            <defs>
+              <linearGradient
+                id={`scale-gradient-${slide.id}`}
+                x1="0"
+                x2="0"
+                y1="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor={accent} stopOpacity="0.45" />
+                <stop offset="100%" stopColor={accent} stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+
+            {/* Density Area */}
+            <motion.path
+              initial={false}
+              animate={{
+                d: hideResults
+                  ? `M ${left} ${baseline} L ${right} ${baseline} L ${right} ${baseline} L ${left} ${baseline} Z`
+                  : areaPath,
+                opacity: hideResults ? 0 : 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 70,
+                damping: 15,
+              }}
+              fill={`url(#scale-gradient-${slide.id})`}
+            />
+
+            {/* Density Outline Path */}
+            <motion.path
+              initial={false}
+              animate={{
+                d: hideResults
+                  ? `M ${left} ${baseline} L ${right} ${baseline}`
+                  : linePath,
+                opacity: hideResults ? 0 : 0.85,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 70,
+                damping: 15,
+              }}
+              fill="none"
+              stroke={accent}
+              strokeLinecap="round"
+              strokeWidth={isPreview ? "3" : "4"}
+            />
+          </svg>
+
+          {/* Baseline Track */}
+          <div className="relative w-full h-3 rounded-full bg-(--cf-cream-2) border border-(--cf-line-strong) overflow-hidden shadow-inner mt-1">
+            <motion.div
+              initial={false}
+              animate={{
+                width: hideResults || total === 0 ? "0%" : `${progress}%`,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 75,
+                damping: 15,
+              }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: accent }}
+            />
           </div>
-        ) : (
-          <div className="relative">
-            <svg
-              viewBox={`0 0 ${width} 190`}
-              preserveAspectRatio="none"
-              className="block h-28 w-full overflow-visible md:h-44"
-              aria-label="Rating distribution"
-            >
-              <defs>
-                <linearGradient id={`scale-gradient-${slide.id}`} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor={accent} stopOpacity="0.38" />
-                  <stop offset="100%" stopColor={accent} stopOpacity="0.08" />
-                </linearGradient>
-              </defs>
-              <path
-                d={areaPath}
-                fill={`url(#scale-gradient-${slide.id})`}
-                className="transition-[d] duration-700 ease-out"
-              />
-              <path
-                d={linePath}
-                fill="none"
-                stroke={accent}
-                strokeLinecap="round"
-                strokeWidth="3"
-                opacity="0.65"
-                className="transition-[d] duration-700 ease-out"
-              />
-            </svg>
-            <div className="absolute left-0 right-0 top-[74%] h-2 rounded-full bg-neutral-200">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${progress}%`, backgroundColor: accent }}
-              />
+
+          {/* Floating Average Indicator Pin */}
+          <motion.div
+            initial={false}
+            animate={{
+              left: `${progress}%`,
+              opacity: hideResults || total === 0 ? 0 : 1,
+              scale: hideResults || total === 0 ? 0.7 : 1,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 85,
+              damping: 14,
+            }}
+            className="absolute top-[82%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10"
+          >
+            <div className="cf-panel cf-raised px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) rounded-2xl flex items-center gap-1.5 shadow-xl">
+              <Star className="size-4" style={{ color: accent, fill: accent }} />
+              <span className="text-xl sm:text-2xl md:text-3xl font-black font-mono tracking-tight text-(--cf-ink) tabular-nums">
+                {average.toFixed(1)}
+              </span>
             </div>
-            <div
-              className="absolute top-[74%] -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-2 text-lg font-semibold text-white shadow-lg transition-all duration-700 ease-out md:px-4 md:py-3 md:text-3xl"
-              style={{ left: `${progress}%`, backgroundColor: accent }}
-            >
-              {total ? average.toFixed(1) : min.toFixed(1)}
-            </div>
-          </div>
-        )}
+          </motion.div>
+        </div>
+
+        {/* 3. Scale Points Grid */}
         <div
-          className="mt-7 grid text-center font-medium text-neutral-700"
-          style={{ gridTemplateColumns: `repeat(${ratings.length}, minmax(0, 1fr))` }}
+          className="mt-6 sm:mt-8 grid text-center font-bold text-(--cf-ink)"
+          style={{
+            gridTemplateColumns: `repeat(${ratings.length}, minmax(0, 1fr))`,
+          }}
         >
           {ratings.map((rating) => (
-            <span key={rating.value} className={isPreview ? "text-base" : "text-2xl md:text-3xl"}>
-              {rating.value}
-            </span>
+            <div key={rating.value} className="flex flex-col items-center">
+              <span
+                className={`font-mono ${
+                  isPreview
+                    ? "text-sm sm:text-base"
+                    : ratings.length > 8
+                    ? "text-base sm:text-lg"
+                    : "text-lg sm:text-xl md:text-2xl"
+                }`}
+              >
+                {rating.value}
+              </span>
+              {!hideResults && total > 0 && (
+                <span className="text-[10px] sm:text-xs font-semibold text-(--cf-ink-soft) mt-0.5">
+                  {rating.votes} {rating.votes === 1 ? "vote" : "votes"}
+                </span>
+              )}
+            </div>
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-xs font-medium text-neutral-400 md:text-base">
-          <span>{slide.responseSettings.ratingLowLabel || "Low"}</span>
-          <span>{slide.responseSettings.ratingHighLabel || "High"}</span>
+
+        {/* 4. Low / High Spectrum Labels */}
+        <div className="mt-3 flex justify-between px-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-(--cf-ink-soft)">
+          <span>{slide.responseSettings?.ratingLowLabel || "Low"}</span>
+          <span>{slide.responseSettings?.ratingHighLabel || "High"}</span>
         </div>
       </div>
     </section>
