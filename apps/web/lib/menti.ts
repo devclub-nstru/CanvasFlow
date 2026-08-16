@@ -53,7 +53,7 @@ export interface MentiSlide {
   options: MentiOption[];
   responseSettings: MentiSlideResponseSettings;
   designSettings: MentiSlideDesignSettings;
-  index: number;
+  position: number;
   totalResponses?: number;
 }
 

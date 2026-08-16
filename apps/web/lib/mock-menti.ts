@@ -8,7 +8,7 @@ export const MOCK_SLIDES: MentiSlide[] = [
     question: "Which web framework do you prefer for high-scale apps?",
     description: "Single choice bar chart",
     visualizationType: "BAR",
-    index: 1,
+    position: 0,
     totalResponses: 42,
     options: [
       { id: "opt-1", label: "Next.js (App Router)", voteCount: 24, color: "#2d5cf6" },
@@ -34,7 +34,7 @@ export const MOCK_SLIDES: MentiSlide[] = [
     question: "Which features are most critical for your engineering stack?",
     description: "Multiple choices permitted (multi-checkbox)",
     visualizationType: "BAR",
-    index: 2,
+    position: 1,
     totalResponses: 38,
     options: [
       { id: "opt-4", label: "End-to-end Type Safety", voteCount: 35, color: "#2d5cf6" },
@@ -61,7 +61,7 @@ export const MOCK_SLIDES: MentiSlide[] = [
     type: "WORD_CLOUD",
     question: "Describe your dream dev workflow in 1-2 words",
     description: "Text inputs dynamically scaling in a live word cloud",
-    index: 3,
+    position: 2,
     totalResponses: 54,
     options: [
       { id: "wc-1", label: "Fast", voteCount: 18 },
@@ -90,7 +90,7 @@ export const MOCK_SLIDES: MentiSlide[] = [
     type: "WORD_CLOUD",
     question: "What is your biggest engineering bottleneck right now?",
     description: "Single free-form response",
-    index: 4,
+    position: 3,
     totalResponses: 19,
     options: [
       { id: "ans-1", label: "CI/CD build times", voteCount: 12 },
@@ -114,7 +114,7 @@ export const MOCK_SLIDES: MentiSlide[] = [
     type: "SCALES",
     question: "How confident are you in launching to production this week?",
     description: "Rate on a scale from 1 (Not confident) to 5 (Extremely confident)",
-    index: 5,
+    position: 4,
     totalResponses: 30,
     options: [
       { id: "rate-1", label: "1", voteCount: 2 },

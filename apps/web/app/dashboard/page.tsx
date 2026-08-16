@@ -23,13 +23,16 @@ import {
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetDashboardStats } from "~/hooks/api/form";
+import { useCreatePresentation } from "~/hooks/api/menti/useCreatePresentation";
 
 export default function DashboardPage() {
-  const { openCreateFormModal } = useDashboard();
+  const { openCreateFormModal, openCreateMentiModal } = useDashboard();
   const { stats, isLoading } = useGetDashboardStats();
+  const { createPresentation } = useCreatePresentation();
 
   type TrendRange = "7d" | "30d" | "3m";
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const RANGE_TABS: Array<{ id: TrendRange; label: string; days: number; subtitle: string }> = [
     { id: "3m", label: "3 months", days: 90, subtitle: "Submissions over the past 90 days" },
@@ -110,13 +113,35 @@ export default function DashboardPage() {
             Design, publish, and read your forms in one place.
           </p>
         </div>
-        <button
-          onClick={openCreateFormModal}
-          className="cf-btn cf-raised cf-press h-11 self-start px-5 text-[13.5px] md:self-auto"
-        >
-          <Plus className="size-4" />
-          New form
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="cf-btn cf-raised cf-press h-11 self-start px-5 text-[13.5px] md:self-auto flex items-center gap-2"
+          >
+            <Plus className="size-4" />
+            New
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-(--cf-line-strong) z-50 cf-raised flex flex-col">
+               <button 
+                  onClick={() => { setIsDropdownOpen(false); openCreateFormModal(); }}
+                  className="w-full text-left px-4 py-3 hover:bg-(--cf-cream-2) text-[13px] border-b border-(--cf-line) font-medium text-(--cf-ink) transition-colors"
+               >
+                  Form
+               </button>
+               <button 
+                  onClick={() => {
+                     setIsDropdownOpen(false);
+                     openCreateMentiModal();
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-(--cf-cream-2) text-[13px] font-medium text-(--cf-ink) transition-colors"
+               >
+                  Menti
+               </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ───── stats grid ───── */}

@@ -22,6 +22,9 @@ import { MentiPresentation } from "~/lib/menti";
 import { useDebounce } from "~/hooks/useDebounce";
 import { CustomSelect } from "~/components/ui/CustomSelect";
 import { toast } from "sonner";
+import { useGetPresentations } from "~/hooks/api/menti/useGetPresentations";
+import { useDashboard } from "~/providers/dashboard-provider";
+import { env } from "~/env";
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
 
@@ -60,13 +63,13 @@ const FILTERS = [
 
 const ITEMS_PER_PAGE = 6;
 
-const INITIAL_PRESENTATIONS: MentiPresentation[] = [MOCK_PRESENTATION];
-
 /* ─── page ──────────────────────────────────────────────────────────── */
 
 export default function MentiDashboardPage() {
   const router = useRouter();
-  const [presentations, setPresentations] = useState<MentiPresentation[]>(INITIAL_PRESENTATIONS);
+  const { presentations, isLoading: isPresentationsLoading, refetch } = useGetPresentations();
+  const { openCreateMentiModal } = useDashboard();
+  
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"createdAt" | "title" | "updatedAt">("updatedAt");
   const [filter, setFilter] = useState<string>("ALL");
@@ -125,14 +128,23 @@ export default function MentiDashboardPage() {
   }, [processedPresentations, page]);
 
   const handleCreateNew = () => {
-    const newId = `pres-${Date.now()}`;
-    router.push(`/menti/${newId}/edit`);
+    openCreateMentiModal();
   };
 
-  const handleDelete = (id: string) => {
-    setPresentations((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Presentation deleted");
-    setConfirmDeleteId(null);
+  const handleDelete = async (id: string) => {
+    try {
+      const baseUrl = env.NEXT_PUBLIC_MENTI_API_URL || "http://localhost:8080";
+      const res = await fetch(`${baseUrl}/api/presentations/${id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Presentation deleted");
+      setConfirmDeleteId(null);
+      refetch();
+    } catch(err) {
+      toast.error("Failed to delete presentation");
+    }
   };
 
   const confirmDeletePresentation = presentations.find((p) => p.id === confirmDeleteId);
@@ -217,7 +229,11 @@ export default function MentiDashboardPage() {
       </div>
 
       {/* ───── grid or empty state ───── */}
-      {paginatedPresentations.length === 0 ? (
+      {isPresentationsLoading ? (
+        <div className="cf-panel mx-auto max-w-2xl space-y-4 border-dashed p-10 text-center sm:p-16">
+          <p className="cf-meta">Loading presentations...</p>
+        </div>
+      ) : paginatedPresentations.length === 0 ? (
         <EmptyState
           onCreate={handleCreateNew}
           hasFilters={hasActiveFilters}
@@ -396,7 +412,7 @@ interface MentiCardProps {
 
 function MentiCard({ presentation, onDelete }: MentiCardProps) {
   const isPublished = presentation.isLive;
-  const responses = presentation.slides.reduce(
+  const responses = (presentation.slides || []).reduce(
     (acc, s) => acc + (s.totalResponses || 0),
     0,
   );

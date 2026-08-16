@@ -7,7 +7,7 @@ export default function MentiIndexPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/menti/demo-pres-1/edit");
+    router.replace("/dashboard/menti");
   }, [router]);
 
   return null;
