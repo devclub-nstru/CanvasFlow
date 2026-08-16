@@ -73,7 +73,7 @@ export function PresenterFloatingDock({
             type="button"
             onClick={onEndPresentation}
             className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-danger) hover:bg-(--cf-danger) hover:text-white cf-raised cf-press transition-colors"
-            title="End presentation and view results"
+            title="End presentation and return to editor"
           >
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
           </button>

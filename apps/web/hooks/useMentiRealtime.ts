@@ -38,6 +38,7 @@ export function useMentiRealtime({
   >("connecting");
   const [sessionState, setSessionState] = useState<RealtimeSessionState | null>(null);
   const [slideAnalytics, setSlideAnalytics] = useState<any | null>(null);
+  const [slideAnalyticsMap, setSlideAnalyticsMap] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
@@ -108,7 +109,13 @@ export function useMentiRealtime({
     // Host Analytics Listener
     if (isHost) {
       socketInstance.on("slide_analytics_update", (analytics: any) => {
-        setSlideAnalytics(analytics);
+        if (analytics?.slideId) {
+          setSlideAnalytics(analytics);
+          setSlideAnalyticsMap((prev) => ({
+            ...prev,
+            [analytics.slideId]: analytics,
+          }));
+        }
       });
     }
 
@@ -190,6 +197,7 @@ export function useMentiRealtime({
     connectionStatus,
     sessionState,
     slideAnalytics,
+    slideAnalyticsMap,
     error,
     changeSlide,
     toggleVotingLock,

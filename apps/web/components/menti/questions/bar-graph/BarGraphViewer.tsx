@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
+  analytics?: any;
   isPreview?: boolean;
   hideResults?: boolean;
   showAsPercentage?: boolean;
@@ -36,13 +37,23 @@ function splitIntoBalancedRows<T>(items: T[]): T[][] {
 
 export function BarGraphViewer({
   slide,
+  analytics,
   isPreview,
   hideResults,
   showAsPercentage,
 }: Props) {
   const options = slide.options;
-  const totalVotes = options.reduce((total, option) => total + (option.voteCount || 0), 0);
-  const maxVotes = Math.max(1, ...options.map((option) => option.voteCount || 0));
+
+  const getVoteCount = (optionId: string, fallback: number = 0) => {
+    if (analytics?.results && Array.isArray(analytics.results)) {
+      const match = analytics.results.find((r: any) => r.id === optionId);
+      if (match && typeof match.count === "number") return match.count;
+    }
+    return fallback;
+  };
+
+  const totalVotes = analytics?.totalVotes ?? options.reduce((total, option) => total + getVoteCount(option.id, option.voteCount || 0), 0);
+  const maxVotes = Math.max(1, ...options.map((option) => getVoteCount(option.id, option.voteCount || 0)));
   const textColor = slide.designSettings.textColor || "#17171c";
 
   const isPercentage =
@@ -105,7 +116,7 @@ export function BarGraphViewer({
           >
             {rowOptions.map((option) => {
               const globalIndex = options.findIndex((o) => o.id === option.id);
-              const count = option.voteCount || 0;
+              const count = getVoteCount(option.id, option.voteCount || 0);
               const displayValue = isPercentage
                 ? `${totalVotes ? Math.round((count / totalVotes) * 100) : 0}%`
                 : count;

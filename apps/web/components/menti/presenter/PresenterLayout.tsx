@@ -55,6 +55,8 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   // Connect Host to WebSocket store
   const {
     sessionState,
+    slideAnalytics,
+    slideAnalyticsMap,
     changeSlide,
     toggleVotingLock: socketToggleLock,
     changeSessionStatus,
@@ -142,7 +144,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     } catch (err) {
       console.error("Failed to close session:", err);
     }
-    router.push("/dashboard/menti");
+    router.push(`/menti/${presentation.id}/edit`);
   };
 
   return (
@@ -280,6 +282,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                 {currentSlide && (
                   <SlideQuestionViewer
                     slide={currentSlide}
+                    analytics={slideAnalyticsMap[currentSlide.id] || slideAnalytics}
                     isPreview={false}
                     hideResults={hideResults}
                     showAsPercentage={showAsPercentage}

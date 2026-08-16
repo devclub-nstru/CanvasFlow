@@ -22,11 +22,13 @@ import { ContentAudience } from "./content/ContentAudience";
 // 1. Viewer Renderer (Used in Slide Canvas & Presenter Fullscreen Mode)
 export function SlideQuestionViewer({
   slide,
+  analytics,
   isPreview,
   hideResults,
   showAsPercentage,
 }: {
   slide: MentiSlide;
+  analytics?: any;
   isPreview?: boolean;
   hideResults?: boolean;
   showAsPercentage?: boolean;
@@ -36,6 +38,7 @@ export function SlideQuestionViewer({
       return (
         <BarGraphViewer
           slide={slide}
+          analytics={analytics}
           isPreview={isPreview}
           hideResults={hideResults}
           showAsPercentage={showAsPercentage}
