@@ -5,7 +5,7 @@ import { MentiPresentation, MentiSlide, MentiQuestionType } from "~/lib/menti";
 import { MOCK_PRESENTATION } from "~/lib/mock-menti";
 import { env } from "~/env";
 
-export function useMentiEditor(initialPresentation: MentiPresentation) {
+export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRESENTATION) {
   const [presentation, setPresentation] = useState<MentiPresentation>(initialPresentation);
   const [activeSlideId, setActiveSlideId] = useState<string>(
     initialPresentation.slides[0]?.id || ""
