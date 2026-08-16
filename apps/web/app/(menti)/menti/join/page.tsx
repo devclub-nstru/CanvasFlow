@@ -56,9 +56,15 @@ function MentiJoinContent() {
 }
 
 export default function MentiJoinPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-(--cf-cream)" />}>
-      <MentiJoinContent />
-    </Suspense>
-  );
+  const router = useRouter();
+
+  const handleJoin = (code: string, name: string) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("menti_participant_name", name);
+    }
+    // Navigate to live session with participant name query param
+    router.push(`/menti/demo-pres-1/live?name=${encodeURIComponent(name)}`);
+  };
+
+  return <AudienceJoinCard onJoin={handleJoin} />;
 }

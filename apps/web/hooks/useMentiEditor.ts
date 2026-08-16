@@ -8,7 +8,7 @@ import { env } from "~/env";
 export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRESENTATION) {
   const [presentation, setPresentation] = useState<MentiPresentation>(initialPresentation);
   const [activeSlideId, setActiveSlideId] = useState<string>(
-    initialPresentation.slides[0]?.id || ""
+    initialPresentation?.slides?.[0]?.id || ""
   );
   const [isNewSlideModalOpen, setIsNewSlideModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "results">("create");

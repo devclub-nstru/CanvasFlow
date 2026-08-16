@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Noise from "~/components/Noise";
+import React, { useState } from "react";
+import Link from "next/link";
+import { ArrowRight, QrCode } from "lucide-react";
 import { VerticalScale } from "~/components/Scale";
+import Noise from "~/components/Noise";
 
 interface Props {
-  onJoin: (code: string, nickname?: string) => void;
-  defaultCode?: string;
+  onJoin: (code: string, name: string) => void;
 }
 
 export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
@@ -100,22 +101,33 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center bg-(--cf-cream) text-(--cf-ink) px-4 py-8 select-none overflow-hidden">
+    <div className="relative flex flex-col justify-between min-h-screen min-h-[100dvh] w-full bg-(--cf-cream) text-(--cf-ink) select-none overflow-x-hidden font-sans">
       <Noise />
 
-      {/* Side Rail Decorations from Landing Page */}
-      <div className="pointer-events-none absolute inset-0 hidden md:block">
-        <VerticalScale className="absolute inset-y-0 left-0 mx-auto" />
-        <VerticalScale className="absolute inset-y-0 right-0 mx-auto" />
+      {/* Decorative Neo-Editorial Vertical Scale Side Borders */}
+      <div className="pointer-events-none absolute inset-0 hidden lg:block z-0">
+        <VerticalScale className="absolute inset-y-0 left-0 w-8 2xl:w-10 opacity-70" />
+        <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
-      {/* Central Card */}
-      <div className="relative w-full max-w-md mx-auto z-10">
-        <div className="cf-panel cf-raised bg-white border-2 border-(--cf-line-strong) rounded-2xl p-6 sm:p-8 space-y-6">
-          {/* Header Title & Subtitle */}
+      {/* 1. Top Header with Menti Builder Button */}
+      <header className="relative z-10 flex items-center justify-end w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <Link
+          href="/menti/demo-pres-1/edit"
+          className="cf-panel cf-raised cf-press px-3 sm:px-3.5 py-1.5 bg-white border border-(--cf-line-strong) rounded-(--hex-radius) text-xs font-bold text-(--cf-ink) flex items-center gap-1.5 transition-colors hover:bg-(--cf-cream)"
+        >
+          <span>Menti Builder</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </header>
+
+      {/* 2. Main Hero Join Card */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-6 w-full max-w-lg mx-auto">
+        <div className="cf-panel cf-raised w-full p-5 sm:p-9 bg-white border-2 border-(--cf-line-strong) rounded-2xl sm:rounded-3xl shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          {/* Header & Eyebrow */}
           <div className="text-center space-y-1">
-            <h1 className="cf-display text-2xl sm:text-3xl text-(--cf-ink) font-bold">
-              Join presentation
+            <h1 className="cf-display text-2xl sm:text-3xl font-black text-(--cf-ink) tracking-tight">
+              Join Presentation
             </h1>
             <p className="text-xs text-(--cf-ink-soft)">
               Enter the 6-character code shown on the screen
@@ -173,41 +185,56 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
               </div>
             </div>
 
-            {/* Simple Name Input (Required) */}
-            <div className="space-y-2">
-              <label className="cf-meta text-[11px] text-(--cf-ink-soft) block">
-                YOUR NAME
+            {/* Presentation Code Input Field */}
+            <div className="space-y-1">
+              <label
+                htmlFor="menti-code-input"
+                className="cf-meta block text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider"
+              >
+                Presentation Code <span className="text-(--cf-orange)">*</span>
               </label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Enter your name"
-                maxLength={40}
-                required
-                autoComplete="name"
-                className="w-full px-3.5 py-2.5 text-sm font-medium text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-lg focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all placeholder:text-(--cf-ink-soft)/60"
-              />
+
+              <div className="relative">
+                <input
+                  id="menti-code-input"
+                  type="text"
+                  value={code}
+                  onChange={handleCodeChange}
+                  placeholder="8239 2324"
+                  maxLength={9}
+                  required
+                  autoComplete="off"
+                  className="w-full py-3 sm:py-3.5 px-4 text-center font-mono font-black text-xl sm:text-2xl md:text-3xl tracking-widest bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:border-(--cf-orange) focus:bg-white transition-all shadow-inner text-(--cf-ink) placeholder:text-neutral-300"
+                />
+              </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Join Submit Button */}
             <button
               type="submit"
-              disabled={!isFormValid || isSubmitting}
-              className="cf-btn cf-raised cf-press w-full py-3.5 px-5 text-sm sm:text-base font-bold text-white bg-(--cf-orange) hover:bg-(--cf-orange-hover) disabled:opacity-50 disabled:pointer-events-none rounded-xl border-2 border-(--cf-line-strong) flex items-center justify-center gap-2 shadow-sm transition-all"
+              disabled={!isValid}
+              className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-black rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-lg transition-all mt-1"
             >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <span className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Joining...</span>
-                </span>
-              ) : (
-                <span>Join presentation</span>
-              )}
+              <span>Join Presentation</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* QR Code Alternative Notice */}
+          <div className="p-2.5 sm:p-3 bg-(--cf-cream-2) border border-(--cf-line) rounded-xl flex items-center gap-2.5 sm:gap-3 text-left">
+            <div className="size-7 sm:size-8 bg-white border border-(--cf-line) rounded-lg flex items-center justify-center shrink-0 shadow-xs">
+              <QrCode className="size-4 text-(--cf-ink)" />
+            </div>
+            <p className="text-[11px] sm:text-xs text-(--cf-ink-soft) leading-snug">
+              Alternatively, scan the <strong className="text-(--cf-ink)">QR Code</strong> on the
+              presenter screen with your mobile camera.
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Bottom Spacer */}
+      <div className="h-4 sm:h-6" />
     </div>
   );
 }
