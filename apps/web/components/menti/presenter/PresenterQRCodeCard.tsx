@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { QrCode, X } from "lucide-react";
+import { QrCode, X, Users } from "lucide-react";
 
 interface Props {
   joinCode: string;
@@ -12,59 +12,82 @@ interface Props {
 
 export function PresenterQRCodeCard({
   joinCode,
-  totalResponded = 2,
-  totalExpected = 2,
+  totalResponded = 0,
+  totalExpected = 0,
   onClose,
 }: Props) {
   return (
-    <div className="absolute right-8 top-16 z-20 flex flex-col w-72 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden select-none animate-in fade-in slide-in-from-right-4 duration-200">
-      {/* Close button */}
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 p-1 text-neutral-400 hover:text-neutral-700 rounded-md"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
+    <div className="absolute right-8 top-16 z-30 flex flex-col w-72 bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden select-none animate-in fade-in slide-in-from-right-4 duration-200">
+      {/* Card Header */}
+      <div className="cf-pane-bar px-4 flex items-center justify-between border-b border-(--cf-line-strong) bg-(--cf-cream-2)">
+        <span className="cf-eyebrow text-(--cf-ink)">Audience Join PIN</span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="cf-danger-ghost p-1 rounded"
+            title="Close QR Code"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
-      {/* QR Code Placeholder / Real Graphic */}
-      <div className="p-6 flex flex-col items-center justify-center border-b border-neutral-100">
-        <div className="w-44 h-44 bg-neutral-900 rounded-xl p-3 flex flex-col items-center justify-center text-white relative">
-          <QrCode className="w-36 h-36 text-white" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center font-black text-xs text-white shadow-md">
+      {/* QR Code Container */}
+      <div className="p-5 flex flex-col items-center justify-center bg-white space-y-4">
+        <div className="size-44 bg-(--cf-cream) rounded-xl p-2 flex flex-col items-center justify-center relative border-2 border-(--cf-line-strong) cf-raised">
+          <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
+          {/* CanvasFlow Center Logo Badge */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="size-8 bg-(--cf-ink) rounded-md flex items-center justify-center font-black text-xs text-(--cf-cream) shadow-md border-2 border-white">
               CF
             </div>
           </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-            Join at
+        {/* Join URL & Code */}
+        <div className="text-center space-y-1 w-full">
+          <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
+            Go to <strong className="text-(--cf-orange)">menti.com</strong>
           </p>
-          <p className="text-base font-bold text-neutral-800">menti.com</p>
-          <p className="mt-1 text-2xl font-black tracking-widest text-neutral-900 font-mono">
-            {joinCode}
-          </p>
+          <div className="p-2 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-center">
+            <p className="text-xl font-black tracking-widest text-(--cf-ink) font-mono">
+              {joinCode}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Respondent Progress */}
-      <div className="p-4 bg-neutral-50/80 space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-neutral-700">
-          <span>
-            {totalResponded} of {totalExpected} responded
-          </span>
-        </div>
-        <div className="w-full h-1.5 bg-neutral-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-600 rounded-full transition-all duration-300"
-            style={{
-              width: `${totalExpected > 0 ? (totalResponded / totalExpected) * 100 : 0}%`,
-            }}
-          />
-        </div>
+      {/* Respondent Status Footer */}
+      <div className="p-3 bg-(--cf-cream-2) border-t border-(--cf-line-strong)">
+        {totalResponded === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-white rounded-(--hex-radius) border border-(--cf-line-strong) text-xs font-semibold text-(--cf-ink)">
+            <span className="size-2 rounded-full bg-(--cf-orange) animate-pulse" />
+            <span className="cf-meta text-[11px]">Waiting for participants</span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-(--cf-ink)">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-(--cf-orange)" />
+                <span>{totalResponded} responded</span>
+              </span>
+              <span className="cf-meta text-[10px] text-(--cf-ink-soft)">
+                Target: {totalExpected || totalResponded}
+              </span>
+            </div>
+            <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-(--cf-line-strong)">
+              <div
+                className="h-full bg-(--cf-orange) transition-all duration-300"
+                style={{
+                  width: `${
+                    totalExpected > 0 ? (totalResponded / totalExpected) * 100 : 100
+                  }%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

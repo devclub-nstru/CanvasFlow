@@ -19,6 +19,26 @@ const makeOption = (index: number): MentiOption => ({
   voteCount: 0,
 });
 
+/** Split option list into balanced rows (e.g. 4 -> 1x4, 5 -> 3+2, 6 -> 3+3, 7 -> 4+3, 8 -> 4+4) */
+function splitIntoBalancedRows<T>(items: T[]): T[][] {
+  const n = items.length;
+  if (n <= 4) return [items];
+  if (n === 5) return [items.slice(0, 3), items.slice(3, 5)];
+  if (n === 6) return [items.slice(0, 3), items.slice(3, 6)];
+  if (n === 7) return [items.slice(0, 4), items.slice(4, 7)];
+  if (n === 8) return [items.slice(0, 4), items.slice(4, 8)];
+  if (n === 9) return [items.slice(0, 3), items.slice(3, 6), items.slice(6, 9)];
+  if (n === 10) return [items.slice(0, 4), items.slice(4, 7), items.slice(7, 10)];
+
+  const rowCount = Math.ceil(n / 4);
+  const perRow = Math.ceil(n / rowCount);
+  const rows: T[][] = [];
+  for (let i = 0; i < n; i += perRow) {
+    rows.push(items.slice(i, i + perRow));
+  }
+  return rows;
+}
+
 export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
   const options = slide.options;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,46 +66,166 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
   const selectedOption = options[selectedIndex];
 
   if (variant === "canvas") {
+    const qLength = slide.question?.length || 0;
+    const fontSizeClass =
+      qLength > 60
+        ? "text-xl sm:text-2xl md:text-3xl"
+        : qLength > 30
+        ? "text-2xl sm:text-3xl md:text-4xl"
+        : "text-3xl sm:text-4xl md:text-5xl";
+
+    const totalVotes = options.reduce((sum, o) => sum + (o.voteCount || 0), 0);
+    const isPercentage = slide.responseSettings.showResultsAsPercentage ?? false;
+    const isHidden = slide.responseSettings.hideResultsFromAudience ?? false;
+
+    const rows = splitIntoBalancedRows(options);
+    const isMultiRow = rows.length > 1;
+
     return (
-      <section className="flex h-full min-h-0 w-full flex-col p-[3.2%]">
-        <input
-          value={slide.question}
-          onChange={(event) => onChange({ question: event.target.value })}
-          placeholder="Which of these..."
-          className="w-full rounded-2xl border-2 border-transparent bg-transparent px-3 py-2 text-3xl font-medium tracking-[-0.05em] text-neutral-700 outline-none transition hover:border-indigo-200 focus:border-indigo-500 md:text-5xl"
-        />
-        <div className="mt-auto grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] items-end gap-3 pt-8">
-          {options.map((option, index) => {
-            const selected = option.id === selectedId;
-            return (
-            <div
-              key={option.id}
-              onClick={() => setSelectedId(option.id)}
-              onMouseEnter={() => setHoveredId(option.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`group relative min-w-0 cursor-text rounded-2xl border-2 px-3 pb-3 pt-8 transition ${selected ? "border-indigo-500 bg-white shadow-[0_12px_30px_rgba(79,70,229,0.12)]" : hoveredId === option.id ? "border-indigo-200 bg-white" : "border-transparent"}`}
-              >
-                {(selected || hoveredId === option.id) && <button type="button" aria-label="Add option" onClick={(event) => { event.stopPropagation(); addOption(); }} className="absolute right-[-18px] top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-indigo-500 text-xl font-light text-white shadow-sm"><Plus className="size-5" /></button>}
-                <p className="text-3xl font-medium tracking-[-0.04em] text-neutral-900">{option.voteCount || 0}</p>
-                <div className="mt-3 h-1.5 rounded-full" style={{ backgroundColor: option.color || colors[index % colors.length] }} />
-                <input
-                  value={option.label}
-                  onClick={(event) => event.stopPropagation()}
-                  onFocus={() => setSelectedId(option.id)}
-                  onChange={(event) => updateOption(index, { label: event.target.value })}
-                  placeholder={`Option ${index + 1}`}
-                  className="mt-3 w-full bg-transparent text-xl font-medium tracking-[-0.04em] text-neutral-700 outline-none placeholder:text-neutral-400"
-                />
-              </div>
-            );
-          })}
+      <section className="flex h-full min-h-0 w-full flex-col justify-between p-3 sm:p-5 select-none relative">
+        {/* Dynamic Multi-line Question Input */}
+        <div className="w-full flex flex-col items-center gap-1">
+          <textarea
+            value={slide.question}
+            onChange={(event) => onChange({ question: event.target.value })}
+            placeholder="Which of these..."
+            rows={qLength > 35 ? 2 : 1}
+            className={`w-full max-w-3xl resize-none overflow-hidden text-center rounded-2xl border-2 border-transparent bg-transparent px-3 py-1 font-medium leading-[1.15] tracking-[-0.04em] text-neutral-800 outline-none transition hover:border-(--cf-orange)/30 focus:border-(--cf-orange) ${
+              isMultiRow ? "text-2xl sm:text-3xl md:text-4xl" : fontSizeClass
+            }`}
+          />
+          {isHidden && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-[11px] font-bold animate-in fade-in">
+              <span>Results hidden from audience</span>
+            </div>
+          )}
         </div>
+
+        {/* Centered Multi-Row Grid of Option Columns */}
+        <div className={`mt-auto flex flex-col items-center justify-end w-full max-w-5xl mx-auto ${isMultiRow ? "gap-3 sm:gap-4 pt-1" : "pt-4"}`}>
+          {rows.map((rowOptions, rowIndex) => (
+            <div
+              key={`edit-row-${rowIndex}`}
+              className={`flex items-end justify-center w-full gap-3 sm:gap-5 ${
+                isMultiRow
+                  ? "h-28 sm:h-36 md:h-42"
+                  : "h-60 sm:h-72 md:h-80 lg:h-92"
+              }`}
+            >
+              {rowOptions.map((option) => {
+                const globalIndex = options.findIndex((o) => o.id === option.id);
+                const selected = option.id === selectedId;
+                const count = option.voteCount || 0;
+                const displayVal = isPercentage
+                  ? `${totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0}%`
+                  : count;
+
+                return (
+                  <div
+                    key={option.id}
+                    onClick={() => setSelectedId(option.id)}
+                    onMouseEnter={() => setHoveredId(option.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`group relative flex-1 min-w-[100px] h-full flex flex-col justify-end cursor-pointer rounded-2xl border-2 px-3 pb-3 pt-2 transition-all duration-150 ${
+                      isMultiRow ? "max-w-[200px]" : "max-w-[240px]"
+                    } ${
+                      selected
+                        ? "border-(--cf-orange) bg-white/95 shadow-xl ring-1 ring-(--cf-orange)"
+                        : hoveredId === option.id
+                        ? "border-neutral-300 bg-white/70"
+                        : "border-transparent bg-neutral-50/40 hover:bg-white/50"
+                    }`}
+                  >
+                    {/* Floating Add Option Button on Right Edge of Box */}
+                    {(selected || hoveredId === option.id) && (
+                      <button
+                        type="button"
+                        aria-label="Add option"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          addOption();
+                        }}
+                        className="absolute right-[-14px] top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-(--cf-orange) text-white shadow-md hover:scale-110 transition-transform z-10"
+                      >
+                        <Plus className="size-4 stroke-[3]" />
+                      </button>
+                    )}
+
+                    {/* Value / Percentage */}
+                    <p className={`font-medium tracking-[-0.04em] text-neutral-900 text-center mb-1.5 ${
+                      isMultiRow ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl md:text-5xl"
+                    }`}>
+                      {displayVal}
+                    </p>
+
+                    {/* Baseline Colored Bar Underline */}
+                    <div
+                      className="h-2 rounded-full w-full"
+                      style={{ backgroundColor: option.color || colors[globalIndex % colors.length] }}
+                    />
+
+                    {/* Option Label Input */}
+                    <input
+                      value={option.label}
+                      onClick={(event) => event.stopPropagation()}
+                      onFocus={() => setSelectedId(option.id)}
+                      onChange={(event) => updateOption(globalIndex, { label: event.target.value })}
+                      placeholder={`Option ${globalIndex + 1}`}
+                      className={`mt-2 w-full bg-transparent font-medium tracking-[-0.03em] text-neutral-700 outline-none text-center placeholder:text-neutral-400 ${
+                        isMultiRow ? "text-xs sm:text-sm md:text-base" : "text-sm sm:text-base md:text-lg"
+                      }`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Selected Option Toolbar */}
         {selectedOption && (
-          <div className="mt-4 flex w-fit items-center gap-1 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
-            {colors.map((color) => <button key={color} type="button" aria-label={`Set ${selectedOption.label} colour`} onClick={() => updateOption(selectedIndex, { color })} className={`size-6 rounded-full border-2 ${selectedOption.color === color ? "border-neutral-900" : "border-transparent"}`} style={{ backgroundColor: color }} />)}
-            <span className="mx-1 h-6 w-px bg-neutral-200" />
-            <button type="button" aria-label="Duplicate option" onClick={() => onChange({ options: [...options, { ...selectedOption, id: `option-${crypto.randomUUID()}`, label: `${selectedOption.label} copy` }] })} className="rounded p-1.5 text-neutral-600 hover:bg-neutral-100"><Copy className="size-4" /></button>
-            <button type="button" aria-label="Delete option" disabled={options.length <= 2} onClick={() => removeOption(selectedIndex)} className="rounded p-1.5 text-neutral-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30"><Trash2 className="size-4" /></button>
+          <div className="mx-auto mt-3 flex w-fit items-center gap-1 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg animate-in fade-in zoom-in-95">
+            {colors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                aria-label={`Set ${selectedOption.label} colour`}
+                onClick={() => updateOption(selectedIndex, { color })}
+                className={`size-5 rounded-full border-2 transition-transform ${
+                  selectedOption.color === color ? "border-neutral-900 scale-110" : "border-transparent"
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+            <span className="mx-1 h-5 w-px bg-neutral-200" />
+            <button
+              type="button"
+              aria-label="Duplicate option"
+              onClick={() =>
+                onChange({
+                  options: [
+                    ...options,
+                    {
+                      ...selectedOption,
+                      id: `option-${crypto.randomUUID()}`,
+                      label: `${selectedOption.label} copy`,
+                    },
+                  ],
+                })
+              }
+              className="rounded p-1 text-neutral-600 hover:bg-neutral-100"
+            >
+              <Copy className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete option"
+              disabled={options.length <= 2}
+              onClick={() => removeOption(selectedIndex)}
+              className="rounded p-1 text-neutral-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
           </div>
         )}
       </section>
@@ -103,7 +243,7 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
           onChange={(event) => onChange({ question: event.target.value })}
           placeholder="Which of these..."
           rows={2}
-          className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)"
         />
       </div>
 
@@ -143,41 +283,46 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
         <button
           type="button"
           onClick={addOption}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-indigo-300 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-(--cf-orange)/40 py-2 text-xs font-semibold text-(--cf-orange) transition hover:bg-blue-50"
         >
           <Plus className="size-3.5" /> Add option
         </button>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-        <p className="mb-2 text-xs font-semibold text-neutral-800">Response settings</p>
-        <label className="flex cursor-pointer items-center justify-between gap-4 py-1.5 text-xs text-neutral-600">
-          Allow multiple selections
-          <input
-            type="checkbox"
-            checked={slide.responseSettings.multipleSelection ?? false}
-            onChange={(event) => updateSettings({ multipleSelection: event.target.checked })}
-            className="size-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
-          />
-        </label>
-        <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-neutral-200 py-2 text-xs text-neutral-600">
-          Show results as percentage
-          <input
-            type="checkbox"
-            checked={slide.responseSettings.showResultsAsPercentage ?? false}
-            onChange={(event) => updateSettings({ showResultsAsPercentage: event.target.checked })}
-            className="size-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
-          />
-        </label>
-        <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-neutral-200 pt-2 text-xs text-neutral-600">
-          Hide results from audience
-          <input
-            type="checkbox"
-            checked={slide.responseSettings.hideResultsFromAudience ?? false}
-            onChange={(event) => updateSettings({ hideResultsFromAudience: event.target.checked })}
-            className="size-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
-          />
-        </label>
+      {/* Response Settings Panel */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-3.5 space-y-3">
+        <p className="cf-eyebrow text-(--cf-ink)">Response settings</p>
+        <div className="space-y-2.5">
+          <label className="flex cursor-pointer items-center justify-between gap-4 text-xs font-medium text-neutral-700">
+            <span>Allow multiple selections</span>
+            <input
+              type="checkbox"
+              checked={slide.responseSettings.multipleSelection ?? false}
+              onChange={(event) => updateSettings({ multipleSelection: event.target.checked })}
+              className="size-4 rounded border-neutral-300 accent-(--cf-orange)"
+            />
+          </label>
+
+          <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-neutral-100 pt-2 text-xs font-medium text-neutral-700">
+            <span>Show results as percentage</span>
+            <input
+              type="checkbox"
+              checked={slide.responseSettings.showResultsAsPercentage ?? false}
+              onChange={(event) => updateSettings({ showResultsAsPercentage: event.target.checked })}
+              className="size-4 rounded border-neutral-300 accent-(--cf-orange)"
+            />
+          </label>
+
+          <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-neutral-100 pt-2 text-xs font-medium text-neutral-700">
+            <span>Hide results from audience</span>
+            <input
+              type="checkbox"
+              checked={slide.responseSettings.hideResultsFromAudience ?? false}
+              onChange={(event) => updateSettings({ hideResultsFromAudience: event.target.checked })}
+              className="size-4 rounded border-neutral-300 accent-(--cf-orange)"
+            />
+          </label>
+        </div>
       </div>
     </div>
   );

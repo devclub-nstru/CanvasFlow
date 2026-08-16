@@ -8,9 +8,10 @@ import { Star } from "lucide-react";
 interface Props {
   slide: MentiSlide;
   isPreview?: boolean;
+  hideResults?: boolean;
 }
 
-export function ScalesViewer({ slide, isPreview }: Props) {
+export function ScalesViewer({ slide, isPreview, hideResults = false }: Props) {
   const options = slide.options || [];
   const totalVotes = options.reduce((acc, curr) => acc + (curr.voteCount || 0), 0);
 
@@ -39,11 +40,13 @@ export function ScalesViewer({ slide, isPreview }: Props) {
         <div className="flex items-center gap-3">
           <Star className="w-10 h-10 text-amber-500 fill-amber-500" />
           <span className="text-6xl font-black tracking-tight text-neutral-900 md:text-7xl">
-            {averageScore}
+            {hideResults ? "—" : averageScore}
           </span>
           <span className="text-xl font-bold text-neutral-400">/ 5.0</span>
         </div>
-        <p className="mt-1 text-sm font-semibold text-neutral-500">{totalVotes} responses</p>
+        <p className="mt-1 text-sm font-semibold text-neutral-500">
+          {hideResults ? "Results hidden by presenter" : `${totalVotes} responses`}
+        </p>
       </div>
 
       {/* Distribution Spectrum */}

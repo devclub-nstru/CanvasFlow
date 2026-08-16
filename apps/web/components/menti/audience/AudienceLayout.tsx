@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { MentiPresentation } from "~/lib/menti";
 import { SlideAudienceInput } from "../questions/registry";
 import { ThumbsUp, Heart, Smile } from "lucide-react";
+import Noise from "~/components/Noise";
 
 interface Props {
   presentation: MentiPresentation;
@@ -19,23 +20,25 @@ export function AudienceLayout({ presentation, activeSlideIndex = 0 }: Props) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-between min-h-screen bg-neutral-100 text-neutral-900 select-none pb-8">
+    <div className="flex flex-col items-center justify-between min-h-screen bg-(--cf-cream) text-(--cf-ink) select-none pb-8 relative">
+      <Noise />
+
       {/* Mobile Top Header */}
-      <header className="flex items-center justify-between w-full max-w-md px-6 py-4 bg-white border-b border-neutral-200 shadow-sm">
+      <header className="flex items-center justify-between w-full max-w-md px-5 py-3.5 bg-(--cf-cream-2) border-b border-(--cf-line-strong) z-10">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 bg-blue-600 rounded-sm" />
-          <h1 className="text-xs font-bold truncate max-w-[200px] text-neutral-800">
+          <div className="size-2.5 bg-(--cf-orange) rounded-sm" />
+          <h1 className="text-xs font-bold truncate max-w-[220px] text-(--cf-ink)">
             {presentation.title}
           </h1>
         </div>
-        <span className="text-[10px] font-mono font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded">
-          {presentation.joinCode}
+        <span className="cf-meta text-[10px] font-bold text-(--cf-ink) bg-white px-2 py-0.5 rounded border border-(--cf-line)">
+          PIN: {presentation.joinCode}
         </span>
       </header>
 
       {/* Main Question Card Container */}
-      <main className="flex-1 flex flex-col justify-center w-full max-w-md p-6">
-        <div className="p-6 bg-white border border-neutral-200 rounded-3xl shadow-lg">
+      <main className="flex-1 flex flex-col justify-center w-full max-w-md p-4 sm:p-6 z-10">
+        <div className="cf-panel cf-raised p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl">
           {currentSlide ? (
             <SlideAudienceInput
               slide={currentSlide}
@@ -43,7 +46,7 @@ export function AudienceLayout({ presentation, activeSlideIndex = 0 }: Props) {
               hasSubmitted={hasSubmitted}
             />
           ) : (
-            <div className="text-center p-8 text-neutral-400 text-sm">
+            <div className="text-center p-8 text-(--cf-ink-soft) text-sm">
               Waiting for presenter to show next slide...
             </div>
           )}
@@ -51,24 +54,30 @@ export function AudienceLayout({ presentation, activeSlideIndex = 0 }: Props) {
       </main>
 
       {/* Bottom Floating Reaction Bar */}
-      <footer className="flex items-center gap-4 p-2 bg-white/80 backdrop-blur-md border border-neutral-200 rounded-full shadow-md">
+      <footer className="flex items-center gap-3 p-1.5 bg-white border border-(--cf-line-strong) cf-raised rounded-full z-10">
         <button
+          type="button"
           onClick={() => {}}
-          className="p-2.5 text-neutral-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-transform active:scale-125"
+          className="p-2.5 text-(--cf-ink-soft) hover:text-(--cf-orange) hover:bg-(--cf-cream) rounded-full transition-transform active:scale-125"
+          title="Thumbs up"
         >
-          <ThumbsUp className="w-5 h-5" />
+          <ThumbsUp className="w-4 h-4" />
         </button>
         <button
+          type="button"
           onClick={() => {}}
-          className="p-2.5 text-neutral-600 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-transform active:scale-125"
+          className="p-2.5 text-(--cf-ink-soft) hover:text-rose-600 hover:bg-rose-50 rounded-full transition-transform active:scale-125"
+          title="Heart"
         >
-          <Heart className="w-5 h-5" />
+          <Heart className="w-4 h-4" />
         </button>
         <button
+          type="button"
           onClick={() => {}}
-          className="p-2.5 text-neutral-600 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-transform active:scale-125"
+          className="p-2.5 text-(--cf-ink-soft) hover:text-amber-600 hover:bg-amber-50 rounded-full transition-transform active:scale-125"
+          title="Smile"
         >
-          <Smile className="w-5 h-5" />
+          <Smile className="w-4 h-4" />
         </button>
       </footer>
     </div>

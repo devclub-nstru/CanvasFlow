@@ -3,6 +3,7 @@
 import React from "react";
 import { MentiSlide } from "~/lib/menti";
 import { SlideQuestionViewer } from "../questions/registry";
+import { BarGraphEditor } from "../questions/bar-graph/BarGraphEditor";
 import { Pencil, CornerDownLeft, Sparkles, Star, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ interface Props {
   joinCode?: string;
   isInspectorOpen?: boolean;
   onOpenNewSlideModal: () => void;
+  onChange?: (updated: Partial<MentiSlide>) => void;
 }
 
 export function SlideCanvasStage({
@@ -18,6 +20,7 @@ export function SlideCanvasStage({
   joinCode = "8239 2324",
   isInspectorOpen = true,
   onOpenNewSlideModal,
+  onChange,
 }: Props) {
   // If the slide is unconfigured / new or has default placeholder, show the 3 creation cards
   const isInitialState = !slide || (!slide.question && slide.options?.length === 0);
@@ -82,34 +85,21 @@ export function SlideCanvasStage({
           </div>
         </div>
       ) : (
-        /* Active 16:9 Presentation Stage (Scales smoothly when right sidebar is collapsed/expanded) */
+        /* Active 16:9 Presentation Stage (Maximized, Scales smoothly when right sidebar is collapsed/expanded) */
         <div
           className={`relative flex flex-col items-center justify-center w-full aspect-[16/9] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
             isInspectorOpen
-              ? "max-w-4xl max-h-[72vh] p-6 sm:p-8"
-              : "max-w-6xl max-h-[82vh] p-8 sm:p-12"
+              ? "max-w-5xl 2xl:max-w-6xl max-h-[82vh] p-6 sm:p-10"
+              : "max-w-6xl 2xl:max-w-7xl max-h-[86vh] p-8 sm:p-12"
           }`}
         >
-          {/* Top joining information banner */}
-          {(slide?.designSettings?.showJoiningInfo ?? true) && (
-            <div className="absolute top-4 left-6 right-6 flex items-center justify-between text-xs text-(--cf-ink-soft) animate-in fade-in duration-150">
-              <div className="flex items-center gap-2">
-                <QrCode className="w-4 h-4 text-(--cf-ink)" />
-                <span className="cf-meta text-[11px] font-bold text-(--cf-ink)">
-                  Join at <strong className="text-(--cf-orange)">menti.com</strong> with code:{" "}
-                  <span className="font-mono tracking-wider">{joinCode}</span>
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Render Slide Question Preview */}
-          <div
-            className={`w-full h-full flex items-center justify-center transition-all duration-300 ${
-              (slide?.designSettings?.showJoiningInfo ?? true) ? "pt-6" : ""
-            }`}
-          >
-            <SlideQuestionViewer slide={slide} isPreview={true} />
+          {/* Render Slide — editable canvas variant for BAR_GRAPH, read-only viewer for others */}
+          <div className="w-full h-full flex items-center justify-center transition-all duration-300">
+            {slide?.type === "BAR_GRAPH" && onChange ? (
+              <BarGraphEditor slide={slide} onChange={onChange} variant="canvas" />
+            ) : (
+              <SlideQuestionViewer slide={slide} isPreview={true} />
+            )}
           </div>
         </div>
       )}

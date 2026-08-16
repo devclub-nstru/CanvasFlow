@@ -4,139 +4,164 @@ import React from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Lightbulb,
-  Clock,
-  MessageSquare,
-  QrCode,
+  ArrowRight,
   Lock,
   Unlock,
-  Maximize,
-  ThumbsUp,
+  EyeOff,
+  Eye,
+  Percent,
+  Hash,
 } from "lucide-react";
 
 interface Props {
-  currentSlideIndex: number;
-  totalSlides: number;
+  isIntro: boolean;
+  currentStep: number;
+  totalSteps: number;
+  currentQuestionNumber: number;
+  totalQuestions: number;
   isVotingLocked: boolean;
-  showQRCode: boolean;
-  reactionsCount: number;
+  showJoinCode: boolean;
+  hideResults: boolean;
+  showAsPercentage: boolean;
   onNext: () => void;
   onPrev: () => void;
-  onToggleQRCode: () => void;
+  onEndPresentation: () => void;
+  onToggleJoinCode: () => void;
   onToggleLock: () => void;
-  onReaction: () => void;
-  onToggleFullscreen: () => void;
+  onToggleHideResults: () => void;
+  onTogglePercentage: () => void;
 }
 
 export function PresenterFloatingDock({
-  currentSlideIndex,
-  totalSlides,
+  isIntro,
+  currentStep,
+  totalSteps,
+  currentQuestionNumber,
+  totalQuestions,
   isVotingLocked,
-  showQRCode,
-  reactionsCount,
+  showJoinCode,
+  hideResults,
+  showAsPercentage,
   onNext,
   onPrev,
-  onToggleQRCode,
+  onEndPresentation,
+  onToggleJoinCode,
   onToggleLock,
-  onReaction,
-  onToggleFullscreen,
+  onToggleHideResults,
+  onTogglePercentage,
 }: Props) {
+  const isLastStep = currentStep >= totalSteps - 1;
+
   return (
     <>
-      {/* Bottom Floating Center Controls Bar (Screenshot 3) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1.5 bg-neutral-900/90 hover:bg-neutral-900 text-white backdrop-blur-md rounded-full shadow-2xl border border-neutral-700/60 select-none transition-all">
-        {/* Previous Slide */}
+      {/* 1. Bottom Left Segment: Prev Slide & Next/End Slide */}
+      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2 select-none">
+        {/* Previous Slide Button */}
         <button
+          type="button"
           onClick={onPrev}
-          disabled={currentSlideIndex === 0}
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 disabled:opacity-30 rounded-full transition-colors"
-          title="Previous Slide (Left Arrow)"
+          disabled={currentStep === 0}
+          className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) cf-raised cf-press transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          title="Previous slide (Left Arrow)"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Slide Counter */}
-        <span className="px-2 text-xs font-bold text-neutral-400 font-mono">
-          {currentSlideIndex + 1} / {totalSlides}
-        </span>
-
-        {/* Next Slide */}
-        <button
-          onClick={onNext}
-          disabled={currentSlideIndex === totalSlides - 1}
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 disabled:opacity-30 rounded-full transition-colors"
-          title="Next Slide (Right Arrow or Space)"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        <div className="w-px h-5 mx-1 bg-neutral-700" />
-
-        {/* Hints */}
-        <button
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-full"
-          title="Hints"
-        >
-          <Lightbulb className="w-4 h-4" />
-        </button>
-
-        {/* Timer */}
-        <button
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-full"
-          title="Timer"
-        >
-          <Clock className="w-4 h-4" />
-        </button>
-
-        {/* Q&A */}
-        <button
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-full"
-          title="Audience Q&A"
-        >
-          <MessageSquare className="w-4 h-4" />
-        </button>
-
-        {/* Toggle QR Code Card */}
-        <button
-          onClick={onToggleQRCode}
-          className={`p-2 rounded-full transition-colors ${
-            showQRCode ? "text-blue-400 bg-neutral-800" : "text-neutral-300 hover:text-white hover:bg-neutral-800"
-          }`}
-          title="Toggle Join QR (Q)"
-        >
-          <QrCode className="w-4 h-4" />
-        </button>
-
-        {/* Lock Voting */}
-        <button
-          onClick={onToggleLock}
-          className={`p-2 rounded-full transition-colors ${
-            isVotingLocked ? "text-red-400 bg-neutral-800" : "text-neutral-300 hover:text-white hover:bg-neutral-800"
-          }`}
-          title="Lock / Unlock voting (L)"
-        >
-          {isVotingLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-        </button>
-
-        {/* Fullscreen */}
-        <button
-          onClick={onToggleFullscreen}
-          className="p-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-full"
-          title="Fullscreen (F)"
-        >
-          <Maximize className="w-4 h-4" />
-        </button>
+        {/* Next Slide (or End Presentation on Last Slide) */}
+        {isLastStep ? (
+          <button
+            type="button"
+            onClick={onEndPresentation}
+            className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-danger) hover:bg-(--cf-danger) hover:text-white cf-raised cf-press transition-colors"
+            title="End presentation and view results"
+          >
+            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onNext}
+            className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) cf-raised cf-press transition-colors"
+            title={isIntro ? "Start first question (Right Arrow or Space)" : "Next question (Right Arrow or Space)"}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Bottom Right Reactions Pill (Screenshot 3) */}
-      <button
-        onClick={onReaction}
-        className="fixed bottom-6 right-8 z-30 flex items-center gap-2 px-3.5 py-2 bg-white/90 hover:bg-white text-neutral-900 border border-neutral-200 rounded-full shadow-lg backdrop-blur select-none hover:scale-105 active:scale-95 transition-all"
-        title="Live reactions from audience"
-      >
-        <ThumbsUp className="w-4 h-4 text-blue-600 fill-blue-600" />
-        <span className="text-xs font-bold font-mono">{reactionsCount}</span>
-      </button>
+      {/* 2. Bottom Center Segment: Presentation Controls Bar (Reveals on Hover) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 select-none">
+        <div className="flex items-center gap-2 p-1.5 bg-white rounded-(--hex-radius) border-2 border-(--cf-line-strong) cf-raised shadow-xl">
+          {/* Slide Counter Badge */}
+          <span className="cf-meta text-xs font-bold text-(--cf-ink) px-2 font-mono tabular-nums">
+            {isIntro ? "INTRO" : `${currentQuestionNumber} / ${totalQuestions}`}
+          </span>
+
+          <div className="w-px h-5 bg-(--cf-line-strong) mx-0.5" />
+
+          {/* Toggle Percentage / Absolute Votes */}
+          {!isIntro && (
+            <button
+              type="button"
+              onClick={onTogglePercentage}
+              className={`size-7 flex items-center justify-center rounded-(--hex-radius) transition-colors ${
+                showAsPercentage
+                  ? "bg-(--cf-orange) text-white"
+                  : "text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream)"
+              }`}
+              title="Toggle showing results as percentage (P)"
+            >
+              <Percent className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Hide/Show Results on projector */}
+          {!isIntro && (
+            <button
+              type="button"
+              onClick={onToggleHideResults}
+              className={`size-7 flex items-center justify-center rounded-(--hex-radius) transition-colors ${
+                hideResults
+                  ? "bg-amber-500 text-white"
+                  : "text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream)"
+              }`}
+              title={hideResults ? "Show results (H)" : "Hide results (H)"}
+            >
+              {hideResults ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          )}
+
+          {/* Toggle Joining Code Header */}
+          <button
+            type="button"
+            onClick={onToggleJoinCode}
+            className={`size-7 flex items-center justify-center rounded-(--hex-radius) transition-colors ${
+              showJoinCode
+                ? "bg-(--cf-orange) text-white"
+                : "text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream)"
+            }`}
+            title={showJoinCode ? "Hide joining code (C)" : "Show joining code (C)"}
+          >
+            <Hash className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Lock Voting */}
+          {!isIntro && (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              className={`size-7 flex items-center justify-center rounded-(--hex-radius) transition-colors ${
+                isVotingLocked
+                  ? "bg-(--cf-danger) text-white"
+                  : "text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream)"
+              }`}
+              title="Lock / Unlock voting (L)"
+            >
+              {isVotingLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+      </div>
     </>
   );
 }

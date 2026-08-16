@@ -1,49 +1,202 @@
 "use client";
 
+import React from "react";
 import { MentiSlide } from "~/lib/menti";
+import { EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
   isPreview?: boolean;
+  hideResults?: boolean;
+  showAsPercentage?: boolean;
 }
 
 const colors = ["#5268e8", "#ff7378", "#313c8e", "#9189eb", "#43b7a6", "#e4a23e"];
 
-export function BarGraphViewer({ slide, isPreview }: Props) {
+/** Split option list into balanced rows (e.g. 4 -> 1x4, 5 -> 3+2, 6 -> 3+3, 7 -> 4+3, 8 -> 4+4) */
+function splitIntoBalancedRows<T>(items: T[]): T[][] {
+  const n = items.length;
+  if (n <= 4) return [items];
+  if (n === 5) return [items.slice(0, 3), items.slice(3, 5)];
+  if (n === 6) return [items.slice(0, 3), items.slice(3, 6)];
+  if (n === 7) return [items.slice(0, 4), items.slice(4, 7)];
+  if (n === 8) return [items.slice(0, 4), items.slice(4, 8)];
+  if (n === 9) return [items.slice(0, 3), items.slice(3, 6), items.slice(6, 9)];
+  if (n === 10) return [items.slice(0, 4), items.slice(4, 7), items.slice(7, 10)];
+
+  const rowCount = Math.ceil(n / 4);
+  const perRow = Math.ceil(n / rowCount);
+  const rows: T[][] = [];
+  for (let i = 0; i < n; i += perRow) {
+    rows.push(items.slice(i, i + perRow));
+  }
+  return rows;
+}
+
+export function BarGraphViewer({
+  slide,
+  isPreview,
+  hideResults,
+  showAsPercentage,
+}: Props) {
   const options = slide.options;
   const totalVotes = options.reduce((total, option) => total + (option.voteCount || 0), 0);
   const maxVotes = Math.max(1, ...options.map((option) => option.voteCount || 0));
   const textColor = slide.designSettings.textColor || "#17171c";
-  const hasResults = totalVotes > 0;
+
+  const isPercentage =
+    showAsPercentage !== undefined
+      ? showAsPercentage
+      : (slide.responseSettings.showResultsAsPercentage ?? false);
+
+  const isHidden =
+    hideResults !== undefined
+      ? hideResults
+      : (slide.responseSettings.hideResultsFromAudience ?? false);
+
+  const rows = splitIntoBalancedRows(options);
+  const isMultiRow = rows.length > 1;
 
   return (
-    <section className="flex h-full w-full flex-col px-[4%] py-[3%]" style={{ color: textColor }}>
-      <h2 className={`max-w-[95%] font-medium leading-[1.08] tracking-[-0.045em] ${isPreview ? "text-3xl" : "text-5xl md:text-7xl"}`}>
-        {slide.question || "Which of these..."}
-      </h2>
-      <div className={`mt-auto grid min-h-0 grid-cols-2 gap-x-4 gap-y-5 pt-10 sm:grid-cols-3 lg:grid-cols-4 ${hasResults ? "h-[70%] items-end" : ""}`}>
-        {options.map((option, index) => {
-          const count = option.voteCount || 0;
-          const value = slide.responseSettings.showResultsAsPercentage
-            ? `${totalVotes ? Math.round((count / totalVotes) * 100) : 0}%`
-            : count;
-          const fill = totalVotes ? Math.max(8, (count / maxVotes) * 100) : 3;
+    <section
+      className="flex flex-col justify-between items-center h-full w-full max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 select-none relative"
+      style={{ color: textColor }}
+    >
+      {/* 1. Question Heading & Status Area */}
+      <div className="w-full flex flex-col items-center text-center">
+        <h2
+          className={`font-medium leading-[1.1] tracking-[-0.04em] ${
+            isPreview
+              ? "text-xl sm:text-2xl max-w-xl"
+              : isMultiRow
+              ? "text-2xl sm:text-3xl md:text-4xl max-w-3xl"
+              : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl"
+          }`}
+        >
+          {slide.question || "Which of these..."}
+        </h2>
 
-          return (
-            <article key={option.id} className={`flex min-w-0 flex-col ${hasResults ? "h-full justify-end" : ""}`}>
-              <p className={`font-medium tracking-[-0.04em] ${isPreview ? "text-xl" : "text-4xl md:text-5xl"}`}>{value}</p>
-              <div className={`mt-3 overflow-hidden bg-neutral-100 ${hasResults ? "flex flex-1 flex-col rounded-t-[28px]" : "h-2 rounded-full"}`}>
-                <div
-                  className={`transition-all duration-700 ease-out ${hasResults ? "mt-auto w-full rounded-t-[28px]" : "h-full rounded-full"}`}
-                  style={hasResults ? { height: `${fill}%`, backgroundColor: option.color || colors[index % colors.length] } : { width: `${fill}%`, backgroundColor: option.color || colors[index % colors.length] }}
-                />
-              </div>
-              <p className={`mt-3 truncate font-medium text-neutral-500 ${isPreview ? "text-base" : "text-xl md:text-2xl"}`} title={option.label}>
-                {option.label || `Option ${index + 1}`}
-              </p>
-            </article>
-          );
-        })}
+        {/* Fixed height reservation for status badge */}
+        <div className="h-6 flex items-center justify-center mt-1">
+          <AnimatePresence>
+            {isHidden && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.15 }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)"
+              >
+                <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
+                <span>Responses hidden</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* 2. Balanced Multi-Row Grid of Centered Columns */}
+      <div className={`flex flex-col items-center justify-end w-full max-w-5xl mx-auto ${isMultiRow ? "gap-4 sm:gap-6 pb-1" : "pb-2"}`}>
+        {rows.map((rowOptions, rowIndex) => (
+          <div
+            key={`row-${rowIndex}`}
+            className="flex items-end justify-center gap-3 sm:gap-6 md:gap-8 w-full"
+          >
+            {rowOptions.map((option) => {
+              const globalIndex = options.findIndex((o) => o.id === option.id);
+              const count = option.voteCount || 0;
+              const displayValue = isPercentage
+                ? `${totalVotes ? Math.round((count / totalVotes) * 100) : 0}%`
+                : count;
+              const fill = totalVotes > 0 ? Math.max(12, (count / maxVotes) * 100) : 0;
+              const color = option.color || colors[globalIndex % colors.length];
+
+              return (
+                <article
+                  key={option.id}
+                  className={`flex flex-col items-center flex-1 min-w-[90px] ${
+                    isMultiRow ? "max-w-[190px]" : "max-w-[240px]"
+                  }`}
+                >
+                  {/* Borderless Track Container */}
+                  <div
+                    className={`w-full flex flex-col justify-end items-center relative ${
+                      isPreview
+                        ? isMultiRow ? "h-24 sm:h-28" : "h-36 sm:h-44"
+                        : isMultiRow
+                        ? "h-28 sm:h-36 md:h-42"
+                        : "h-56 sm:h-64 md:h-76 lg:h-84"
+                    }`}
+                  >
+                    {/* Dynamic Rising Bar Pill with Floating Attached Value */}
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        height: isHidden ? "0%" : `${fill}%`,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 75,
+                        damping: 15,
+                        mass: 0.85,
+                        delay: isHidden ? 0 : globalIndex * 0.04,
+                      }}
+                      className="w-full relative flex flex-col justify-start items-center"
+                    >
+                      {/* Attached Value Label - Sits directly above the bar */}
+                      <motion.div
+                        initial={false}
+                        animate={{
+                          opacity: isHidden || fill === 0 ? 0 : 1,
+                          scale: isHidden ? 0.75 : 1,
+                        }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 85,
+                          damping: 14,
+                        }}
+                        className="absolute bottom-full mb-1.5 flex items-center justify-center pointer-events-none"
+                      >
+                        <span
+                          className={`font-semibold tracking-[-0.04em] text-neutral-900 text-center tabular-nums whitespace-nowrap ${
+                            isPreview
+                              ? "text-base sm:text-lg"
+                              : isMultiRow
+                              ? "text-2xl sm:text-3xl"
+                              : "text-3xl sm:text-4xl md:text-5xl"
+                          }`}
+                        >
+                          {displayValue}
+                        </span>
+                      </motion.div>
+
+                      {/* Clean Borderless Filled Bar */}
+                      <div
+                        className="w-full h-full rounded-t-[16px] sm:rounded-t-[22px]"
+                        style={{ backgroundColor: color }}
+                      />
+                    </motion.div>
+                  </div>
+
+                  {/* Option Label below baseline */}
+                  <p
+                    className={`mt-2 truncate w-full text-center font-medium text-neutral-700 ${
+                      isPreview
+                        ? "text-[11px] sm:text-xs"
+                        : isMultiRow
+                        ? "text-xs sm:text-sm md:text-base"
+                        : "text-sm sm:text-base md:text-lg lg:text-xl"
+                    }`}
+                    title={option.label}
+                  >
+                    {option.label || `Option ${globalIndex + 1}`}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </section>
   );

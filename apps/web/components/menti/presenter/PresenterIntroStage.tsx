@@ -1,0 +1,86 @@
+"use client";
+
+import React from "react";
+import { QrCode, Users, ArrowRight } from "lucide-react";
+
+interface Props {
+  title: string;
+  joinCode: string;
+  participantCount?: number;
+  onStart: () => void;
+}
+
+export function PresenterIntroStage({
+  title,
+  joinCode,
+  participantCount = 0,
+  onStart,
+}: Props) {
+  return (
+    <div className="flex flex-col items-center justify-between h-full w-full max-w-5xl mx-auto px-6 py-6 sm:py-8 select-none text-center">
+      {/* 1. Presentation Title */}
+      <div className="space-y-1.5 max-w-3xl">
+        <span className="cf-eyebrow text-(--cf-orange)">CanvasFlow Interactive</span>
+        <h1 className="cf-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-(--cf-ink) tracking-tight leading-tight">
+          {title || "Untitled Presentation"}
+        </h1>
+      </div>
+
+      {/* 2. Structured Central Join Column (QR with matching Code box directly below) */}
+      <div className="flex flex-col items-center gap-3 my-auto">
+        {/* Join URL Instruction */}
+        <p className="text-base sm:text-lg md:text-xl font-bold text-(--cf-ink)">
+          Go to{" "}
+          <span className="text-(--cf-orange) underline underline-offset-4 decoration-2">
+            menti.com
+          </span>
+        </p>
+
+        {/* Big Sharp QR Code */}
+        <div className="size-56 sm:size-64 md:size-72 bg-white rounded-2xl p-3.5 sm:p-4 flex items-center justify-center relative border-2 border-(--cf-line-strong) cf-raised shrink-0 shadow-lg">
+          <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="size-9 bg-(--cf-ink) rounded-md flex items-center justify-center font-black text-xs text-(--cf-cream) shadow-md border-2 border-white">
+              CF
+            </div>
+          </div>
+        </div>
+
+        {/* Matching-Width Code Box Directly Below QR */}
+        <div className="w-56 sm:w-64 md:w-72 p-2.5 sm:p-3 bg-white border-2 border-(--cf-line-strong) rounded-(--hex-radius) cf-raised text-center shadow-md">
+          <p className="cf-meta text-[10px] sm:text-[11px] text-(--cf-ink-soft) font-bold uppercase tracking-widest mb-0.5">
+            Use Code
+          </p>
+          <p className="text-2xl sm:text-3xl md:text-4xl font-black tracking-widest text-(--cf-ink) font-mono tabular-nums">
+            {joinCode}
+          </p>
+        </div>
+
+        {/* Connected Participant Status */}
+        <div className="flex items-center gap-2 pt-1 text-xs sm:text-sm font-semibold text-(--cf-ink-soft)">
+          {participantCount > 0 ? (
+            <span className="flex items-center gap-1.5 text-(--cf-ink)">
+              <Users className="w-4 h-4 text-(--cf-orange)" />
+              <span>{participantCount} participants connected</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-(--cf-orange) animate-pulse" />
+              <span>Waiting for participants to join...</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Bottom Prompt to Start */}
+      <button
+        type="button"
+        onClick={onStart}
+        className="cf-btn cf-raised cf-press px-6 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-(--hex-radius)"
+      >
+        <span>Press Next or Space to begin</span>
+        <ArrowRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}

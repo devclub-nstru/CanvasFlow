@@ -59,6 +59,7 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
             joinCode={presentation.joinCode}
             isInspectorOpen={isInspectorOpen}
             onOpenNewSlideModal={() => setIsNewSlideModalOpen(true)}
+            onChange={activeSlide ? (updated) => updateSlide(activeSlide.id, updated) : undefined}
           />
 
           {/* Right Inspector Drawer */}

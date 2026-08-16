@@ -35,8 +35,6 @@ export function SlideInspectorPanel({
   onChange,
   onOpenTypePicker,
 }: Props) {
-  const showJoiningInfo = slide.designSettings?.showJoiningInfo ?? true;
-
   if (!isOpen) {
     return (
       <aside className="flex h-full select-none z-20 shrink-0">
@@ -116,28 +114,6 @@ export function SlideInspectorPanel({
               <div className="size-3.5 bg-(--cf-orange) rounded-full border border-(--cf-line-strong)" />
             </button>
           </div>
-        </div>
-
-        {/* 4. Joining Information Toggle (Functional) */}
-        <div className="pt-4 border-t border-(--cf-line)">
-          <label className="flex items-center justify-between cursor-pointer">
-            <span className="text-xs font-semibold text-(--cf-ink)">
-              Show joining information
-            </span>
-            <input
-              type="checkbox"
-              checked={showJoiningInfo}
-              onChange={(e) =>
-                onChange({
-                  designSettings: {
-                    ...slide.designSettings,
-                    showJoiningInfo: e.target.checked,
-                  },
-                })
-              }
-              className="size-4 text-(--cf-orange) rounded border-(--cf-line-strong) focus:ring-(--cf-orange)"
-            />
-          </label>
         </div>
       </div>
     </aside>

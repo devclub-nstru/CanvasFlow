@@ -4,15 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Settings,
-  Share2,
   Play,
-  ChevronDown,
   Eye,
-  Plus,
-  Sparkles,
-  Info,
-  Users,
 } from "lucide-react";
 import { MentiPresentation } from "~/lib/menti";
 
@@ -62,26 +55,6 @@ export function MentiEditorHeader({
 
           <div className="w-px h-5 bg-(--cf-line-strong)" />
 
-          {/* Quick Actions (Settings & Share) */}
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="p-1.5 text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream) rounded-(--hex-radius) transition-colors"
-            title="Presentation Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenShare}
-            className="p-1.5 text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream) rounded-(--hex-radius) transition-colors"
-            title="Share Presentation"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-
-          <div className="w-px h-5 bg-(--cf-line-strong)" />
-
           {/* Inline Editable Title + Breadcrumb */}
           <div className="flex flex-col justify-center">
             {isEditingTitle ? (
@@ -110,9 +83,6 @@ export function MentiEditorHeader({
                 {presentation.title || "Untitled presentation"}
               </button>
             )}
-            <span className="cf-meta text-[10px] text-(--cf-ink-soft) flex items-center gap-1">
-              <Users className="w-2.5 h-2.5" /> My Mentis
-            </span>
           </div>
         </div>
 
@@ -141,24 +111,8 @@ export function MentiEditorHeader({
           </button>
         </nav>
 
-        {/* Right: Collaborators + Preview + Start Presentation */}
+        {/* Right: Preview + Start Presentation */}
         <div className="flex items-center gap-2.5">
-          {/* Avatar & Invite */}
-          <div className="flex items-center -space-x-1">
-            <div className="size-7 rounded-full bg-(--cf-ink) text-(--cf-cream) flex items-center justify-center font-bold text-[10px] ring-2 ring-(--cf-cream-2)">
-              SS
-            </div>
-            <button
-              type="button"
-              className="size-7 rounded-full bg-(--cf-cream) border border-(--cf-line-strong) flex items-center justify-center text-(--cf-ink) hover:bg-(--cf-cream-2) transition-colors text-xs font-bold"
-              title="Add Collaborators"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="w-px h-5 bg-(--cf-line-strong) mx-1" />
-
           {/* Preview Button */}
           <Link
             href={`/menti/${presentation.id}/present`}
@@ -168,23 +122,14 @@ export function MentiEditorHeader({
             Preview
           </Link>
 
-          {/* Start Presentation Split Button */}
-          <div className="inline-flex rounded-(--hex-radius) cf-raised">
-            <Link
-              href={`/menti/${presentation.id}/present`}
-              className="cf-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-l-(--hex-radius) rounded-r-none border-r border-(--cf-line)"
-            >
-              <Play className="w-3.5 h-3.5 fill-white" />
-              Start presentation
-            </Link>
-            <button
-              type="button"
-              className="cf-btn px-1.5 py-1.5 rounded-r-(--hex-radius) rounded-l-none text-white hover:bg-(--cf-orange-hover)"
-              title="More Presentation Options"
-            >
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Start Presentation Button */}
+          <Link
+            href={`/menti/${presentation.id}/present`}
+            className="cf-btn cf-raised cf-press px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-(--hex-radius)"
+          >
+            <Play className="w-3.5 h-3.5 fill-white" />
+            Start presentation
+          </Link>
         </div>
       </div>
     </header>

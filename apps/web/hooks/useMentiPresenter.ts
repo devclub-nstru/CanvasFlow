@@ -4,25 +4,39 @@ import { useState, useEffect, useCallback } from "react";
 import { MentiPresentation } from "~/lib/menti";
 
 export function useMentiPresenter(presentation: MentiPresentation) {
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [showQRCode, setShowQRCode] = useState(true);
-  const [isVotingLocked, setIsVotingLocked] = useState(false);
-  const [reactionsCount, setReactionsCount] = useState(1);
+  // Step 0 is the Intro Joining Screen. Steps 1..totalQuestions are question slides.
+  const [currentStep, setCurrentStep] = useState(0);
   const [slides, setSlides] = useState(presentation.slides);
+  const [showJoinCode, setShowJoinCode] = useState(true);
+  const [reactionsCount, setReactionsCount] = useState(1);
 
-  const totalSlides = slides.length;
+  const totalQuestions = slides.length;
+  const totalSteps = totalQuestions + 1; // 0 = Intro, 1..totalQuestions = Slides
+  const isIntro = currentStep === 0;
+  const currentSlideIndex = isIntro ? 0 : currentStep - 1;
   const currentSlide = slides[currentSlideIndex] || slides[0];
 
-  const nextSlide = useCallback(() => {
-    setCurrentSlideIndex((prev) => Math.min(prev + 1, totalSlides - 1));
-  }, [totalSlides]);
+  const [isVotingLocked, setIsVotingLocked] = useState(
+    currentSlide?.responseSettings?.isVotingLocked ?? false
+  );
 
-  const prevSlide = useCallback(() => {
-    setCurrentSlideIndex((prev) => Math.max(prev - 1, 0));
+  // Sync voting lock state when navigating slides
+  useEffect(() => {
+    if (!isIntro && currentSlide?.responseSettings?.isVotingLocked !== undefined) {
+      setIsVotingLocked(currentSlide.responseSettings.isVotingLocked);
+    }
+  }, [currentStep, isIntro, currentSlide?.responseSettings?.isVotingLocked]);
+
+  const nextStep = useCallback(() => {
+    setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
+  }, [totalSteps]);
+
+  const prevStep = useCallback(() => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
   }, []);
 
-  const toggleQRCode = useCallback(() => {
-    setShowQRCode((prev) => !prev);
+  const toggleJoinCode = useCallback(() => {
+    setShowJoinCode((prev) => !prev);
   }, []);
 
   const toggleLock = useCallback(() => {
@@ -37,11 +51,11 @@ export function useMentiPresenter(presentation: MentiPresentation) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
-        nextSlide();
+        nextStep();
       } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        prevSlide();
-      } else if (e.key === "q" || e.key === "Q") {
-        toggleQRCode();
+        prevStep();
+      } else if (e.key === "c" || e.key === "C") {
+        toggleJoinCode();
       } else if (e.key === "l" || e.key === "L") {
         toggleLock();
       }
@@ -49,20 +63,23 @@ export function useMentiPresenter(presentation: MentiPresentation) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nextSlide, prevSlide, toggleQRCode, toggleLock]);
+  }, [nextStep, prevStep, toggleJoinCode, toggleLock]);
 
   return {
+    isIntro,
+    currentStep,
+    totalSteps,
     currentSlide,
     currentSlideIndex,
-    totalSlides,
-    showQRCode,
+    totalQuestions,
+    showJoinCode,
     isVotingLocked,
     reactionsCount,
-    nextSlide,
-    prevSlide,
-    toggleQRCode,
+    nextStep,
+    prevStep,
+    toggleJoinCode,
     toggleLock,
     sendReaction,
-    setSlideIndex: setCurrentSlideIndex,
+    setStep: setCurrentStep,
   };
 }

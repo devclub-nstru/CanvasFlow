@@ -107,6 +107,7 @@ const FeedbackWidget = () => {
   const canSubmit = subject.trim().length >= 3 && message.trim().length >= 10 && !loading;
 
   if (pathname?.startsWith("/forms/")) return null;
+  if (pathname?.startsWith("/menti/")) return null;
 
   if (/^\/dashboard\/sketches\/[^/]+/.test(pathname ?? "")) return null;
 
