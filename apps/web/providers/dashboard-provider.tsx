@@ -6,6 +6,9 @@ interface DashboardContextType {
   openCreateFormModal: () => void;
   isCreatingForm: boolean;
   setIsCreatingForm: (v: boolean) => void;
+  openCreateMentiModal: () => void;
+  isCreatingMenti: boolean;
+  setIsCreatingMenti: (v: boolean) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);

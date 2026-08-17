@@ -100,6 +100,9 @@ WEB_URL=http://localhost:3000
 
 # Web
 NEXT_PUBLIC_API_URL=http://localhost:8000
+# Optional: extra API origins to allow in web CSP connect-src (comma-separated)
+# Example: NEXT_PUBLIC_API_URLS=http://localhost:8080,http://localhost:9000
+NEXT_PUBLIC_API_URLS=
 
 # Optional — OAuth providers (server skips them gracefully if absent)
 GOOGLE_CLIENT_ID=

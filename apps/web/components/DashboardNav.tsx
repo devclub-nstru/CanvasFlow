@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Compass, Menu, PencilRuler, Plus, X } from "lucide-react";
+import { ChevronRight, Compass, Menu, PencilRuler, Plus, Presentation, X } from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
@@ -14,15 +14,18 @@ import { avatarSeed, GlyphAvatar, resolvePreset } from "~/components/profile/Gly
 const LINKS = [
   { href: "/dashboard", label: "Studio", icon: Compass },
   { href: "/dashboard/sketches", label: "Forms", icon: PencilRuler },
+  { href: "/dashboard/menti", label: "Menti", icon: Presentation },
 ];
 
 export default function DashboardNav() {
   const pathname = usePathname();
-  const { openCreateFormModal } = useDashboard();
+  const { openCreateFormModal, openCreateMentiModal } = useDashboard();
   const { userInfo } = useGetLoggedInUserInfo();
   const { me } = useGetMe();
   const [menuOpen, setMenuOpen] = useState(false);
   const [hasScrim, setHasScrim] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileDropdownOpen, setIsMobileDropdownOpen] = useState(false);
 
   useEffect(() => {
     const checkScrim = () => {
@@ -85,13 +88,37 @@ export default function DashboardNav() {
               );
             })}
 
-            <button
-              onClick={openCreateFormModal}
-              className="cf-btn cf-raised cf-press ml-1 h-8 px-4 text-[11px] font-semibold tracking-[0.02em]"
-            >
-              <Plus className="size-4" />
-              New form
-            </button>
+            <div className="relative ml-1">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="cf-btn cf-raised cf-press h-8 px-4 text-[11px] font-semibold tracking-[0.02em] flex items-center gap-1.5"
+              >
+                <Plus className="size-4" />
+                New
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-40 bg-white border border-(--cf-line-strong) z-50 cf-raised flex flex-col">
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      openCreateFormModal();
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-(--cf-cream-2) text-[11px] border-b border-(--cf-line) font-medium text-(--cf-ink) transition-colors tracking-wide"
+                  >
+                    Form
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      openCreateMentiModal();
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-(--cf-cream-2) text-[11px] font-medium text-(--cf-ink) transition-colors tracking-wide"
+                  >
+                    Menti
+                  </button>
+                </div>
+              )}
+            </div>
 
             <Link
               href="/dashboard/profile"
@@ -110,13 +137,37 @@ export default function DashboardNav() {
           </div>
 
           <div className="flex items-center gap-2 lg:hidden">
-            <button
-              onClick={openCreateFormModal}
-              className="cf-btn h-8 px-3 text-[11px]"
-              aria-label="New form"
-            >
-              <Plus className="size-4" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsMobileDropdownOpen(!isMobileDropdownOpen)}
+                className="cf-btn h-8 px-3 text-[11px]"
+                aria-label="New"
+              >
+                <Plus className="size-4" />
+              </button>
+              {isMobileDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-40 bg-white border border-(--cf-line-strong) z-50 cf-raised flex flex-col">
+                  <button
+                    onClick={() => {
+                      setIsMobileDropdownOpen(false);
+                      openCreateFormModal();
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-(--cf-cream-2) text-[11px] border-b border-(--cf-line) font-medium text-(--cf-ink) transition-colors tracking-wide"
+                  >
+                    Form
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileDropdownOpen(false);
+                      openCreateMentiModal();
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-(--cf-cream-2) text-[11px] font-medium text-(--cf-ink) transition-colors tracking-wide"
+                  >
+                    Menti
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}

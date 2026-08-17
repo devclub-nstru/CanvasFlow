@@ -5,18 +5,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const isProd = process.env.NODE_ENV === "production";
 
-function resolveApiOrigin() {
-  const fallback = "http://localhost:8000";
-  const raw = process.env.NEXT_PUBLIC_API_URL;
-  if (!raw) return fallback;
+/**
+ * @param {string | undefined} raw
+ */
+function safeOrigin(raw) {
+  if (!raw) return null;
   try {
     return new URL(raw).origin;
   } catch {
-    return fallback;
+    return null;
   }
 }
 
-const API_ORIGIN = resolveApiOrigin();
+function resolveApiOrigins() {
+  const fallback = "http://localhost:8000";
+  const primary = safeOrigin(process.env.NEXT_PUBLIC_API_URL) ?? fallback;
+  const extras = (process.env.NEXT_PUBLIC_API_URLS ?? "")
+    .split(",")
+    .map((value) => safeOrigin(value.trim()))
+    .filter(Boolean);
+
+  return Array.from(new Set([primary, ...extras]));
+}
+
+const API_ORIGINS = resolveApiOrigins();
+const CONNECT_SRC_API_ORIGINS = API_ORIGINS.join(" ");
 const IMAGEKIT = "https://ik.imagekit.io"; // landing artwork
 const QR_SERVICE = "https://api.qrserver.com"; // share-dialog QR, both <img> and fetch()
 
@@ -30,7 +43,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${API_ORIGIN} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
+  `connect-src 'self' ${CONNECT_SRC_API_ORIGINS} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   ...(isProd ? ["upgrade-insecure-requests"] : []),

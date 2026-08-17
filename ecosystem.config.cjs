@@ -6,7 +6,6 @@
  *     ├── ecosystem.config.cjs  ← this file
  *     ├── apps/api/dist/index.js
  *     ├── apps/worker/dist/index.js
- *     ├── apps/web/.next/standalone/apps/web/server.js
  *     └── packages/database/{drizzle/,migrate.mjs}
  *
  * HTTP processes bind to 127.0.0.1 only — Nginx (443) terminates TLS
@@ -46,22 +45,6 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "400M",
-      max_restarts: 10,
-      min_uptime: "10s",
-    },
-    {
-      name: "canvasflow-web",
-      cwd: path.join(BASE, "apps/web/.next/standalone/apps/web"),
-      script: "./server.js",
-      env: {
-        ...process.env,
-        NODE_ENV: "production",
-        PORT: "3000",
-        HOSTNAME: "127.0.0.1",
-      },
-      instances: 1,
-      exec_mode: "fork",
-      max_memory_restart: "500M",
       max_restarts: 10,
       min_uptime: "10s",
     },

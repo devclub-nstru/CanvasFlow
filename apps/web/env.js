@@ -5,9 +5,11 @@ export const env = createEnv({
   server: {},
   client: {
     NEXT_PUBLIC_API_URL: z.string().optional(),
+    NEXT_PUBLIC_MENTI_API_URL: z.string().optional(),
   },
   runtimeEnv: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_MENTI_API_URL: process.env.NEXT_PUBLIC_MENTI_API_URL,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

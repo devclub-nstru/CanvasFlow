@@ -11,11 +11,13 @@ import Footer from "~/components/Footer";
 import { VerticalScale } from "~/components/Scale";
 import { DashboardProvider } from "~/providers/dashboard-provider";
 import { useCreateForm } from "~/hooks/api/form";
+import { useCreatePresentation } from "~/hooks/api/menti/useCreatePresentation";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createMentiModalOpen, setCreateMentiModalOpen] = useState(false);
 
   const isBuilderPage =
     pathname.includes("/dashboard/sketches/") && pathname !== "/dashboard/sketches";
@@ -25,7 +27,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [slug, setSlug] = useState("");
   const [isCreatingForm, setIsCreatingForm] = useState(false);
 
+  const [mentiTitle, setMentiTitle] = useState("");
+  const [isCreatingMenti, setIsCreatingMenti] = useState(false);
+
   const { createFormAsync } = useCreateForm();
+  const { createPresentation } = useCreatePresentation();
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -78,6 +84,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
   };
 
+  const handleMentiSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mentiTitle) {
+      toast.error("Please enter a title.");
+      return;
+    }
+
+    setCreateMentiModalOpen(false);
+    setIsCreatingMenti(true);
+    const savedTitle = mentiTitle;
+    setMentiTitle("");
+
+    createPresentation(savedTitle)
+      .then((data) => {
+        setIsCreatingMenti(false);
+        if (!data.id || data.id === "undefined") {
+          throw new Error("Failed to extract valid presentation ID from backend.");
+        }
+        router.push(`/menti/${data.id}/edit`);
+      })
+      .catch((err) => {
+        setIsCreatingMenti(false);
+        setMentiTitle(savedTitle);
+        setCreateMentiModalOpen(true);
+        toast.error(err.message || "Failed to create Menti.");
+      });
+  };
+
   const wrapperClass =
     "cf-landing cf-dotgrid relative min-h-screen bg-(--cf-cream) text-(--cf-ink)";
 
@@ -88,6 +122,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           openCreateFormModal: () => setCreateModalOpen(true),
           isCreatingForm,
           setIsCreatingForm,
+          openCreateMentiModal: () => setCreateMentiModalOpen(true),
+          isCreatingMenti,
+          setIsCreatingMenti,
         }}
       >
         {isCreatingForm && <CreatingOverlay />}
@@ -105,11 +142,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         openCreateFormModal: () => setCreateModalOpen(true),
         isCreatingForm,
         setIsCreatingForm,
+        openCreateMentiModal: () => setCreateMentiModalOpen(true),
+        isCreatingMenti,
+        setIsCreatingMenti,
       }}
     >
       <div className={wrapperClass}>
         <Noise />
-        {isCreatingForm && <CreatingOverlay />}
+        {(isCreatingForm || isCreatingMenti) && <CreatingOverlay />}
 
         <DashboardNav />
 
@@ -207,6 +247,66 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       className="cf-btn group px-5 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isCreatingForm ? "Creating..." : "Create form"}
+                      <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Menti modal */}
+        {createMentiModalOpen && (
+          <div className="cf-scrim">
+            <div className="cf-dark cf-crop w-full max-w-lg">
+              <button
+                onClick={() => setCreateMentiModalOpen(false)}
+                className="cf-dark-btn-outline absolute top-4 right-4 z-10 size-8"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+
+              <div className="relative z-1 p-6 sm:p-8">
+                <p className="cf-dark-meta">New Presentation</p>
+                <h3 className="cf-display mt-3 text-[30px] leading-none uppercase sm:text-[38px]">
+                  New Menti
+                  <span style={{ color: "var(--cf-orange)" }}>.</span>
+                </h3>
+                <p
+                  className="mt-3 text-[13.5px] leading-relaxed"
+                  style={{ color: "var(--cfd-text-soft)" }}
+                >
+                  Give your Mentimeter presentation a title. You can always change this later.
+                </p>
+
+                <form onSubmit={handleMentiSubmit} className="mt-6 space-y-4">
+                  <FieldGroup label="Title">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Townhall Meeting"
+                      value={mentiTitle}
+                      onChange={(e) => setMentiTitle(e.target.value)}
+                      className="cf-dark-input h-10.5 px-4 text-[14px]"
+                    />
+                  </FieldGroup>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setCreateMentiModalOpen(false)}
+                      className="cf-dark-btn-outline px-4 py-2 text-[13px]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingMenti}
+                      className="cf-btn group px-5 py-2 text-[13px] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isCreatingMenti ? "Creating..." : "Create Menti"}
                       <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </button>
                   </div>
