@@ -47,19 +47,19 @@ export default function MentiPresentPage({ params }: Props) {
         };
 
         // 2. Start or Resume active Session for the presentation
-        let activeSessionId = querySessionId;
+        const sessionRes = await fetch(`${mentiApiUrl}/api/sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ presentationId }),
+          credentials: "include",
+        });
+        if (!sessionRes.ok) throw new Error("Failed to initialize presentation session");
+        const sessionData = await sessionRes.json();
+        const activeSession = sessionData.session;
+        const activeSessionId = activeSession.id || activeSession._id || querySessionId;
 
-        if (!activeSessionId) {
-          const sessionRes = await fetch(`${mentiApiUrl}/api/sessions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ presentationId }),
-            credentials: "include",
-          });
-          if (!sessionRes.ok) throw new Error("Failed to initialize presentation session");
-          const sessionData = await sessionRes.json();
-          activeSessionId = sessionData.session.id || sessionData.session._id;
-          mappedPresentation.joinCode = sessionData.session.code.replace(/(.{4})/g, "$1 ").trim();
+        if (activeSession?.code) {
+          mappedPresentation.joinCode = activeSession.code.replace(/(.{3})/g, "$1 ").trim();
         }
 
         setPresentation(mappedPresentation);

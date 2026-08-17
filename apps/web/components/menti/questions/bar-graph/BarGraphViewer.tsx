@@ -153,7 +153,8 @@ export function BarGraphViewer({
                         mass: 0.85,
                         delay: isHidden ? 0 : globalIndex * 0.04,
                       }}
-                      className="w-full relative flex flex-col justify-start items-center"
+                      className="w-full relative rounded-t-[16px] sm:rounded-t-[22px]"
+                      style={{ backgroundColor: color }}
                     >
                       {/* Attached Value Label - Sits directly above the bar */}
                       <motion.div
@@ -167,7 +168,7 @@ export function BarGraphViewer({
                           stiffness: 85,
                           damping: 14,
                         }}
-                        className="absolute bottom-full mb-1.5 flex items-center justify-center pointer-events-none"
+                        className="absolute bottom-full mb-1.5 left-0 right-0 flex items-center justify-center pointer-events-none"
                       >
                         <span
                           className={`font-semibold tracking-[-0.04em] text-neutral-900 text-center tabular-nums whitespace-nowrap ${
@@ -181,12 +182,6 @@ export function BarGraphViewer({
                           {displayValue}
                         </span>
                       </motion.div>
-
-                      {/* Clean Borderless Filled Bar */}
-                      <div
-                        className="w-full h-full rounded-t-[16px] sm:rounded-t-[22px]"
-                        style={{ backgroundColor: color }}
-                      />
                     </motion.div>
                   </div>
 

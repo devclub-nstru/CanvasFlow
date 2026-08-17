@@ -66,9 +66,10 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     disabled: !sessionId,
   });
 
-  const activeJoinCode = sessionState?.session?.code
-    ? sessionState.session.code.replace(/(.{3})/g, "$1 ").trim()
-    : (presentation.joinCode || "----");
+  const rawCode = sessionState?.session?.code || presentation.joinCode || "";
+  const activeJoinCode = rawCode
+    ? rawCode.replace(/\s+/g, "").replace(/(.{3})/g, "$1 ").trim()
+    : "----";
 
   const handleCopyHeaderCode = () => {
     if (!activeJoinCode) return;

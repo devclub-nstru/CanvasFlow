@@ -18,9 +18,15 @@ export function PresenterIntroStage({
 }: Props) {
   const [copied, setCopied] = useState(false);
 
+  const cleanCode = joinCode ? joinCode.replace(/\s+/g, "") : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const joinUrl = `${origin}/menti/join?code=${cleanCode}`;
+  const qrImageUrl = cleanCode
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(joinUrl)}&color=1a1d29&bgcolor=ffffff`
+    : null;
+
   const handleCopyCode = () => {
     if (!joinCode) return;
-    const cleanCode = joinCode.replace(/\s+/g, "");
     navigator.clipboard.writeText(cleanCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -46,9 +52,18 @@ export function PresenterIntroStage({
           </span>
         </p>
 
-        {/* Big Sharp QR Code */}
-        <div className="size-56 sm:size-64 md:size-72 bg-white rounded-2xl p-3.5 sm:p-4 flex items-center justify-center relative border-2 border-(--cf-line-strong) cf-raised shrink-0 shadow-lg">
-          <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
+        {/* Big Sharp Live QR Code */}
+        <div className="size-56 sm:size-64 md:size-72 bg-white rounded-2xl p-3.5 sm:p-4 flex items-center justify-center relative border-2 border-(--cf-line-strong) cf-raised shrink-0 shadow-lg overflow-hidden group">
+          {qrImageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={qrImageUrl}
+              alt={`QR Code for ${joinUrl}`}
+              className="w-full h-full object-contain select-none"
+            />
+          ) : (
+            <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
+          )}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="size-9 bg-(--cf-ink) rounded-md flex items-center justify-center font-black text-xs text-(--cf-cream) shadow-md border-2 border-white">
               CF
