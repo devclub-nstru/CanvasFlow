@@ -95,6 +95,7 @@ function packWordsWithAutoZoom(
 
   const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
   const placed: PositionedWord[] = [];
+  const aspectY = 0.65; // Elliptical aspect ratio to favor 16:9 widescreen presentation
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i]!;
@@ -112,10 +113,39 @@ function packWordsWithAutoZoom(
     let y = 0;
     let found = i === 0;
 
-    // Spiral outwards from center until finding an open spot
+    // 1. First attempt: Search for internal pockets/gaps near center
+    const fineSteps = 48;
+    const maxPocketRadius = Math.min(180, i * 18);
+    for (let r = 0; !found && r <= maxPocketRadius; r += 8) {
+      for (let s = 0; s < fineSteps; s++) {
+        const a = (s / fineSteps) * 2 * Math.PI + (i * 0.77);
+        const nx = Math.cos(a) * r;
+        const ny = Math.sin(a) * r * aspectY;
+
+        let collides = false;
+        for (let b = 0; b < boxes.length; b++) {
+          const box = boxes[b]!;
+          if (
+            Math.abs(nx - box.x) < hw + box.hw + WORD_GAP &&
+            Math.abs(ny - box.y) < hh + box.hh + WORD_GAP
+          ) {
+            collides = true;
+            break;
+          }
+        }
+
+        if (!collides) {
+          x = nx;
+          y = ny;
+          found = true;
+          break;
+        }
+      }
+    }
+
+    // 2. Second attempt: Spiral outwards if no tight pocket was found
     const spiralStep = 3.5;
     const angleStep = 0.22;
-    const aspectY = 0.65; // Elliptical aspect ratio to favor 16:9 widescreen presentation
 
     for (let t = 0; !found && t < 3000; t++) {
       const angle = t * angleStep + (i * 1.618);
@@ -165,15 +195,18 @@ function packWordsWithAutoZoom(
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
-  // Safe viewable area (leaves ~10% margin on all edges so words never clip or touch bounds)
+  // Safe viewable area (leaves comfortable margin on all edges so words never clip)
   const safeWidth = Math.max((containerWidth || 800) * 0.88 - 24, 100);
   const safeHeight = Math.max((containerHeight || 500) * 0.84 - 24, 80);
 
   const scaleX = safeWidth / cloudWidth;
   const scaleY = safeHeight / cloudHeight;
+  const rawFitScale = Math.min(scaleX, scaleY);
   
-  // Dynamic smooth zoom-out factor: never scale up beyond 1.0, but smoothly scale down as cloud grows
-  const fitScale = Math.min(1.0, scaleX, scaleY);
+  // Hysteresis / Deadband Guard:
+  // If the cloud is within 96% of the viewport bounds, lock to 100% native scale (no micro-zoom jitters).
+  // When words physically breach the boundary (< 0.96), smoothly scale down.
+  const fitScale = rawFitScale >= 0.96 ? 1.0 : rawFitScale;
 
   return {
     words: placed,
