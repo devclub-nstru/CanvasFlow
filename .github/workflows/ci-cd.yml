@@ -72,6 +72,8 @@ jobs:
           cp -R apps/api/dist deploy/apps/api/dist
           cp apps/worker/package.json deploy/apps/worker/
           cp -R apps/worker/dist deploy/apps/worker/dist
+          mkdir -p deploy/apps/web
+          cp apps/web/package.json deploy/apps/web/
           cp packages/database/package.json packages/database/migrate.mjs deploy/packages/database/
           cp -R packages/database/drizzle deploy/packages/database/drizzle
           for package in packages/*; do
@@ -135,7 +137,7 @@ jobs:
 
             cd "$DEPLOY_DIR"
             corepack enable
-            pnpm install --prod --frozen-lockfile
+            pnpm install --prod --frozen-lockfile --filter "@repo/api..." --filter "@repo/worker..."
 
             docker compose -f docker-compose.prod.yml up -d --wait postgres redis
 
