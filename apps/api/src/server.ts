@@ -36,7 +36,7 @@ const extraOrigins = (env.TRUSTED_ORIGINS ?? "")
 const allowedOrigins = [
   "http://localhost:3000",
   "https://canvas-flow-web.vercel.app",
-  "https://mentimeter.dittya.dev",
+  "https://devclubxnst.online",
   "https://canvas-flow-web-git-main-dittya-maitys-projects.vercel.app",
   ...extraOrigins,
 ];
