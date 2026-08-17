@@ -60,17 +60,26 @@ export function AudienceLayout({
     : null;
 
   const currentSlideId = currentSlide?.id ? String(currentSlide.id) : null;
+  const isUnlimitedWordCloud = Boolean(
+    currentSlide?.type === "WORD_CLOUD" &&
+      (currentSlide.responseSettings?.multipleSubmissions === true ||
+        currentSlide.responseSettings?.maxEntriesPerParticipant === 0)
+  );
+
   const isCurrentSlideSubmitted = Boolean(
-    currentSlideId &&
+    !isUnlimitedWordCloud &&
+      currentSlideId &&
       (submittedSlideIds.some((id) => String(id) === currentSlideId) ||
         localSubmittedSlideIds.some((id) => String(id) === currentSlideId))
   );
 
   const handleVoteSubmit = async (val: any) => {
     if (!currentSlideId) return;
-    setLocalSubmittedSlideIds((prev) =>
-      prev.includes(currentSlideId) ? prev : [...prev, currentSlideId]
-    );
+    if (!isUnlimitedWordCloud) {
+      setLocalSubmittedSlideIds((prev) =>
+        prev.includes(currentSlideId) ? prev : [...prev, currentSlideId]
+      );
+    }
     if (onSubmitAnswer) {
       try {
         await onSubmitAnswer(val, currentSlideId);
