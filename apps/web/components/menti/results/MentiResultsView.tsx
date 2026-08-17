@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MentiPresentation } from "~/lib/menti";
+import { MentiPresentation, MentiSlide } from "~/lib/menti";
 import { ResultsSlideFeed } from "./ResultsSlideFeed";
 import { ResultsOverviewSidebar } from "./ResultsOverviewSidebar";
 import { ResultsEmptyState } from "./ResultsEmptyState";
