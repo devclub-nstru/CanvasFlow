@@ -146,8 +146,8 @@ app.use(
 
 app.use(uploadErrorHandler);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error("[api] unhandled error", {
       method: req.method,

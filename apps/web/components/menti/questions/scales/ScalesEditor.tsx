@@ -3,7 +3,7 @@
 import React from "react";
 import { MentiSlide } from "~/lib/menti";
 import { ScalesViewer } from "./ScalesViewer";
-import { Star, Palette } from "lucide-react";
+import { Palette } from "lucide-react";
 
 interface Props {
   slide: MentiSlide;

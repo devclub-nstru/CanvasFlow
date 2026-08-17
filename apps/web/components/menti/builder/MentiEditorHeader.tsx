@@ -26,8 +26,6 @@ export function MentiEditorHeader({
   activeTab,
   onTabChange,
   onTitleChange,
-  onOpenSettings,
-  onOpenShare,
 }: Props) {
   const router = useRouter();
   const { createSession, isLoading: isStartingSession } = useCreateSession();

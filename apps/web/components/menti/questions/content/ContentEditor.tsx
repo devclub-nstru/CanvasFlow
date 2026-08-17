@@ -11,8 +11,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Plus,
-  Trash2,
 } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
 

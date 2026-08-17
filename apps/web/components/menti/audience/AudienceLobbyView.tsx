@@ -39,7 +39,7 @@ export function AudienceLobbyView({ participantCount = 1 }: Props) {
       {/* Main Text Content */}
       <div className="space-y-1.5 max-w-xs mx-auto">
         <h3 className="text-xl sm:text-2xl font-bold text-(--cf-ink) tracking-tight">
-          You're in!
+          You&apos;re in!
         </h3>
         <p className="text-xs sm:text-sm text-(--cf-ink-soft) leading-relaxed">
           Waiting for the host to start the presentation. The slide will appear automatically.

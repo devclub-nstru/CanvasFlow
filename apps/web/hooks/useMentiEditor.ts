@@ -24,9 +24,11 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
 
   // Clean up timeouts on unmount
   useEffect(() => {
+    const slideTimeouts = updateSlideTimeouts.current;
+    const titleTimeout = updateTitleTimeout.current;
     return () => {
-      if (updateTitleTimeout.current) clearTimeout(updateTitleTimeout.current);
-      Object.values(updateSlideTimeouts.current).forEach(clearTimeout);
+      if (titleTimeout) clearTimeout(titleTimeout);
+      Object.values(slideTimeouts).forEach(clearTimeout);
     };
   }, []);
 

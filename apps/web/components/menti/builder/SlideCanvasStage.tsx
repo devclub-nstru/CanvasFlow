@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 interface Props {
   slide?: MentiSlide | null;
-  joinCode?: string;
   isInspectorOpen?: boolean;
   onOpenNewSlideModal: () => void;
   onChange?: (updated: Partial<MentiSlide>) => void;
@@ -16,7 +15,6 @@ interface Props {
 
 export function SlideCanvasStage({
   slide,
-  joinCode = "8239 2324",
   isInspectorOpen = true,
   onOpenNewSlideModal,
   onChange,

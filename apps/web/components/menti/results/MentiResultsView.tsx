@@ -51,14 +51,12 @@ export function MentiResultsView({ presentation }: Props) {
       {/* 1. Left: Scrollable Feed of Results Cards per Slide */}
       <ResultsSlideFeed
         presentation={filteredPresentation}
-        maxResponses={maxResponses}
         onVisibleSlideChange={setActiveSlideId}
       />
 
       {/* 2. Right: Collapsible Overview Sidebar with Navigation */}
       <ResultsOverviewSidebar
         presentation={filteredPresentation}
-        maxResponses={maxResponses}
         activeSlideId={activeSlideId}
         onSelectSlide={setActiveSlideId}
       />

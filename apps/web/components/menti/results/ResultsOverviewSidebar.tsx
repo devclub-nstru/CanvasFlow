@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { MentiPresentation } from "~/lib/menti";
 import {
   Users,
-  BarChart2,
   TrendingUp,
   Download,
   Trash2,
@@ -17,14 +16,12 @@ import { toast } from "sonner";
 
 interface Props {
   presentation: MentiPresentation;
-  maxResponses?: number;
   activeSlideId?: string | null;
   onSelectSlide?: (slideId: string) => void;
 }
 
 export function ResultsOverviewSidebar({
   presentation,
-  maxResponses,
   activeSlideId,
   onSelectSlide,
 }: Props) {

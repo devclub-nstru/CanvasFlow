@@ -2,19 +2,17 @@
 
 import React, { useEffect, useRef } from "react";
 import { MentiPresentation, MentiSlide } from "~/lib/menti";
-import { Users, Download, Lock, CheckCircle2, Star, Sparkles } from "lucide-react";
+import { Users, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScalesViewer } from "../questions/scales/ScalesViewer";
 
 interface Props {
   presentation: MentiPresentation;
-  maxResponses?: number;
   onVisibleSlideChange?: (slideId: string) => void;
 }
 
 export function ResultsSlideFeed({
   presentation,
-  maxResponses,
   onVisibleSlideChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
