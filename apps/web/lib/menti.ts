@@ -35,7 +35,8 @@ export interface MentiSlideResponseSettings {
   segmentResponses?: boolean;
 
   // WordCloud / Text settings
-  maxEntriesPerParticipant?: number; // 1 = single text answer, >1 = multi text answers
+  multipleSubmissions?: boolean; // true = unlimited/infinite responses per participant, false = single response
+  maxEntriesPerParticipant?: number; // 1 = single text answer, 0 = unlimited
 
   // Scales / Rating settings
   minRating?: number;
