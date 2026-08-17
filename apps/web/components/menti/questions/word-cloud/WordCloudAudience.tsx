@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { MentiSlide } from "~/lib/menti";
-import { Send, CheckCircle2, Sparkles, Plus } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { Send, CheckCircle2, Plus } from "lucide-react";
 
 interface Props {
   slide: MentiSlide;
@@ -13,19 +12,17 @@ interface Props {
 
 export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const isInfinite = Boolean(
-    slide.responseSettings.multipleSubmissions === true ||
-    slide.responseSettings.maxEntriesPerParticipant === 0,
+    slide.responseSettings?.multipleSubmissions === true ||
+      slide.responseSettings?.maxEntriesPerParticipant === 0
   );
 
   const [currentWord, setCurrentWord] = useState("");
-  const [submittedWords, setSubmittedWords] = useState<string[]>([]);
-  const [lastSubmitted, setLastSubmitted] = useState<string | null>(null);
+  const [hasSubmittedAtLeastOnce, setHasSubmittedAtLeastOnce] = useState(false);
 
   // Reset local state when slide ID changes
   useEffect(() => {
     setCurrentWord("");
-    setSubmittedWords([]);
-    setLastSubmitted(null);
+    setHasSubmittedAtLeastOnce(false);
   }, [slide.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,14 +31,8 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
     if (!trimmed) return;
 
     onSubmit([trimmed]);
-    setSubmittedWords((prev) => [...prev, trimmed]);
-    setLastSubmitted(trimmed);
+    setHasSubmittedAtLeastOnce(true);
     setCurrentWord("");
-
-    // Clear confirmation flash after 3 seconds
-    setTimeout(() => {
-      setLastSubmitted((prev) => (prev === trimmed ? null : prev));
-    }, 3000);
   };
 
   // If single response mode and already submitted, show waiting screen
@@ -77,30 +68,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
         </div>
       </div>
 
-      {/* 2. Success Banner Flash on Infinite Submissions */}
-      <AnimatePresence>
-        {isInfinite && lastSubmitted && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-800 shadow-sm"
-          >
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-              <span>
-                Added <strong className="font-bold">&ldquo;{lastSubmitted}&rdquo;</strong> to the word cloud!
-              </span>
-            </div>
-            <span className="text-[10px] font-mono text-emerald-600 font-bold">
-              {submittedWords.length} sent
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 3. Single Clean Input Field */}
+      {/* 2. Single Clean Input Field */}
       <div className="space-y-2">
         <input
           type="text"
@@ -117,14 +85,14 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
         </div>
       </div>
 
-      {/* 4. Action Button */}
+      {/* 3. Action Button */}
       <div className="pt-1">
         <button
           type="submit"
           disabled={!isValid}
           className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-md min-h-[48px]"
         >
-          {isInfinite && submittedWords.length > 0 ? (
+          {isInfinite && hasSubmittedAtLeastOnce ? (
             <>
               <Plus className="w-4 h-4 mr-0.5" />
               Submit Another Word
@@ -137,25 +105,6 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
           )}
         </button>
       </div>
-
-      {/* 5. Audience Submitted Words Cloud/Tags (When Infinite Mode) */}
-      {isInfinite && submittedWords.length > 0 && (
-        <div className="pt-3 border-t border-(--cf-line) space-y-2">
-          <div className="flex items-center justify-between text-xs text-(--cf-ink-soft)">
-            <span className="font-semibold">Your answers ({submittedWords.length})</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-            {submittedWords.map((word, i) => (
-              <span
-                key={i}
-                className="px-2.5 py-1 text-xs bg-(--cf-cream) border border-(--cf-line-strong) rounded-lg font-medium text-(--cf-ink) flex items-center gap-1 shadow-2xs"
-              >
-                <span>{word}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </form>
   );
 }
