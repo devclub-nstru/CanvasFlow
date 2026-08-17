@@ -17,6 +17,7 @@ export interface RealtimeSessionState {
   };
   participantCount: number;
   currentSlide: MentiSlide | null;
+  submittedSlideIds?: string[];
 }
 
 export interface UseMentiRealtimeProps {
@@ -39,9 +40,40 @@ export function useMentiRealtime({
   const [sessionState, setSessionState] = useState<RealtimeSessionState | null>(null);
   const [slideAnalytics, setSlideAnalytics] = useState<any | null>(null);
   const [slideAnalyticsMap, setSlideAnalyticsMap] = useState<Record<string, any>>({});
+  const [submittedSlideIds, setSubmittedSlideIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined" && sessionId) {
+      try {
+        const stored = sessionStorage.getItem(`cf_submitted_slides_${sessionId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return [];
+  });
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
+
+  // Sync with sessionStorage whenever sessionId changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && sessionId) {
+      try {
+        const stored = sessionStorage.getItem(`cf_submitted_slides_${sessionId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setSubmittedSlideIds((prev) => Array.from(new Set([...prev, ...parsed.map(String)])));
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     if (disabled || !sessionId) return;
@@ -95,6 +127,22 @@ export function useMentiRealtime({
           }
         : null;
 
+      // If presenter reset session to waiting, clear submitted slides
+      if (state.session?.status === "waiting") {
+        setSubmittedSlideIds([]);
+        if (typeof window !== "undefined" && sessionId) {
+          sessionStorage.removeItem(`cf_submitted_slides_${sessionId}`);
+        }
+      } else if (Array.isArray(state.submittedSlideIds) && state.submittedSlideIds.length > 0) {
+        setSubmittedSlideIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...state.submittedSlideIds.map(String)]));
+          if (typeof window !== "undefined" && sessionId) {
+            sessionStorage.setItem(`cf_submitted_slides_${sessionId}`, JSON.stringify(merged));
+          }
+          return merged;
+        });
+      }
+
       setSessionState({
         session: {
           ...state.session,
@@ -102,6 +150,7 @@ export function useMentiRealtime({
         },
         participantCount: state.participantCount,
         currentSlide: mappedSlide,
+        submittedSlideIds: state.submittedSlideIds || [],
       });
       setConnectionStatus("connected");
     });
@@ -173,11 +222,22 @@ export function useMentiRealtime({
         return Promise.reject(new Error("Cannot submit answer: Socket not ready or missing slide ID"));
       }
 
+      const activeSlideIdStr = String(activeSlideId);
+
+      // Optimistically record submitted slide ID
+      setSubmittedSlideIds((prev) => {
+        const next = Array.from(new Set([...prev, activeSlideIdStr]));
+        if (typeof window !== "undefined" && sessionId) {
+          sessionStorage.setItem(`cf_submitted_slides_${sessionId}`, JSON.stringify(next));
+        }
+        return next;
+      });
+
       return new Promise<{ success: boolean }>((resolve, reject) => {
         socketRef.current!.emit(
           "submit_response",
           {
-            slideId: activeSlideId,
+            slideId: activeSlideIdStr,
             answer,
           },
           (response: any) => {
@@ -190,7 +250,7 @@ export function useMentiRealtime({
         );
       });
     },
-    [isHost, sessionState?.currentSlide?.id],
+    [isHost, sessionState?.currentSlide?.id, sessionId],
   );
 
   return {
@@ -199,6 +259,7 @@ export function useMentiRealtime({
     sessionState,
     slideAnalytics,
     slideAnalyticsMap,
+    submittedSlideIds,
     error,
     changeSlide,
     toggleVotingLock,

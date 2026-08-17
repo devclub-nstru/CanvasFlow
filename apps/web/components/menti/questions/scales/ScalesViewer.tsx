@@ -85,10 +85,10 @@ export function ScalesViewer({
     .map((sample) => `${sample.x.toFixed(1)} ${sample.y.toFixed(1)}`)
     .join(" L ")}`;
   const areaPath = `${linePath} L ${right} ${baseline} L ${left} ${baseline} Z`;
-  const progress = Math.max(
-    0,
-    Math.min(100, ((average - min) / Math.max(1, max - min)) * 100)
-  );
+  const count = Math.max(2, max - min + 1);
+  const normalized = Math.max(0, Math.min(1, (average - min) / Math.max(1, max - min)));
+  const pinPositionPercent = ((0.5 + normalized * (count - 1)) / count) * 100;
+  const trackInsetPercent = (0.5 / count) * 100;
 
   return (
     <section
@@ -189,12 +189,18 @@ export function ScalesViewer({
             />
           </svg>
 
-          {/* Baseline Track */}
-          <div className="relative w-full h-3 rounded-full bg-(--cf-cream-2) border border-(--cf-line-strong) overflow-hidden shadow-inner mt-1">
+          {/* Baseline Track Spanning Exactly From Column 1 Center to Column Max Center */}
+          <div
+            className="absolute bottom-0 h-2.5 rounded-full bg-(--cf-cream-2) border border-(--cf-line-strong) overflow-hidden shadow-inner"
+            style={{
+              left: `${trackInsetPercent}%`,
+              right: `${trackInsetPercent}%`,
+            }}
+          >
             <motion.div
               initial={false}
               animate={{
-                width: isHidden || total === 0 ? "0%" : `${progress}%`,
+                width: isHidden || total === 0 ? "0%" : `${normalized * 100}%`,
               }}
               transition={{
                 type: "spring",
@@ -206,11 +212,11 @@ export function ScalesViewer({
             />
           </div>
 
-          {/* Floating Average Indicator Pin */}
+          {/* Floating Average Indicator Pin Aligned Precisely with Curve Peak & Column Center */}
           <motion.div
             initial={false}
             animate={{
-              left: `${progress}%`,
+              left: `${pinPositionPercent}%`,
               opacity: isHidden || total === 0 ? 0 : 1,
               scale: isHidden || total === 0 ? 0.7 : 1,
             }}
@@ -219,14 +225,15 @@ export function ScalesViewer({
               stiffness: 85,
               damping: 14,
             }}
-            className="absolute top-[82%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-10"
+            className="absolute bottom-4 -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
           >
-            <div className="cf-panel cf-raised px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) rounded-2xl flex items-center gap-1.5 shadow-xl">
-              <Star className="size-4" style={{ color: accent, fill: accent }} />
-              <span className="text-xl sm:text-2xl md:text-3xl font-black font-mono tracking-tight text-(--cf-ink) tabular-nums">
+            <div className="cf-panel cf-raised px-2.5 py-1 bg-white border-2 border-(--cf-line-strong) rounded-xl flex items-center gap-1 shadow-md">
+              <Star className="size-3 sm:size-3.5" style={{ color: accent, fill: accent }} />
+              <span className="text-xs sm:text-sm md:text-base font-extrabold font-mono tracking-tight text-(--cf-ink) tabular-nums">
                 {average.toFixed(1)}
               </span>
             </div>
+            <div className="size-1.5 bg-(--cf-line-strong) rotate-45 -mt-0.5" />
           </motion.div>
         </div>
 

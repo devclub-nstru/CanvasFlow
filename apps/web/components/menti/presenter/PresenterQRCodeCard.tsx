@@ -48,7 +48,7 @@ export function PresenterQRCodeCard({
         {/* Join URL & Code */}
         <div className="text-center space-y-1 w-full">
           <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
-            Go to <strong className="text-(--cf-orange)">menti.com</strong>
+            Go to <strong className="text-(--cf-orange)">canvasflow.dittya.dev/menti/join</strong>
           </p>
           <div className="p-2 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-center">
             <p className="text-xl font-black tracking-widest text-(--cf-ink) font-mono">
@@ -80,9 +80,7 @@ export function PresenterQRCodeCard({
               <div
                 className="h-full bg-(--cf-orange) transition-all duration-300"
                 style={{
-                  width: `${
-                    totalExpected > 0 ? (totalResponded / totalExpected) * 100 : 100
-                  }%`,
+                  width: `${totalExpected > 0 ? (totalResponded / totalExpected) * 100 : 100}%`,
                 }}
               />
             </div>

@@ -10,12 +10,7 @@ interface Props {
   onStart: () => void;
 }
 
-export function PresenterIntroStage({
-  title,
-  joinCode,
-  participantCount = 0,
-  onStart,
-}: Props) {
+export function PresenterIntroStage({ title, joinCode, participantCount = 0, onStart }: Props) {
   const [copied, setCopied] = useState(false);
 
   const cleanCode = joinCode ? joinCode.replace(/\s+/g, "") : "";
@@ -48,7 +43,7 @@ export function PresenterIntroStage({
         <p className="text-base sm:text-lg md:text-xl font-bold text-(--cf-ink)">
           Go to{" "}
           <span className="text-(--cf-orange) underline underline-offset-4 decoration-2">
-            menti.com
+            canvasflow.dittya.dev/menti/join
           </span>
         </p>
 
@@ -75,7 +70,7 @@ export function PresenterIntroStage({
         <button
           type="button"
           onClick={handleCopyCode}
-          className="w-56 sm:w-64 md:w-72 p-2.5 sm:p-3 bg-white hover:bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-(--hex-radius) cf-raised cf-press text-center shadow-md cursor-pointer transition-all group relative"
+          className="w-56 sm:w-64 md:w-72 p-2.5 sm:p-3 bg-white border-2 border-(--cf-line-strong) rounded-(--hex-radius) text-center shadow-sm cursor-pointer group relative"
           title="Click to copy code"
         >
           <p className="cf-meta text-[10px] sm:text-[11px] text-(--cf-ink-soft) font-bold uppercase tracking-widest mb-0.5 flex items-center justify-center gap-1">

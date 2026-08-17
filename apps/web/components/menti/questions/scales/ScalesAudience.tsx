@@ -12,6 +12,11 @@ interface Props {
 
 export function ScalesAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const [rating, setRating] = useState<number | null>(null);
+
+  // Reset rating when slide changes
+  React.useEffect(() => {
+    setRating(null);
+  }, [slide.id]);
   const min =
     slide.responseSettings?.minRating !== undefined
       ? slide.responseSettings.minRating
@@ -31,7 +36,7 @@ export function ScalesAudience({ slide, onSubmit, hasSubmitted }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
         <div className="size-14 rounded-full bg-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised flex items-center justify-center">
-          <CheckCircle2 className="w-7 h-7" style={{ color: accent }} />
+          <CheckCircle2 className="w-7 h-7 text-(--cf-orange)" />
         </div>
         <div className="space-y-1.5">
           <h3 className="text-lg sm:text-xl font-bold tracking-[-0.03em] text-(--cf-ink)">
@@ -45,83 +50,88 @@ export function ScalesAudience({ slide, onSubmit, hasSubmitted }: Props) {
     );
   }
 
-  const isLargeRange = count > 5;
+  const isFiveOrFewer = count <= 5;
 
   return (
     <div className="flex flex-col w-full space-y-4 sm:space-y-5 select-none">
       {/* Question Header */}
-      <div className="space-y-0.5">
-        <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug tracking-[-0.03em] text-(--cf-ink)">
+      <div className="space-y-1">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug text-(--cf-ink)">
           {slide.question || `Rate on a scale from ${min} to ${max}`}
         </h2>
-        <p className="text-xs text-(--cf-ink-soft)">
-          Select a score from {min} to {max}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
+            Select a score from {min} to {max}
+          </p>
+          {rating !== null && (
+            <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-(--cf-ink) bg-amber-50 px-2 py-0.5 rounded border border-(--cf-orange)/40">
+              <Star className="w-3 h-3 text-(--cf-orange) fill-(--cf-orange)" />
+              <span>Score: {rating}</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Rating Spectrum Buttons (Adaptive Grid for 1-5, 1-7, 1-10, etc.) */}
+      {/* Rating Spectrum Tiles */}
       <div className="space-y-2.5 sm:space-y-3">
-        <div
-          className={`grid gap-1.5 sm:gap-2 ${
-            count <= 5
-              ? "grid-cols-5"
-              : count <= 7
-              ? "grid-cols-4 sm:grid-cols-7"
-              : "grid-cols-5 sm:grid-cols-10"
-          }`}
-          style={{
-            gridTemplateColumns:
-              count <= 5
-                ? `repeat(${count}, minmax(0, 1fr))`
-                : undefined,
-          }}
-        >
-          {ratingNumbers.map((num) => {
-            const isSelected = rating === num;
-            return (
-              <button
-                key={num}
-                type="button"
-                onClick={() => setRating(num)}
-                className={`cf-panel cf-raised cf-press ${
-                  isLargeRange ? "py-2.5 sm:py-4" : "py-3.5 sm:py-5"
-                } rounded-xl sm:rounded-2xl font-bold border-2 transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 ${
-                  isSelected
-                    ? "border-(--cf-orange) bg-amber-50/80 text-(--cf-ink) ring-2 ring-(--cf-orange) scale-105"
-                    : "border-(--cf-line-strong) bg-white text-(--cf-ink) hover:border-(--cf-ink)"
-                }`}
-                style={
-                  isSelected
-                    ? {
-                        borderColor: accent,
-                        boxShadow: `0 0 0 2px ${accent}`,
-                      }
-                    : undefined
-                }
-              >
-                <Star
-                  className={`transition-transform ${
-                    isLargeRange ? "w-3.5 sm:w-4 h-3.5 sm:h-4" : "w-4 sm:w-5 h-4 sm:h-5"
-                  }`}
-                  style={{
-                    color: isSelected ? accent : "#d1d5db",
-                    fill: isSelected ? accent : "none",
-                  }}
-                />
-                <span
-                  className={`font-mono font-black ${
-                    isLargeRange ? "text-xs sm:text-base" : "text-sm sm:text-lg"
+        {isFiveOrFewer ? (
+          /* 1-5 Star Cards Grid */
+          <div
+            className="grid gap-2 sm:gap-2.5"
+            style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+          >
+            {ratingNumbers.map((num) => {
+              const isSelected = rating === num;
+              return (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setRating(num)}
+                  className={`cf-panel cf-raised cf-press py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                    isSelected
+                      ? "bg-(--cf-ink) text-white border-(--cf-ink) ring-2 ring-(--cf-orange) scale-105 shadow-md"
+                      : "bg-white text-(--cf-ink) border-(--cf-line-strong) hover:border-(--cf-ink) hover:bg-(--cf-cream)"
                   }`}
                 >
-                  {num}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  <Star
+                    className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
+                      isSelected ? "text-(--cf-orange) fill-(--cf-orange)" : "text-neutral-300"
+                    }`}
+                  />
+                  <span className="font-mono font-black text-sm sm:text-base">
+                    {num}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          /* Flexible 2-Row Numeric Grid (5 per row for 1-10) without star clutter */
+          <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
+            {ratingNumbers.map((num) => {
+              const isSelected = rating === num;
+              return (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setRating(num)}
+                  className={`cf-panel cf-raised cf-press py-3 sm:py-3.5 rounded-xl font-bold border-2 transition-all flex items-center justify-center ${
+                    isSelected
+                      ? "bg-(--cf-ink) text-white border-(--cf-ink) ring-2 ring-(--cf-orange) scale-105 shadow-md"
+                      : "bg-white text-(--cf-ink) border-(--cf-line-strong) hover:border-(--cf-ink) hover:bg-(--cf-cream)"
+                  }`}
+                >
+                  <span className="font-mono font-black text-base sm:text-lg">
+                    {num}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Low / High Spectrum Labels */}
-        <div className="flex justify-between text-[10px] sm:text-xs font-bold uppercase tracking-wider text-(--cf-ink-soft) px-1">
+        <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-(--cf-ink-soft) px-1">
           <span>
             {lowLabel} ({min})
           </span>

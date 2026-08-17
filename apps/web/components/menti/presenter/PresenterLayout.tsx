@@ -68,7 +68,10 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
 
   const rawCode = sessionState?.session?.code || presentation.joinCode || "";
   const activeJoinCode = rawCode
-    ? rawCode.replace(/\s+/g, "").replace(/(.{3})/g, "$1 ").trim()
+    ? rawCode
+        .replace(/\s+/g, "")
+        .replace(/(.{3})/g, "$1 ")
+        .trim()
     : "----";
 
   const handleCopyHeaderCode = () => {
@@ -92,10 +95,10 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   const participantCount = sessionState?.participantCount ?? presentation.participantCount ?? 0;
 
   const [hideResults, setHideResults] = useState(
-    currentSlide?.responseSettings?.hideResultsFromAudience ?? false
+    currentSlide?.responseSettings?.hideResultsFromAudience ?? false,
   );
   const [showAsPercentage, setShowAsPercentage] = useState(
-    currentSlide?.responseSettings?.showResultsAsPercentage ?? false
+    currentSlide?.responseSettings?.showResultsAsPercentage ?? false,
   );
 
   // Sync state whenever active slide changes
@@ -108,9 +111,15 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+      containerRef.current
+        ?.requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      document
+        .exitFullscreen()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
     }
   };
 
@@ -180,11 +189,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
             className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
             title="Toggle Fullscreen (F)"
           >
-            {isFullscreen ? (
-              <Minimize2 className="w-4 h-4" />
-            ) : (
-              <Maximize2 className="w-4 h-4" />
-            )}
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
 
@@ -192,9 +197,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         <div className="flex items-center gap-2.5 pointer-events-auto opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
           <div className="px-3 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-(--hex-radius) flex items-center gap-2">
             <div className="size-3.5 bg-(--cf-orange) rounded-xs" />
-            <span className="cf-meta text-[11px] font-bold text-(--cf-ink)">
-              CanvasFlow Menti
-            </span>
+            <span className="cf-meta text-[11px] font-bold text-(--cf-ink)">CanvasFlow Menti</span>
           </div>
 
           <button
@@ -223,13 +226,13 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                 <button
                   type="button"
                   onClick={handleCopyHeaderCode}
-                  className="flex items-center gap-3 sm:gap-4 select-none text-center px-4 sm:px-5 py-2 rounded-full bg-white/95 hover:bg-white border-2 border-(--cf-line-strong) cf-raised cf-press cursor-pointer shadow-md transition-all group"
+                  className="flex items-center gap-3 sm:gap-4 select-none text-center px-4 sm:px-5 py-2 rounded-full bg-white border-2 border-(--cf-line-strong) shadow-sm cursor-pointer group"
                   title="Click to copy code"
                 >
                   <span className="text-sm sm:text-base md:text-lg font-medium text-(--cf-ink-soft) tracking-tight">
                     Join at{" "}
                     <strong className="text-(--cf-ink) font-bold underline underline-offset-4 decoration-2 decoration-(--cf-orange)">
-                      menti.com
+                      canvasflow.dittya.dev/menti/join
                     </strong>
                   </span>
                   <span className="text-sm sm:text-base text-(--cf-ink-soft)">•</span>
@@ -317,7 +320,10 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
 
       {/* 4. Bottom-Right Live Participant Count Badge */}
       <div className="absolute bottom-4 sm:bottom-5 right-5 sm:right-6 z-30 pointer-events-auto">
-        <div className="px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-full flex items-center gap-2 shadow-md" title="Live connected participants">
+        <div
+          className="px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-full flex items-center gap-2 shadow-md"
+          title="Live connected participants"
+        >
           <Users className="w-4 h-4 text-(--cf-orange)" />
           <span className="text-xs sm:text-sm font-black font-mono text-(--cf-ink) tabular-nums">
             {participantCount}
@@ -334,11 +340,10 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div className="space-y-1.5">
-              <h3 className="text-lg font-black text-(--cf-ink)">
-                End presentation?
-              </h3>
+              <h3 className="text-lg font-black text-(--cf-ink)">End presentation?</h3>
               <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
-                Are you sure you want to end this presentation? This will close the session instantly and disconnect all connected participants.
+                Are you sure you want to end this presentation? This will close the session
+                instantly and disconnect all connected participants.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">

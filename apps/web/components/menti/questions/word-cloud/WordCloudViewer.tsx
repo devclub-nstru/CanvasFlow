@@ -161,6 +161,7 @@ function packWords(
 
 export function WordCloudViewer({
   slide,
+  analytics,
   isPreview,
   showQuestion = true,
   muted = false,
@@ -176,7 +177,30 @@ export function WordCloudViewer({
     isPreview ? [360, 200] : [1200, 650]
   );
 
-  const source = slide.options.length ? slide.options : isPreview ? previewWords : [];
+  const source = useMemo<MentiOption[]>(() => {
+    if (analytics?.wordCloud && Array.isArray(analytics.wordCloud) && analytics.wordCloud.length > 0) {
+      return analytics.wordCloud.map((w: any, idx: number) => ({
+        id: `word-${idx}-${w.text}`,
+        label: w.text,
+        voteCount: w.value || 0,
+      }));
+    }
+    if (analytics?.options && Array.isArray(analytics.options) && analytics.options.length > 0) {
+      return analytics.options;
+    }
+    if (analytics?.results && Array.isArray(analytics.results) && analytics.results.length > 0) {
+      return analytics.results.map((r: any, idx: number) => ({
+        id: r.id || `word-${idx}-${r.label || r.text}`,
+        label: r.label || r.text,
+        voteCount: r.count || r.value || r.voteCount || 0,
+      }));
+    }
+    if (slide.options && slide.options.length > 0) {
+      return slide.options;
+    }
+    return isPreview ? previewWords : [];
+  }, [analytics, slide.options, isPreview]);
+
   const colors = slide.designSettings.wordCloudColors?.length
     ? slide.designSettings.wordCloudColors
     : DEFAULT_WORD_CLOUD_COLORS;

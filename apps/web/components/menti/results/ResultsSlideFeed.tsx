@@ -4,13 +4,19 @@ import React, { useEffect, useRef } from "react";
 import { MentiPresentation, MentiSlide } from "~/lib/menti";
 import { Users, Download, Lock, CheckCircle2, Star, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { ScalesViewer } from "../questions/scales/ScalesViewer";
 
 interface Props {
   presentation: MentiPresentation;
+  maxResponses?: number;
   onVisibleSlideChange?: (slideId: string) => void;
 }
 
-export function ResultsSlideFeed({ presentation, onVisibleSlideChange }: Props) {
+export function ResultsSlideFeed({
+  presentation,
+  maxResponses,
+  onVisibleSlideChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Set up intersection observer to detect active slide in view
@@ -36,11 +42,6 @@ export function ResultsSlideFeed({ presentation, onVisibleSlideChange }: Props) 
     return () => observer.disconnect();
   }, [presentation.slides, onVisibleSlideChange]);
 
-  const totalResponsesAcrossDeck = presentation.slides.reduce(
-    (acc, s) => acc + (s.totalResponses || 0),
-    0
-  );
-
   return (
     <main
       ref={containerRef}
@@ -52,9 +53,6 @@ export function ResultsSlideFeed({ presentation, onVisibleSlideChange }: Props) 
           <h2 className="cf-display text-xl sm:text-2xl text-(--cf-ink)">
             Responses
           </h2>
-          <span className="cf-meta px-2 py-0.5 rounded-full bg-(--cf-cream-2) border border-(--cf-line) text-(--cf-ink)">
-            {totalResponsesAcrossDeck} total votes
-          </span>
         </div>
 
         <button
@@ -93,15 +91,11 @@ function SlideResultCard({
   index: number;
   participantCount: number;
 }) {
-  const total = slide.totalResponses || 0;
-  const maxOptionVotes = Math.max(...slide.options.map((o) => o.voteCount || 0), 1);
-
-  // For scales: compute average score
-  let averageScaleScore = 0;
-  if (slide.type === "SCALES" && total > 0) {
-    const sum = slide.options.reduce((acc, opt, i) => acc + (i + 1) * (opt.voteCount || 0), 0);
-    averageScaleScore = Number((sum / total).toFixed(1));
-  }
+  const total =
+    typeof slide.totalResponses === "number" && slide.totalResponses > 0
+      ? slide.totalResponses
+      : (slide.options || []).reduce((acc, o) => acc + (o.voteCount || 0), 0);
+  const maxOptionVotes = Math.max(...(slide.options || []).map((o) => o.voteCount || 0), 1);
 
   return (
     <div
@@ -198,38 +192,12 @@ function SlideResultCard({
         )}
 
         {slide.type === "SCALES" && (
-          <div className="p-5 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="cf-eyebrow text-(--cf-ink-soft)">
-                Rating Spectrum ({slide.responseSettings.ratingLowLabel || "Low"} → {slide.responseSettings.ratingHighLabel || "High"})
-              </span>
-              <div className="flex items-center gap-1.5 text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-300">
-                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                <span>Average: {averageScaleScore} / 5.0</span>
-              </div>
-            </div>
-
-            {/* 1-5 Score Distribution */}
-            <div className="grid grid-cols-5 gap-2">
-              {slide.options.map((opt, idx) => {
-                const count = opt.voteCount || 0;
-                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                const fillPct = total > 0 ? (count / maxOptionVotes) * 100 : 0;
-
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-1.5 text-center">
-                    <div className="w-full h-20 bg-white rounded-lg border border-(--cf-line-strong) flex flex-col justify-end p-1 overflow-hidden">
-                      <div
-                        className="w-full bg-(--cf-ink) rounded-sm transition-all duration-500"
-                        style={{ height: `${fillPct}%` }}
-                      />
-                    </div>
-                    <span className="font-bold text-xs text-(--cf-ink)">{idx + 1}★</span>
-                    <span className="text-[10px] font-mono text-(--cf-ink-soft)">{count} ({pct}%)</span>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="p-4 sm:p-6 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) overflow-hidden flex flex-col items-center">
+            <ScalesViewer
+              slide={slide}
+              isPreview={false}
+              showQuestion={false}
+            />
           </div>
         )}
       </div>

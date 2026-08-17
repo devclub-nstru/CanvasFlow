@@ -17,21 +17,26 @@ import { toast } from "sonner";
 
 interface Props {
   presentation: MentiPresentation;
+  maxResponses?: number;
   activeSlideId?: string | null;
   onSelectSlide?: (slideId: string) => void;
 }
 
 export function ResultsOverviewSidebar({
   presentation,
+  maxResponses,
   activeSlideId,
   onSelectSlide,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
 
-  const totalResponses = presentation.slides.reduce(
-    (acc, s) => acc + (s.totalResponses || 0),
-    0
-  );
+  const totalResponses = presentation.slides.reduce((acc, s) => {
+    const slideTotal =
+      typeof s.totalResponses === "number" && s.totalResponses > 0
+        ? s.totalResponses
+        : (s.options || []).reduce((sum, opt) => sum + (opt.voteCount || 0), 0);
+    return acc + slideTotal;
+  }, 0);
 
   const totalPossible = presentation.slides.length * (presentation.participantCount || 1);
   const participationRate = totalPossible > 0
@@ -96,11 +101,11 @@ export function ResultsOverviewSidebar({
 
           <div className="cf-panel p-3 bg-white rounded-xl border border-(--cf-line-strong) space-y-1">
             <div className="flex items-center gap-1 text-[11px] font-mono text-(--cf-ink-soft)">
-              <BarChart2 className="w-3 h-3 text-emerald-600" />
-              <span>Total Votes</span>
+              <Layers className="w-3 h-3 text-emerald-600" />
+              <span>Questions</span>
             </div>
             <p className="font-bold text-lg text-(--cf-ink) tabular-nums">
-              {totalResponses}
+              {presentation.slides.length}
             </p>
           </div>
 
@@ -157,7 +162,9 @@ export function ResultsOverviewSidebar({
                       isActive ? "text-white/80" : "text-(--cf-ink-soft)"
                     }`}
                   >
-                    {slide.totalResponses || 0}
+                    {typeof slide.totalResponses === "number" && slide.totalResponses > 0
+                      ? slide.totalResponses
+                      : (slide.options || []).reduce((sum, opt) => sum + (opt.voteCount || 0), 0)} / {presentation.participantCount}
                   </span>
                 </button>
               );

@@ -14,6 +14,12 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const maxEntries = slide.responseSettings.maxEntriesPerParticipant ?? 1;
   const [words, setWords] = useState<string[]>(Array(maxEntries).fill(""));
 
+  // Reset words when slide changes
+  React.useEffect(() => {
+    const count = slide.responseSettings.maxEntriesPerParticipant ?? 1;
+    setWords(Array(count).fill(""));
+  }, [slide.id, slide.responseSettings.maxEntriesPerParticipant]);
+
   const updateWord = (idx: number, val: string) => {
     const next = [...words];
     next[idx] = val;

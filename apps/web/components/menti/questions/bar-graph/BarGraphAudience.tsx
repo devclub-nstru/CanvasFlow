@@ -11,16 +11,27 @@ interface Props {
 }
 
 export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
-  const isMultiple = slide.responseSettings.multipleSelection ?? false;
-  const maxSelections = slide.responseSettings.maxSelections;
+  const isMultiple = Boolean(slide.responseSettings?.multipleSelection);
+  const rawMax = slide.responseSettings?.maxSelections;
+  // If multipleSelection is enabled, ensure max is at least 2 or unlimited
+  const maxSelections = isMultiple && rawMax && rawMax > 1 ? rawMax : null;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Reset selected options when slide changes
+  React.useEffect(() => {
+    setSelectedIds([]);
+  }, [slide.id]);
 
   const handleToggleOption = (id: string) => {
     if (isMultiple) {
       if (selectedIds.includes(id)) {
         setSelectedIds(selectedIds.filter((item) => item !== id));
       } else {
-        if (maxSelections && selectedIds.length >= maxSelections) return;
+        if (maxSelections && selectedIds.length >= maxSelections) {
+          // If max selections reached, replace the first selected option
+          setSelectedIds([...selectedIds.slice(1), id]);
+          return;
+        }
         setSelectedIds([...selectedIds, id]);
       }
     } else {
@@ -60,7 +71,9 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
         <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
           {isMultiple
             ? maxSelections
-              ? `Select up to ${maxSelections} options`
+              ? `Select up to ${maxSelections} options (${selectedIds.length}/${maxSelections})`
+              : selectedIds.length > 0
+              ? `Select all that apply (${selectedIds.length} selected)`
               : "Select all that apply"
             : "Select one option"}
         </p>
@@ -82,7 +95,7 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
                   : "bg-white border-(--cf-line-strong) hover:border-(--cf-ink) hover:bg-(--cf-cream)"
               }`}
             >
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <span
                   className={`size-5 sm:size-6 shrink-0 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] sm:text-xs transition-colors ${
                     isSelected
@@ -96,14 +109,6 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
                   {option.label || `Option ${index + 1}`}
                 </span>
               </div>
-
-              {/* Color Bar Accent */}
-              {option.color && (
-                <div
-                  className="size-3 sm:size-3.5 rounded-full shrink-0 border border-black/10"
-                  style={{ backgroundColor: option.color }}
-                />
-              )}
             </button>
           );
         })}

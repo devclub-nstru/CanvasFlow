@@ -111,13 +111,13 @@ export function SlideAudienceInput({
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
-      return <BarGraphAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return <BarGraphAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "WORD_CLOUD":
-      return <WordCloudAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return <WordCloudAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "SCALES":
-      return <ScalesAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return <ScalesAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "CONTENT":
-      return <ContentAudience slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return <ContentAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     default:
       return <div className="p-4 text-neutral-500">Waiting for next question...</div>;
   }

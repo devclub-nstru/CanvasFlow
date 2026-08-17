@@ -124,7 +124,18 @@ export function MentiEditorHeader({
           >
             Results
             <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold bg-(--cf-cream) border border-(--cf-line) rounded-full text-(--cf-ink-soft)">
-              {presentation.slides.reduce((acc, s) => acc + (s.totalResponses || 0), 0)}
+              {(() => {
+                const answerable = (presentation.slides || []).filter((s) => s.type !== "CONTENT");
+                const maxQ = Math.max(
+                  0,
+                  ...answerable.map((s) =>
+                    typeof s.totalResponses === "number" && s.totalResponses > 0
+                      ? s.totalResponses
+                      : (s.options || []).reduce((sum, opt) => sum + (opt.voteCount || 0), 0)
+                  )
+                );
+                return Math.max(presentation.participantCount || 0, maxQ);
+              })()}
             </span>
           </button>
         </nav>
