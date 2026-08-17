@@ -14,7 +14,7 @@ interface Props {
 export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const isInfinite = Boolean(
     slide.responseSettings.multipleSubmissions === true ||
-      slide.responseSettings.maxEntriesPerParticipant === 0
+    slide.responseSettings.maxEntriesPerParticipant === 0,
   );
 
   const [currentWord, setCurrentWord] = useState("");
@@ -66,24 +66,14 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const isValid = currentWord.trim().length > 0;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col w-full space-y-4 select-none"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col w-full space-y-4 select-none">
       {/* 1. Question Header */}
       <div className="space-y-1">
         <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug tracking-[-0.03em] text-(--cf-ink)">
           {slide.question || "What word comes to mind?"}
         </h2>
         <div className="flex items-center gap-1.5 text-xs text-(--cf-ink-soft)">
-          {isInfinite ? (
-            <span className="inline-flex items-center gap-1 text-(--cf-orange) font-semibold">
-              <Sparkles className="size-3" />
-              <span>Unlimited responses enabled — submit as many words as you like!</span>
-            </span>
-          ) : (
-            <span>Enter your word or phrase below</span>
-          )}
+          <span>Enter your answer below</span>
         </div>
       </div>
 
@@ -119,7 +109,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
           placeholder="Type a word or short phrase..."
           maxLength={40}
           autoFocus
-          className="w-full p-3.5 text-sm sm:text-base bg-white border-2 border-neutral-200 rounded-xl text-(--cf-ink) placeholder:text-(--cf-ink-soft) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)/20 font-medium shadow-inner"
+          className="w-full p-3.5 text-base bg-white border-2 border-neutral-200 rounded-xl text-(--cf-ink) placeholder:text-(--cf-ink-soft) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)/20 font-medium shadow-inner"
         />
         <div className="flex justify-between items-center px-1 text-[11px] text-(--cf-ink-soft)">
           <span>Max 40 characters</span>
@@ -132,7 +122,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
         <button
           type="submit"
           disabled={!isValid}
-          className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 px-4 text-xs sm:text-sm font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-md"
+          className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-md min-h-[48px]"
         >
           {isInfinite && submittedWords.length > 0 ? (
             <>
@@ -152,7 +142,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
       {isInfinite && submittedWords.length > 0 && (
         <div className="pt-3 border-t border-(--cf-line) space-y-2">
           <div className="flex items-center justify-between text-xs text-(--cf-ink-soft)">
-            <span className="font-semibold">Your contributed words ({submittedWords.length})</span>
+            <span className="font-semibold">Your answers ({submittedWords.length})</span>
           </div>
           <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
             {submittedWords.map((word, i) => (

@@ -111,7 +111,7 @@ export function AudienceLayout({
   }, []);
 
   return (
-    <div className="relative flex flex-col justify-between min-h-screen min-h-[100dvh] w-full bg-(--cf-cream) text-(--cf-ink) select-none overflow-x-hidden font-sans pb-4 sm:pb-6">
+    <div className="relative flex flex-col justify-between min-h-screen min-h-[100dvh] w-full bg-(--cf-cream) text-(--cf-ink) select-none overflow-x-hidden font-sans pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <Noise />
 
       {/* Decorative Side Rails (Matching Landing & Presenter Layout) */}
@@ -158,23 +158,23 @@ export function AudienceLayout({
         </AnimatePresence>
       </div>
 
-      {/* 1. Minimal Top Header (Following Edit Page Design Language) */}
-      <header className="relative z-20 flex flex-col w-full border-b border-(--cf-line-strong) bg-(--cf-cream-2)">
-        <div className="flex items-center justify-between h-12 sm:h-13 px-4 sm:px-6 w-full max-w-5xl mx-auto">
+      {/* 1. Minimal Top Header */}
+      <header className="relative z-20 flex flex-col w-full border-b border-(--cf-line-strong) bg-(--cf-cream-2) pt-[env(safe-area-inset-top)]">
+        <div className="flex items-center justify-between h-12 sm:h-13 px-3.5 sm:px-6 w-full max-w-5xl mx-auto">
           {/* Left: Indicator + Form/Presentation Title */}
-          <div className="flex items-center gap-2.5 min-w-0 pr-3">
-            <div className="size-2.5 bg-(--cf-orange) rounded-xs shrink-0" />
-            <span className="font-bold text-xs sm:text-sm text-(--cf-ink) truncate max-w-[220px] sm:max-w-md">
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            <div className="size-2 sm:size-2.5 bg-(--cf-orange) rounded-xs shrink-0" />
+            <span className="font-bold text-xs sm:text-sm text-(--cf-ink) truncate max-w-[160px] xs:max-w-[220px] sm:max-w-md">
               {presentation.title || "Untitled presentation"}
             </span>
           </div>
 
           {/* Right: Slide Counter & PIN Badge */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="cf-meta text-[11px] font-mono font-bold text-(--cf-ink-soft)">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <span className="cf-meta text-[10px] sm:text-[11px] font-mono font-bold text-(--cf-ink-soft)">
               {isEnded ? "ENDED" : isLobby ? "LOBBY" : `${currentSlideNum} / ${totalSlides}`}
             </span>
-            <span className="cf-meta text-[11px] font-mono font-bold text-(--cf-ink) bg-white px-2 sm:px-2.5 py-0.5 rounded border border-(--cf-line-strong) shadow-2xs">
+            <span className="cf-meta text-[10px] sm:text-[11px] font-mono font-bold text-(--cf-ink) bg-white px-2 sm:px-2.5 py-0.5 rounded border border-(--cf-line-strong) shadow-2xs">
               PIN: {presentation.joinCode}
             </span>
           </div>
@@ -192,8 +192,8 @@ export function AudienceLayout({
       </header>
 
       {/* 2. Main Question Card / Lobby Container */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-3.5 sm:px-6 py-4 sm:py-6 w-full max-w-lg mx-auto my-auto min-h-0">
-        <div className="cf-panel cf-raised w-full p-4 sm:p-7 bg-white border-2 border-(--cf-line-strong) rounded-2xl sm:rounded-3xl shadow-xl animate-in fade-in zoom-in-95 duration-200 overflow-y-auto max-h-[calc(100dvh-150px)]">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-3 sm:px-6 py-3 sm:py-6 w-full max-w-lg mx-auto my-auto min-h-0">
+        <div className="cf-panel cf-raised w-full p-4 sm:p-7 bg-white border-2 border-(--cf-line-strong) rounded-2xl sm:rounded-3xl shadow-xl animate-in fade-in zoom-in-95 duration-200 overflow-y-auto max-h-[min(82vh,750px)]">
           {isEnded ? (
             <div className="flex flex-col items-center text-center py-10 space-y-4">
               <div className="size-12 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center">
