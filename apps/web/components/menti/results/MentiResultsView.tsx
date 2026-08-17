@@ -34,11 +34,7 @@ export function MentiResultsView({ presentation }: Props) {
     return <ResultsEmptyState presentationId={presentation.id} />;
   }
 
-  const maxResponses = Math.max(0, ...answerableSlides.map(getSlideTotal));
-  const participantCount = Math.max(
-    maxResponses,
-    presentation.participantCount || 0
-  );
+  const participantCount = presentation.participantCount || 1;
 
   const filteredPresentation: MentiPresentation = {
     ...presentation,

@@ -148,7 +148,7 @@ export function ScalesAudience({ slide, onSubmit, hasSubmitted }: Props) {
           onClick={() => {
             if (rating !== null) onSubmit(rating);
           }}
-          className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 px-4 text-xs sm:text-sm font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-md"
+          className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 px-4 text-sm sm:text-base font-bold rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-md min-h-[48px]"
         >
           <Send className="w-4 h-4 mr-1" />
           Submit Rating {rating !== null ? `(${rating})` : ""}
