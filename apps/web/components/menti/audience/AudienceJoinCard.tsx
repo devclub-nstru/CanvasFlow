@@ -20,7 +20,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
   // Initialize with defaultCode if provided
   useEffect(() => {
     if (defaultCode) {
-      const clean = defaultCode.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+      const clean = defaultCode.replace(/[^0-9]/g, "").slice(0, 6);
       const newDigits = Array(6).fill("");
       for (let i = 0; i < clean.length; i++) {
         newDigits[i] = clean[i] || "";
@@ -32,7 +32,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
   const fullCode = digits.join("");
 
   const handleDigitChange = (index: number, val: string) => {
-    const raw = val.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const raw = val.replace(/[^0-9]/g, "");
 
     // Handling pasted multi-character string
     if (raw.length > 1) {
@@ -80,8 +80,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
     e.preventDefault();
     const pasted = e.clipboardData
       .getData("text")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .toUpperCase()
+      .replace(/[^0-9]/g, "")
       .slice(0, 6);
     if (!pasted) return;
 
@@ -125,7 +124,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
               Join Presentation
             </h1>
             <p className="text-xs text-(--cf-ink-soft)">
-              Enter your name and the 6-character code shown on the screen
+              Enter your name and the 6-digit code shown on the screen
             </p>
           </div>
 
@@ -152,7 +151,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
               />
             </div>
 
-            {/* 6-Character Split Alphanumeric Code Input */}
+            {/* 6-Digit Split Numeric Code Input */}
             <div className="space-y-1.5">
               <label className="cf-meta block text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider">
                 Presentation Code <span className="text-(--cf-orange)">*</span>
