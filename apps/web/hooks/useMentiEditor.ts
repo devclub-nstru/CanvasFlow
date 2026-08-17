@@ -104,10 +104,10 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
             ? "New Word Cloud Question"
             : type === "SCALES"
               ? "New Rating / Scales Question"
-              : "Thank you!",
+              : "Add your heading here",
       description:
         type === "CONTENT"
-          ? "We appreciate your feedback and participation."
+          ? "Add a subtitle, takeaway, or body text here."
           : null,
       position: presentation.slides.length,
       options:
@@ -132,8 +132,10 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
       },
       designSettings: {
         backgroundColor: "#ffffff",
-        textColor: "#1a1d29",
-        accentColor: "#2d5cf6",
+        textColor: "#17171c",
+        accentColor: "#e4a23e",
+        textAlign: "center",
+        icon: "none",
         showLogo: true,
       },
     };

@@ -22,7 +22,6 @@ interface QuestionTypeCard {
   desc: string;
   badge: string;
   icon: React.ReactNode;
-  isPopular?: boolean;
 }
 
 const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
@@ -32,7 +31,6 @@ const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
     desc: "Single and multi-selection choices with real-time rising bars, vote counts, and percentage distribution modes.",
     badge: "Choice & Checkbox",
     icon: <BarChart2 className="w-6 h-6 text-(--cf-orange)" />,
-    isPopular: true,
   },
   {
     type: "WORD_CLOUD",
@@ -40,7 +38,6 @@ const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
     desc: "Dynamic live word cloud where recurring participant answers dynamically cluster and expand in visual weight.",
     badge: "Single & Multi-Text",
     icon: <Cloud className="w-6 h-6 text-rose-600" />,
-    isPopular: true,
   },
   {
     type: "SCALES",
@@ -51,9 +48,9 @@ const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
   },
   {
     type: "CONTENT",
-    title: "Blank / Thank You",
-    desc: "Clean informational slide with heading and description for title slides, topic transitions, or closing thank you notes.",
-    badge: "Title & Text Slide",
+    title: "Blank / Text Slide",
+    desc: "Customizable text slide with titles, subtitles, kickers, alignments, and icons for section headers, key takeaways, announcements, or thank you notes.",
+    badge: "Text & Section Header",
     icon: <Sparkles className="w-6 h-6 text-indigo-600" />,
   },
 ];
@@ -95,15 +92,10 @@ export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
                 className="cf-panel cf-raised cf-press flex flex-col justify-between p-5 sm:p-6 text-left bg-white rounded-2xl border-2 border-(--cf-line-strong) transition-all group min-h-[190px]"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3.5">
+                  <div className="flex items-center mb-3.5">
                     <div className="p-2.5 bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl shadow-xs group-hover:scale-105 transition-transform">
                       {card.icon}
                     </div>
-                    {card.isPopular && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold text-blue-800 bg-blue-100 border border-blue-200 rounded">
-                        Popular
-                      </span>
-                    )}
                   </div>
                   <span className="text-sm sm:text-base font-bold text-(--cf-ink) group-hover:text-(--cf-orange) transition-colors">
                     {card.title}

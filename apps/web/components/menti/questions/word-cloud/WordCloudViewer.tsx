@@ -163,8 +163,13 @@ export function WordCloudViewer({
   isPreview,
   showQuestion = true,
   muted = false,
-  hideResults = false,
+  hideResults,
 }: Props) {
+  const isHidden =
+    hideResults !== undefined
+      ? hideResults
+      : (slide.responseSettings?.hideResultsFromAudience ?? false);
+
   const hostRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>(
     isPreview ? [360, 200] : [1200, 650]
@@ -229,7 +234,7 @@ export function WordCloudViewer({
           {/* Fixed height reservation for status badge */}
           <div className="h-6 flex items-center justify-center mb-2">
             <AnimatePresence>
-              {hideResults && (
+              {isHidden && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -246,7 +251,7 @@ export function WordCloudViewer({
         </div>
       )}
 
-      {hideResults ? (
+      {isHidden ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
           <EyeOff className={`mb-3 ${isPreview ? "size-7" : "size-10"}`} />
           <p className={`font-medium ${isPreview ? "text-xs" : "text-sm"}`}>

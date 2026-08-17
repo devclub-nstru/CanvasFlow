@@ -196,6 +196,18 @@ export function WordCloudEditor({ slide, onChange, variant = "panel" }: Props) {
               className="w-14 rounded border border-neutral-200 bg-white px-2 py-0.5 text-center text-xs outline-none focus:border-(--cf-orange)"
             />
           </label>
+
+          <label className="flex cursor-pointer items-center justify-between gap-4 text-xs font-medium text-neutral-700">
+            <span>Hide results from audience</span>
+            <input
+              type="checkbox"
+              checked={slide.responseSettings.hideResultsFromAudience ?? false}
+              onChange={(event) =>
+                updateSettings({ hideResultsFromAudience: event.target.checked })
+              }
+              className="size-4 rounded border-neutral-300 accent-(--cf-orange)"
+            />
+          </label>
         </div>
       </div>
     </div>

@@ -29,8 +29,13 @@ export function ScalesViewer({
   slide,
   isPreview,
   showQuestion = true,
-  hideResults = false,
+  hideResults,
 }: Props) {
+  const isHidden =
+    hideResults !== undefined
+      ? hideResults
+      : (slide.responseSettings?.hideResultsFromAudience ?? false);
+
   const min =
     slide.responseSettings?.minRating !== undefined
       ? slide.responseSettings.minRating
@@ -99,7 +104,7 @@ export function ScalesViewer({
           {/* Fixed height reservation for status badge */}
           <div className="h-6 flex items-center justify-center mt-1">
             <AnimatePresence>
-              {hideResults && (
+              {isHidden && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -143,10 +148,10 @@ export function ScalesViewer({
             <motion.path
               initial={false}
               animate={{
-                d: hideResults
+                d: isHidden
                   ? `M ${left} ${baseline} L ${right} ${baseline} L ${right} ${baseline} L ${left} ${baseline} Z`
                   : areaPath,
-                opacity: hideResults ? 0 : 1,
+                opacity: isHidden ? 0 : 1,
               }}
               transition={{
                 type: "spring",
@@ -160,10 +165,10 @@ export function ScalesViewer({
             <motion.path
               initial={false}
               animate={{
-                d: hideResults
+                d: isHidden
                   ? `M ${left} ${baseline} L ${right} ${baseline}`
                   : linePath,
-                opacity: hideResults ? 0 : 0.85,
+                opacity: isHidden ? 0 : 0.85,
               }}
               transition={{
                 type: "spring",
@@ -182,7 +187,7 @@ export function ScalesViewer({
             <motion.div
               initial={false}
               animate={{
-                width: hideResults || total === 0 ? "0%" : `${progress}%`,
+                width: isHidden || total === 0 ? "0%" : `${progress}%`,
               }}
               transition={{
                 type: "spring",
@@ -199,8 +204,8 @@ export function ScalesViewer({
             initial={false}
             animate={{
               left: `${progress}%`,
-              opacity: hideResults || total === 0 ? 0 : 1,
-              scale: hideResults || total === 0 ? 0.7 : 1,
+              opacity: isHidden || total === 0 ? 0 : 1,
+              scale: isHidden || total === 0 ? 0.7 : 1,
             }}
             transition={{
               type: "spring",
@@ -238,7 +243,7 @@ export function ScalesViewer({
               >
                 {rating.value}
               </span>
-              {!hideResults && total > 0 && (
+              {!isHidden && total > 0 && (
                 <span className="text-[10px] sm:text-xs font-semibold text-(--cf-ink-soft) mt-0.5">
                   {rating.votes} {rating.votes === 1 ? "vote" : "votes"}
                 </span>

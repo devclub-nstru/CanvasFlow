@@ -19,6 +19,12 @@ export interface MentiSlideDesignSettings {
   wordCloudColors?: string[];
   showLogo?: boolean;
   showJoiningInfo?: boolean;
+
+  // Content / Blank slide customization settings
+  textAlign?: "left" | "center" | "right";
+  eyebrow?: string;
+  icon?: "none" | "sparkles" | "star" | "lightbulb" | "heart" | "info" | "quote";
+  layoutStyle?: "statement" | "header_body" | "quote";
 }
 
 export interface MentiSlideResponseSettings {

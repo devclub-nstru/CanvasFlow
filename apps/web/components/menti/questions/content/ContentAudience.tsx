@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MentiSlide } from "~/lib/menti";
-import { Sparkles, Heart } from "lucide-react";
+import { Sparkles, Star, Lightbulb, Heart, Info, Quote } from "lucide-react";
 
 interface Props {
   slide: MentiSlide;
@@ -10,30 +10,66 @@ interface Props {
   hasSubmitted?: boolean;
 }
 
+const ICON_MAP = {
+  sparkles: Sparkles,
+  star: Star,
+  lightbulb: Lightbulb,
+  heart: Heart,
+  info: Info,
+  quote: Quote,
+};
+
 export function ContentAudience({ slide }: Props) {
-  const title = slide.question || "Thank you!";
-  const description =
-    slide.description !== undefined && slide.description !== null
-      ? slide.description
-      : "We appreciate your time and participation.";
+  const title = slide.question || "";
+  const description = slide.description || "";
+  const eyebrow = slide.designSettings?.eyebrow;
+  const textAlign = slide.designSettings?.textAlign || "center";
+  const iconKey = slide.designSettings?.icon;
+  const accentColor = slide.designSettings?.accentColor || "#e4a23e";
+
+  const IconComponent = iconKey && iconKey !== "none" ? ICON_MAP[iconKey as keyof typeof ICON_MAP] : null;
+
+  const alignClasses =
+    textAlign === "left"
+      ? "items-start text-left"
+      : textAlign === "right"
+      ? "items-end text-right"
+      : "items-center text-center";
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-      {/* Icon Badge */}
-      <div className="size-14 rounded-full bg-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised flex items-center justify-center">
-        <Heart className="w-7 h-7 text-(--cf-orange) fill-(--cf-orange)" />
-      </div>
+    <div className={`flex flex-col justify-center py-6 sm:py-8 space-y-3 sm:space-y-4 w-full ${alignClasses}`}>
+      {/* Optional Icon Badge */}
+      {IconComponent && (
+        <div
+          className="size-12 rounded-2xl bg-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised flex items-center justify-center mb-1"
+          style={{ color: accentColor }}
+        >
+          <IconComponent className="w-6 h-6" />
+        </div>
+      )}
+
+      {/* Optional Eyebrow */}
+      {eyebrow && (
+        <span
+          className="cf-eyebrow text-xs font-bold tracking-wider uppercase"
+          style={{ color: accentColor }}
+        >
+          {eyebrow}
+        </span>
+      )}
 
       {/* Heading */}
-      <h2 className="text-2xl font-bold leading-snug tracking-[-0.03em] text-(--cf-ink) max-w-xs">
-        {title}
-      </h2>
+      {title && (
+        <h2 className="text-xl sm:text-2xl font-bold leading-snug tracking-[-0.03em] text-(--cf-ink)">
+          {title}
+        </h2>
+      )}
 
       {/* Description */}
       {description && (
-        <p className="text-sm text-(--cf-ink-soft) max-w-xs leading-relaxed">
+        <div className="text-xs sm:text-sm text-(--cf-ink-soft) leading-relaxed whitespace-pre-line">
           {description}
-        </p>
+        </div>
       )}
     </div>
   );
