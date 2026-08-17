@@ -73,14 +73,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
           {slide.question || "What word comes to mind?"}
         </h2>
         <div className="flex items-center gap-1.5 text-xs text-(--cf-ink-soft)">
-          {isInfinite ? (
-            <span className="inline-flex items-center gap-1 text-(--cf-orange) font-semibold">
-              <Sparkles className="size-3" />
-              <span>Unlimited responses enabled — submit as many answers as you like!</span>
-            </span>
-          ) : (
-            <span>Enter your answer below</span>
-          )}
+          <span>Enter your answer below</span>
         </div>
       </div>
 
