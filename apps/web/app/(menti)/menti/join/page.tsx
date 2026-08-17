@@ -25,39 +25,34 @@ function MentiJoinContent() {
       });
 
       if (!res.ok) {
-        // In local demo / offline mode, fallback to demo live presentation
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("menti_participant_name", participantName);
-          sessionStorage.setItem("cf_voter_joined_code", code);
-        }
-        router.push(`/menti/demo-pres-1/live?name=${encodeURIComponent(participantName)}`);
+        const errorData = await res.json().catch(() => ({}));
+        setJoinError(errorData.error || "Invalid join code. Please check and try again.");
         return;
       }
 
       const joinData = await res.json();
       const { participantToken, session } = joinData;
 
+      const targetSessionId = session?.id || session?._id;
+
       if (typeof window !== "undefined") {
         sessionStorage.setItem("menti_participant_name", participantName);
         sessionStorage.setItem("cf_voter_nickname", participantName);
         sessionStorage.setItem("cf_voter_joined_code", code);
         if (participantToken) sessionStorage.setItem("cf_participant_token", participantToken);
+        if (targetSessionId) sessionStorage.setItem("cf_session_id", targetSessionId);
+        if (session?.presentationId) sessionStorage.setItem("cf_presentation_id", session.presentationId);
       }
 
-      if (session?.presentationId) {
+      if (session?.presentationId && targetSessionId) {
         router.push(
-          `/menti/${session.presentationId}/live?sessionId=${session.id || session._id}&token=${participantToken || ""}&name=${encodeURIComponent(participantName)}`
+          `/menti/${session.presentationId}/live?sessionId=${targetSessionId}&token=${participantToken || ""}&name=${encodeURIComponent(participantName)}`
         );
       } else {
-        router.push(`/menti/demo-pres-1/live?name=${encodeURIComponent(participantName)}`);
+        setJoinError("Session details missing. Please try joining again.");
       }
-    } catch {
-      // Graceful fallback to demo live session
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("menti_participant_name", participantName);
-        sessionStorage.setItem("cf_voter_joined_code", code);
-      }
-      router.push(`/menti/demo-pres-1/live?name=${encodeURIComponent(participantName)}`);
+    } catch (err: any) {
+      setJoinError(err?.message || "Failed to join session. Please try again.");
     }
   };
 

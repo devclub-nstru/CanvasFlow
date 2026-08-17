@@ -7,26 +7,33 @@ import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
+  analytics?: any;
   isPreview?: boolean;
   showQuestion?: boolean;
   hideResults?: boolean;
 }
 
-const ratingsFor = (slide: MentiSlide, min: number, max: number) =>
+const ratingsFor = (slide: MentiSlide, min: number, max: number, analytics?: any) =>
   Array.from({ length: Math.max(2, max - min + 1) }, (_, index) => {
     const value = min + index;
+    const analyticsResult = analytics?.results && Array.isArray(analytics.results)
+      ? analytics.results.find((r: any) => String(r.id) === String(value) || String(r.label) === String(value) || r.id === `rate-${value}`)
+      : null;
+
     return {
       value,
-      votes:
+      votes: analyticsResult ? (analyticsResult.count || 0) : (
         slide.options?.find(
           (option) =>
             Number(option.label) === value || option.id === `rate-${value}`
-        )?.voteCount || 0,
+        )?.voteCount || 0
+      ),
     };
   });
 
 export function ScalesViewer({
   slide,
+  analytics,
   isPreview,
   showQuestion = true,
   hideResults,
@@ -44,7 +51,7 @@ export function ScalesViewer({
     slide.responseSettings?.maxRating !== undefined
       ? slide.responseSettings.maxRating
       : 5;
-  const ratings = ratingsFor(slide, min, max);
+  const ratings = ratingsFor(slide, min, max, analytics);
   const total = ratings.reduce((sum, rating) => sum + rating.votes, 0);
   const average = total
     ? ratings.reduce((sum, rating) => sum + rating.value * rating.votes, 0) / total

@@ -19,17 +19,24 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   const presentationId = resolvedParams.presentationId;
 
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("sessionId") || "";
-  const token = searchParams.get("token") || (typeof window !== "undefined" ? sessionStorage.getItem("cf_participant_token") || "" : "");
+  const querySessionId = searchParams.get("sessionId") || "";
+  const queryToken = searchParams.get("token") || "";
+
+  const [sessionId, setSessionId] = useState<string>(
+    querySessionId || (typeof window !== "undefined" ? sessionStorage.getItem("cf_session_id") || "" : "")
+  );
+  const [token, setToken] = useState<string>(
+    queryToken || (typeof window !== "undefined" ? sessionStorage.getItem("cf_participant_token") || "" : "")
+  );
 
   const [presentation, setPresentation] = useState<MentiPresentation | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch public presentation details for participants (no auth required)
+  // Fetch public presentation details and ensure active participant token/session
   useEffect(() => {
     if (!presentationId) return;
 
-    const fetchPresentation = async () => {
+    const fetchPresentationAndSession = async () => {
       try {
         const mentiApiUrl = env.NEXT_PUBLIC_MENTI_API_URL || "http://localhost:8080";
         const res = await fetch(`${mentiApiUrl}/api/presentations/public/${presentationId}`);
@@ -45,6 +52,31 @@ export default function MentiLiveAudiencePage({ params }: Props) {
           })),
         };
         setPresentation(mappedData);
+
+        // Auto-join active session if token or sessionId is missing
+        if ((!token || !sessionId) && presentationId) {
+          const name = (typeof window !== "undefined" ? sessionStorage.getItem("menti_participant_name") : null) || "Participant";
+          const joinRes = await fetch(`${mentiApiUrl}/api/sessions/join-by-presentation/${presentationId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nickname: name }),
+          });
+
+          if (joinRes.ok) {
+            const joinData = await joinRes.json();
+            const newToken = joinData.participantToken;
+            const newSessionId = joinData.session?.id || joinData.session?._id;
+
+            if (newToken && newSessionId) {
+              setToken(newToken);
+              setSessionId(newSessionId);
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("cf_participant_token", newToken);
+                sessionStorage.setItem("cf_session_id", newSessionId);
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error("Failed to load public presentation details for audience:", err);
       } finally {
@@ -52,8 +84,8 @@ export default function MentiLiveAudiencePage({ params }: Props) {
       }
     };
 
-    fetchPresentation();
-  }, [presentationId]);
+    fetchPresentationAndSession();
+  }, [presentationId, token, sessionId]);
 
   // Realtime Participant Store
   const { sessionState, submitResponse } = useMentiRealtime({

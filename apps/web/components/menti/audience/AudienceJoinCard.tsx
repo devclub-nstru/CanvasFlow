@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { ArrowRight, QrCode } from "lucide-react";
 import { VerticalScale } from "~/components/Scale";
 import Noise from "~/components/Noise";
@@ -115,16 +114,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
         <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
-      {/* 1. Top Header with Menti Builder Button */}
-      <header className="relative z-10 flex items-center justify-end w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <Link
-          href="/menti/demo-pres-1/edit"
-          className="cf-panel cf-raised cf-press px-3 sm:px-3.5 py-1.5 bg-white border border-(--cf-line-strong) rounded-(--hex-radius) text-xs font-bold text-(--cf-ink) flex items-center gap-1.5 transition-colors hover:bg-(--cf-cream)"
-        >
-          <span>Menti Builder</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </header>
+
 
       {/* 2. Main Hero Join Card */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-6 w-full max-w-lg mx-auto">

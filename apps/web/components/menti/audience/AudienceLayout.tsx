@@ -47,10 +47,14 @@ export function AudienceLayout({
       }
     : null;
 
+  React.useEffect(() => {
+    setHasSubmitted(false);
+  }, [currentSlide?.id]);
+
   const handleVoteSubmit = (val: any) => {
     setHasSubmitted(true);
     if (onSubmitAnswer) {
-      onSubmitAnswer(val);
+      onSubmitAnswer(val, currentSlide?.id);
     }
   };
 

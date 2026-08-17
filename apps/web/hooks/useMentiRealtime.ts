@@ -86,71 +86,35 @@ export function useMentiRealtime({
       setError(data.message);
     });
 
-    // Session State Sync Event
-    socketInstance.on("session_state", (state: RealtimeSessionState) => {
-      setSessionState(state);
+    // Session State Sync Event from backend syncer
+    socketInstance.on("session_state_sync", (state: any) => {
+      const mappedSlide = state.currentSlide
+        ? {
+            ...state.currentSlide,
+            id: state.currentSlide.id || state.currentSlide._id,
+          }
+        : null;
+
+      setSessionState({
+        session: {
+          ...state.session,
+          id: state.session.id || state.session._id,
+        },
+        participantCount: state.participantCount,
+        currentSlide: mappedSlide,
+      });
       setConnectionStatus("connected");
     });
 
-    // Participant Joined Event
-    socketInstance.on("participant_joined", (data: { count: number }) => {
-      setSessionState((prev) => (prev ? { ...prev, participantCount: data.count } : null));
-    });
-
-    // Participant Left Event
-    socketInstance.on("participant_left", (data: { count: number }) => {
-      setSessionState((prev) => (prev ? { ...prev, participantCount: data.count } : null));
-    });
-
-    // Slide Changed by Host Event
-    socketInstance.on("slide_changed", (data: { slide: MentiSlide; index: number }) => {
-      setSessionState((prev) =>
-        prev
-          ? {
-              ...prev,
-              currentSlide: data.slide,
-              session: {
-                ...prev.session,
-                currentSlideId: data.slide.id,
-              },
-            }
-          : null,
-      );
-    });
-
-    // Voting Lock Changed Event
-    socketInstance.on("voting_lock_changed", (data: { isLocked: boolean }) => {
-      setSessionState((prev) =>
-        prev
-          ? {
-              ...prev,
-              session: {
-                ...prev.session,
-                isVotingLocked: data.isLocked,
-              },
-            }
-          : null,
-      );
-    });
-
-    // Session Status Changed Event
-    socketInstance.on("session_status_changed", (data: { status: any }) => {
-      setSessionState((prev) =>
-        prev
-          ? {
-              ...prev,
-              session: {
-                ...prev.session,
-                status: data.status,
-              },
-            }
-          : null,
-      );
-    });
-
-    // Live Aggregate Analytics Update
-    socketInstance.on("results_update", (analytics: any) => {
-      setSlideAnalytics(analytics);
+    // Live Aggregate Analytics Update Event from backend syncer
+    socketInstance.on("slide_analytics_update", (analytics: any) => {
+      if (analytics?.slideId) {
+        setSlideAnalyticsMap((prev) => ({
+          ...prev,
+          [analytics.slideId]: analytics,
+        }));
+        setSlideAnalytics(analytics);
+      }
     });
 
     return () => {
@@ -203,14 +167,17 @@ export function useMentiRealtime({
 
   // Participant Action: Submit Response
   const submitResponse = useCallback(
-    (answer: any) => {
-      if (!socketRef.current || isHost || !sessionState?.currentSlide) return;
+    (answer: any, targetSlideId?: string) => {
+      const activeSlideId = targetSlideId || sessionState?.currentSlide?.id;
+      if (!socketRef.current || isHost || !activeSlideId) {
+        return Promise.reject(new Error("Cannot submit answer: Socket not ready or missing slide ID"));
+      }
 
       return new Promise<{ success: boolean }>((resolve, reject) => {
         socketRef.current!.emit(
           "submit_response",
           {
-            slideId: sessionState.currentSlide!.id,
+            slideId: activeSlideId,
             answer,
           },
           (response: any) => {
@@ -223,7 +190,7 @@ export function useMentiRealtime({
         );
       });
     },
-    [isHost, sessionState?.currentSlide],
+    [isHost, sessionState?.currentSlide?.id],
   );
 
   return {

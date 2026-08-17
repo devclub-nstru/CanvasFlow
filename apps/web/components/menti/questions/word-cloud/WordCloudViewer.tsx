@@ -7,6 +7,7 @@ import { MentiOption, MentiSlide } from "~/lib/menti";
 
 interface Props {
   slide: MentiSlide;
+  analytics?: any;
   isPreview?: boolean;
   showQuestion?: boolean;
   muted?: boolean;
