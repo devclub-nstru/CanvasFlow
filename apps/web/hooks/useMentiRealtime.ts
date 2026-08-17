@@ -224,14 +224,22 @@ export function useMentiRealtime({
 
       const activeSlideIdStr = String(activeSlideId);
 
-      // Optimistically record submitted slide ID
-      setSubmittedSlideIds((prev) => {
-        const next = Array.from(new Set([...prev, activeSlideIdStr]));
-        if (typeof window !== "undefined" && sessionId) {
-          sessionStorage.setItem(`cf_submitted_slides_${sessionId}`, JSON.stringify(next));
-        }
-        return next;
-      });
+      const isUnlimitedWordCloud = Boolean(
+        sessionState?.currentSlide?.type === "WORD_CLOUD" &&
+        (sessionState.currentSlide.responseSettings?.multipleSubmissions === true ||
+          sessionState.currentSlide.responseSettings?.maxEntriesPerParticipant === 0)
+      );
+
+      // Optimistically record submitted slide ID if not unlimited
+      if (!isUnlimitedWordCloud) {
+        setSubmittedSlideIds((prev) => {
+          const next = Array.from(new Set([...prev, activeSlideIdStr]));
+          if (typeof window !== "undefined" && sessionId) {
+            sessionStorage.setItem(`cf_submitted_slides_${sessionId}`, JSON.stringify(next));
+          }
+          return next;
+        });
+      }
 
       return new Promise<{ success: boolean }>((resolve, reject) => {
         socketRef.current!.emit(

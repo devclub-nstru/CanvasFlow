@@ -3,6 +3,7 @@
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { MentiOption, MentiSlide } from "~/lib/menti";
+import { motion, useReducedMotion } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
@@ -41,6 +42,7 @@ function splitIntoBalancedRows<T>(items: T[]): T[][] {
 
 export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
   const options = slide.options;
+  const reduceMotion = useReducedMotion();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -81,6 +83,10 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
     const rows = splitIntoBalancedRows(options);
     const isMultiRow = rows.length > 1;
 
+    const containerHeight = isMultiRow
+      ? "h-20 sm:h-24 md:h-28"
+      : "h-44 sm:h-52 md:h-60 lg:h-72";
+
     return (
       <section className="flex h-full min-h-0 w-full flex-col justify-between p-3 sm:p-5 select-none relative">
         {/* Dynamic Multi-line Question Input */}
@@ -120,6 +126,10 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
                   ? `${totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0}%`
                   : count;
 
+                const maxVotes = Math.max(1, ...options.map((o) => o.voteCount || 0));
+                const fill = totalVotes > 0 ? (count / maxVotes) * 100 : 0;
+                const optionColor = option.color || colors[globalIndex % colors.length];
+
                 return (
                   <div
                     key={option.id}
@@ -151,18 +161,39 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
                       </button>
                     )}
 
-                    {/* Value / Percentage */}
-                    <p className={`font-medium tracking-[-0.04em] text-neutral-900 text-center mb-1.5 ${
-                      isMultiRow ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl md:text-5xl"
-                    }`}>
-                      {displayVal}
-                    </p>
-
-                    {/* Baseline Colored Bar Underline */}
-                    <div
-                      className="h-2 rounded-full w-full"
-                      style={{ backgroundColor: option.color || colors[globalIndex % colors.length] }}
-                    />
+                    {/* Rising Bar Visual Stage */}
+                    <div className={`relative w-full flex flex-col justify-end items-center mb-2.5 ${containerHeight}`}>
+                      <motion.div
+                        initial={{ height: "0%" }}
+                        animate={{
+                          height: `${fill}%`,
+                        }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 75,
+                          damping: 15,
+                          mass: 0.85,
+                          delay: reduceMotion ? 0 : globalIndex * 0.06,
+                        }}
+                        className="w-full relative rounded-t-xl"
+                        style={{
+                          backgroundColor: fill > 0 ? optionColor : "#e5e7eb",
+                          minHeight: "6px",
+                        }}
+                      >
+                        {/* Attached Value Label - Sits directly above the bar */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: reduceMotion ? 0 : 0.2, delay: reduceMotion ? 0 : globalIndex * 0.06 + 0.08 }}
+                          className="absolute bottom-full mb-1.5 left-0 right-0 flex items-center justify-center pointer-events-none"
+                        >
+                          <span className="font-bold text-sm text-neutral-800 text-center tabular-nums whitespace-nowrap animate-in fade-in">
+                            {displayVal}
+                          </span>
+                        </motion.div>
+                      </motion.div>
+                    </div>
 
                     {/* Option Label Input */}
                     <input

@@ -87,7 +87,7 @@ export function SlideQuestionCanvasEditor({
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
-      return <BarGraphEditor slide={slide} onChange={onChange} variant="canvas" />;
+      return <BarGraphEditor key={slide.id} slide={slide} onChange={onChange} variant="canvas" />;
     case "WORD_CLOUD":
       return <WordCloudEditor slide={slide} onChange={onChange} variant="canvas" />;
     case "SCALES":

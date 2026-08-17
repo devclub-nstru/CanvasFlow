@@ -179,24 +179,46 @@ export function WordCloudEditor({ slide, onChange, variant = "panel" }: Props) {
         </div>
       </div>
 
-      {/* Response Settings – same panel style as BarGraphEditor */}
+      {/* Response Settings */}
       <div className="rounded-xl border border-neutral-200 bg-white p-3.5 space-y-3">
-        <p className="cf-eyebrow text-(--cf-ink)">Response settings</p>
-        <div className="space-y-2.5">
-          <label className="flex cursor-pointer items-center justify-between gap-4 text-xs font-medium text-neutral-700">
-            <span>Max entries per participant</span>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={slide.responseSettings.maxEntriesPerParticipant ?? 1}
-              onChange={(event) =>
-                updateSettings({ maxEntriesPerParticipant: Number(event.target.value) })
-              }
-              className="w-14 rounded border border-neutral-200 bg-white px-2 py-0.5 text-center text-xs outline-none focus:border-(--cf-orange)"
-            />
-          </label>
+        <p className="cf-eyebrow text-(--cf-ink)">Response limits</p>
+        
+        {/* Single vs Infinite Segmented Button */}
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-(--cf-cream-2) rounded-xl border border-(--cf-line)">
+            <button
+              type="button"
+              onClick={() => updateSettings({ multipleSubmissions: false, maxEntriesPerParticipant: 1 })}
+              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex flex-col items-center gap-0.5 ${
+                !slide.responseSettings.multipleSubmissions && slide.responseSettings.maxEntriesPerParticipant !== 0
+                  ? "bg-white text-(--cf-ink) shadow-sm border border-(--cf-line-strong)"
+                  : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
+              }`}
+            >
+              <span>Single</span>
+              <span className="text-[10px] font-normal opacity-75">1 word per user</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSettings({ multipleSubmissions: true, maxEntriesPerParticipant: 0 })}
+              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex flex-col items-center gap-0.5 ${
+                slide.responseSettings.multipleSubmissions || slide.responseSettings.maxEntriesPerParticipant === 0
+                  ? "bg-white text-(--cf-ink) shadow-sm border border-(--cf-line-strong)"
+                  : "text-(--cf-ink-soft) hover:text-(--cf-ink)"
+              }`}
+            >
+              <span>Infinite</span>
+              <span className="text-[10px] font-normal opacity-75">Submit unlimited</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-(--cf-ink-soft) px-0.5">
+            {slide.responseSettings.multipleSubmissions || slide.responseSettings.maxEntriesPerParticipant === 0
+              ? "Participants can submit words continuously without locking."
+              : "Participants can submit one word once."}
+          </p>
+        </div>
 
+        <div className="pt-2 border-t border-neutral-100">
           <label className="flex cursor-pointer items-center justify-between gap-4 text-xs font-medium text-neutral-700">
             <span>Hide results from audience</span>
             <input
