@@ -5,6 +5,7 @@ import { MentiPresentation, MentiSlide } from "~/lib/menti";
 import { Users, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScalesViewer } from "../questions/scales/ScalesViewer";
+import { WordCloudViewer } from "../questions/word-cloud/WordCloudViewer";
 
 interface Props {
   presentation: MentiPresentation;
@@ -163,29 +164,12 @@ function SlideResultCard({
         )}
 
         {slide.type === "WORD_CLOUD" && (
-          <div className="p-4 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) flex flex-wrap items-center justify-center gap-3 min-h-[120px]">
-            {slide.options.map((opt, i) => {
-              const count = opt.voteCount || 0;
-              const ratio = count / maxOptionVotes;
-              const fontSize = 12 + Math.round(ratio * 16); // 12px to 28px range
-
-              return (
-                <div
-                  key={i}
-                  className="cf-panel cf-raised px-3 py-1.5 bg-white rounded-lg border border-(--cf-line-strong) flex items-center gap-2 hover:scale-105 transition-transform"
-                >
-                  <span
-                    className="font-bold text-(--cf-ink)"
-                    style={{ fontSize: `${fontSize}px` }}
-                  >
-                    {opt.label}
-                  </span>
-                  <span className="cf-meta text-[9px] px-1.5 py-0.2 rounded-full bg-(--cf-orange) text-white font-bold">
-                    {count}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="h-60 sm:h-72 w-full p-4 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) overflow-hidden flex items-center justify-center">
+            <WordCloudViewer
+              slide={slide}
+              isPreview={false}
+              showQuestion={false}
+            />
           </div>
         )}
 

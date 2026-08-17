@@ -332,30 +332,12 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
               onChange={(event) =>
                 updateSettings({
                   multipleSelection: event.target.checked,
-                  maxSelections: event.target.checked
-                    ? slide.responseSettings.maxSelections || slide.options.length
-                    : undefined,
+                  maxSelections: event.target.checked ? slide.options.length : 1,
                 })
               }
               className="size-4 rounded border-neutral-300 accent-(--cf-orange)"
             />
           </label>
-
-          {slide.responseSettings.multipleSelection && (
-            <label className="flex items-center justify-between gap-4 pl-4 text-xs text-neutral-600">
-              <span>Max choices per person</span>
-              <input
-                type="number"
-                min={2}
-                max={slide.options.length}
-                value={slide.responseSettings.maxSelections ?? slide.options.length}
-                onChange={(event) =>
-                  updateSettings({ maxSelections: Number(event.target.value) || undefined })
-                }
-                className="w-14 rounded border border-neutral-200 bg-white px-2 py-0.5 text-center text-xs outline-none focus:border-(--cf-orange)"
-              />
-            </label>
-          )}
 
           <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-neutral-100 pt-2 text-xs font-medium text-neutral-700">
             <span>Show results as percentage</span>

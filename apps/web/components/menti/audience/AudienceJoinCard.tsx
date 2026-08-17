@@ -148,7 +148,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                 autoFocus
                 required
                 autoComplete="name"
-                className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 font-bold text-sm sm:text-base bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:border-(--cf-orange) focus:bg-white transition-all text-(--cf-ink) placeholder:text-neutral-300"
+                className="w-full py-3 px-3.5 sm:px-4 font-bold text-base bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:border-(--cf-orange) focus:bg-white transition-all text-(--cf-ink) placeholder:text-neutral-300 shadow-inner"
               />
             </div>
 
@@ -174,12 +174,12 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
+                    className="w-full aspect-square text-center font-mono font-black text-base sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase min-w-0 p-0"
                   />
                 ))}
 
                 {/* Divider */}
-                <div className="text-center font-mono font-bold text-lg text-(--cf-ink-soft) select-none">
+                <div className="text-center font-mono font-bold text-base sm:text-lg text-(--cf-ink-soft) select-none">
                   -
                 </div>
 
@@ -195,7 +195,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
                     value={digits[idx]}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-full aspect-square text-center font-mono font-black text-lg sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase"
+                    className="w-full aspect-square text-center font-mono font-black text-base sm:text-xl text-(--cf-ink) bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl focus:outline-none focus:bg-white focus:border-(--cf-orange) focus:ring-2 focus:ring-(--cf-orange)/20 transition-all uppercase min-w-0 p-0"
                   />
                 ))}
               </div>
@@ -205,7 +205,7 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
             <button
               type="submit"
               disabled={!isFormValid || isSubmitting}
-              className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-black rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-lg transition-all mt-2"
+              className="cf-btn cf-raised cf-press flex items-center justify-center w-full py-3.5 sm:py-4 text-sm sm:text-base font-black rounded-(--hex-radius) gap-2 disabled:opacity-40 disabled:pointer-events-none shadow-lg transition-all mt-2 min-h-[48px]"
             >
               <span>{isSubmitting ? "Joining..." : "Join Presentation"}</span>
               <ArrowRight className="w-4 h-4" />

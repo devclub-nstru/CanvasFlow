@@ -12,9 +12,6 @@ interface Props {
 
 export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
   const isMultiple = Boolean(slide.responseSettings?.multipleSelection);
-  const rawMax = slide.responseSettings?.maxSelections;
-  // If multipleSelection is enabled, ensure max is at least 2 or unlimited
-  const maxSelections = isMultiple && rawMax && rawMax > 1 ? rawMax : null;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Reset selected options when slide changes
@@ -27,11 +24,6 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
       if (selectedIds.includes(id)) {
         setSelectedIds(selectedIds.filter((item) => item !== id));
       } else {
-        if (maxSelections && selectedIds.length >= maxSelections) {
-          // If max selections reached, replace the first selected option
-          setSelectedIds([...selectedIds.slice(1), id]);
-          return;
-        }
         setSelectedIds([...selectedIds, id]);
       }
     } else {
@@ -70,9 +62,7 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
         </h2>
         <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
           {isMultiple
-            ? maxSelections
-              ? `Select up to ${maxSelections} options (${selectedIds.length}/${maxSelections})`
-              : selectedIds.length > 0
+            ? selectedIds.length > 0
               ? `Select all that apply (${selectedIds.length} selected)`
               : "Select all that apply"
             : "Select one option"}
@@ -89,7 +79,7 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
               key={option.id}
               type="button"
               onClick={() => handleToggleOption(option.id)}
-              className={`w-full flex items-center justify-between p-3 sm:p-4 rounded-xl border text-left transition-all ${
+              className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all min-h-[48px] ${
                 isSelected
                   ? "bg-white border-2 border-(--cf-ink) cf-raised ring-1 ring-(--cf-ink)"
                   : "bg-white border-(--cf-line-strong) hover:border-(--cf-ink) hover:bg-(--cf-cream)"
@@ -105,7 +95,7 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
                 >
                   {isSelected ? <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 stroke-[3]" /> : index + 1}
                 </span>
-                <span className="text-xs sm:text-sm font-semibold text-(--cf-ink) break-words line-clamp-2">
+                <span className="text-xs sm:text-sm font-semibold text-(--cf-ink) break-words line-clamp-3">
                   {option.label || `Option ${index + 1}`}
                 </span>
               </div>
@@ -119,7 +109,7 @@ export function BarGraphAudience({ slide, onSubmit, hasSubmitted }: Props) {
         <button
           type="submit"
           disabled={selectedIds.length === 0}
-          className="cf-btn cf-raised cf-press w-full py-3.5 px-4 text-xs sm:text-sm font-bold justify-center rounded-(--hex-radius) disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+          className="cf-btn cf-raised cf-press w-full py-3.5 sm:py-4 px-4 text-sm sm:text-base font-bold justify-center rounded-(--hex-radius) disabled:opacity-40 disabled:cursor-not-allowed shadow-md min-h-[48px]"
         >
           <Send className="w-4 h-4 mr-2" />
           Submit Answer {selectedIds.length > 0 && isMultiple ? `(${selectedIds.length})` : ""}
