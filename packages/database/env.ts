@@ -13,6 +13,13 @@ const envSchema = z.object({
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
+  if (env.SKIP_ENV_VALIDATION) {
+    return {
+      DATABASE_URL: "",
+      DB_POOL_MAX: 25,
+      DB_STATEMENT_TIMEOUT_MS: 10000,
+    };
+  }
   const safeParseResult = envSchema.safeParse(env);
 
   if (!safeParseResult.success) {

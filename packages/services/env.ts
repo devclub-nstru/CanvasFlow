@@ -5,6 +5,11 @@ const envSchema = z.object({
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
+  if (env.SKIP_ENV_VALIDATION) {
+    return {
+      JWT_SECRET: "",
+    };
+  }
   const safeParseResult = envSchema.safeParse(env);
   if (!safeParseResult.success) throw new Error(safeParseResult.error.message);
   return safeParseResult.data;
