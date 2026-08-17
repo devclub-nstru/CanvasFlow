@@ -25,6 +25,17 @@ interface PositionedWord extends CloudWord {
   x: number;
   y: number;
   size: number;
+  hw: number;
+  hh: number;
+}
+
+interface PackResult {
+  words: PositionedWord[];
+  centerX: number;
+  centerY: number;
+  cloudWidth: number;
+  cloudHeight: number;
+  fitScale: number;
 }
 
 export const DEFAULT_WORD_CLOUD_COLORS = [
@@ -54,109 +65,124 @@ function wordHash(str: string): number {
   return h;
 }
 
-// Only 0° and ±90° — diagonal angles inflate AABB and look messy.
-// Top-2 words are always 0° for impact. ~20% of the rest go vertical.
+// Top 3 words are always horizontal (0°) for impact. ~15% of the rest go vertical.
 function pickAngle(rank: number, text: string): 0 | 90 | -90 {
-  if (rank < 2) return 0;
+  if (rank < 3) return 0;
   const h = wordHash(text);
-  if (h % 5 === 0) return (h >> 4) & 1 ? 90 : -90;
+  if (h % 6 === 0) return (h >> 4) & 1 ? 90 : -90;
   return 0;
 }
 
-/**
- * AABB half-extents for a word at a given rotation.
- * For 0°  → hw = textW/2,   hh = textH/2
- * For 90° → hw = textH/2,   hh = textW/2
- */
-function aabb(textW: number, textH: number, angleDeg: number) {
-  if (angleDeg === 0) return { hw: textW / 2, hh: textH / 2 };
-  return { hw: textH / 2, hh: textW / 2 };
-}
+const CHAR_W = 0.58;
+const LINE_H = 1.15;
+const WORD_GAP = 5;
 
-const CHAR_W = 0.55;
-const LINE_H = 1.1;
-const GAP = 1.5;
-
-function packWords(
+function packWordsWithAutoZoom(
   words: CloudWord[],
-  width: number,
-  height: number,
+  containerWidth: number,
+  containerHeight: number,
   isPreview: boolean
-): PositionedWord[] {
-  if (!words.length) return [];
+): PackResult {
+  if (!words.length) {
+    return { words: [], centerX: 0, centerY: 0, cloudWidth: 0, cloudHeight: 0, fitScale: 1 };
+  }
 
   const maxValue = Math.max(...words.map((w) => w.value), 1);
-  const crowdFactor = Math.max(0.52, 1 - (words.length - 1) * 0.011);
-  const maxSize = Math.min(
-    isPreview ? 52 : 92,
-    (isPreview ? height / 2.8 : height / 2.4) * crowdFactor
-  );
-  const minSize = Math.max(isPreview ? 10 : 14, maxSize * 0.21);
+  
+  // Base sizing spectrum
+  const minSize = isPreview ? 11 : 16;
+  const maxSize = isPreview ? 38 : 72;
 
-  const wordSize = (value: number, scale: number) =>
-    (minSize + (maxSize - minSize) * Math.pow(value / maxValue, 0.55)) * scale;
+  const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
+  const placed: PositionedWord[] = [];
 
-  const limit = Math.hypot(width, height) / 2;
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]!;
+    // Power curve gives prominence to top words while keeping rare words legible
+    const ratio = Math.pow(word.value / maxValue, 0.48);
+    const size = Math.round(minSize + (maxSize - minSize) * ratio);
 
-  const tryPack = (scale: number): PositionedWord[] | null => {
-    const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
-    const placed: PositionedWord[] = [];
+    const textW = word.text.length * size * CHAR_W + 6;
+    const textH = size * LINE_H;
+    const isVertical = word.angle !== 0;
+    const hw = isVertical ? textH / 2 : textW / 2;
+    const hh = isVertical ? textW / 2 : textH / 2;
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i]!;
-      const size = wordSize(word.value, scale);
-      const textW = word.text.length * size * CHAR_W;
-      const textH = size * LINE_H;
-      const { hw, hh } = aabb(textW, textH, word.angle);
+    let x = 0;
+    let y = 0;
+    let found = i === 0;
 
-      let x = 0,
-        y = 0,
-        found = i === 0;
+    // Spiral outwards from center until finding an open spot
+    const spiralStep = 3.5;
+    const angleStep = 0.22;
+    const aspectY = 0.65; // Elliptical aspect ratio to favor 16:9 widescreen presentation
 
-      for (let radius = 1; !found && radius < limit; radius += 1) {
-        const steps = Math.max(32, Math.ceil((2 * Math.PI * radius) / 4));
-        const startAngle = i * 2.399;
+    for (let t = 0; !found && t < 3000; t++) {
+      const angle = t * angleStep + (i * 1.618);
+      const r = t * spiralStep * 0.45;
+      const nx = Math.cos(angle) * r;
+      const ny = Math.sin(angle) * r * aspectY;
 
-        for (let s = 0; s < steps; s++) {
-          const a = startAngle + (s / steps) * 2 * Math.PI;
-          const nx = Math.cos(a) * radius;
-          const ny = Math.sin(a) * radius * 0.72;
-
-          if (Math.abs(nx) + hw + GAP > width / 2 - 2) continue;
-          if (Math.abs(ny) + hh + GAP > height / 2 - 2) continue;
-
-          let collides = false;
-          for (const b of boxes) {
-            if (
-              Math.abs(nx - b.x) < hw + GAP + b.hw &&
-              Math.abs(ny - b.y) < hh + GAP + b.hh
-            ) {
-              collides = true;
-              break;
-            }
-          }
-
-          if (!collides) {
-            x = nx;
-            y = ny;
-            found = true;
-            break;
-          }
+      let collides = false;
+      for (let b = 0; b < boxes.length; b++) {
+        const box = boxes[b]!;
+        if (
+          Math.abs(nx - box.x) < hw + box.hw + WORD_GAP &&
+          Math.abs(ny - box.y) < hh + box.hh + WORD_GAP
+        ) {
+          collides = true;
+          break;
         }
       }
 
-      if (!found) return null;
-      boxes.push({ x, y, hw, hh });
-      placed.push({ ...word, x, y, size });
+      if (!collides) {
+        x = nx;
+        y = ny;
+        found = true;
+        break;
+      }
     }
-    return placed;
-  };
 
-  for (let s = 1.0; s >= 0.4; s -= 0.04) {
-    const result = tryPack(s);
-    if (result) return result;
+    boxes.push({ x, y, hw, hh });
+    placed.push({ ...word, x, y, size, hw, hh });
   }
-  return tryPack(0.36) ?? [];
+
+  // Calculate overall bounding box of the entire word cloud cluster
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const p of placed) {
+    if (p.x - p.hw < minX) minX = p.x - p.hw;
+    if (p.x + p.hw > maxX) maxX = p.x + p.hw;
+    if (p.y - p.hh < minY) minY = p.y - p.hh;
+    if (p.y + p.hh > maxY) maxY = p.y + p.hh;
+  }
+
+  const cloudWidth = Math.max(maxX - minX, 1);
+  const cloudHeight = Math.max(maxY - minY, 1);
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  // Safe viewable area (leaves ~10% margin on all edges so words never clip or touch bounds)
+  const safeWidth = Math.max((containerWidth || 800) * 0.88 - 24, 100);
+  const safeHeight = Math.max((containerHeight || 500) * 0.84 - 24, 80);
+
+  const scaleX = safeWidth / cloudWidth;
+  const scaleY = safeHeight / cloudHeight;
+  
+  // Dynamic smooth zoom-out factor: never scale up beyond 1.0, but smoothly scale down as cloud grows
+  const fitScale = Math.min(1.0, scaleX, scaleY);
+
+  return {
+    words: placed,
+    centerX,
+    centerY,
+    cloudWidth,
+    cloudHeight,
+    fitScale,
+  };
 }
 
 export function WordCloudViewer({
@@ -173,7 +199,7 @@ export function WordCloudViewer({
       : (slide.responseSettings?.hideResultsFromAudience ?? false);
 
   const hostRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<[number, number]>(
+  const [containerSize, setContainerSize] = useState<[number, number]>(
     isPreview ? [360, 200] : [1200, 650]
   );
 
@@ -213,7 +239,7 @@ export function WordCloudViewer({
             (b.voteCount || 0) - (a.voteCount || 0) ||
             a.label.localeCompare(b.label)
         )
-        .slice(0, 40)
+        .slice(0, 60)
         .map((w, i) => ({
           text: w.label,
           value: w.voteCount || 0,
@@ -223,9 +249,9 @@ export function WordCloudViewer({
     [source, colors]
   );
 
-  const positionedWords = useMemo(
-    () => packWords(words, size[0], size[1], !!isPreview),
-    [words, size, isPreview]
+  const packResult = useMemo(
+    () => packWordsWithAutoZoom(words, containerSize[0], containerSize[1], !!isPreview),
+    [words, containerSize, isPreview]
   );
 
   useEffect(() => {
@@ -233,7 +259,9 @@ export function WordCloudViewer({
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry!.contentRect;
-      if (width && height) setSize([Math.floor(width), Math.floor(height)]);
+      if (width > 0 && height > 0) {
+        setContainerSize([Math.floor(width), Math.floor(height)]);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -286,25 +314,39 @@ export function WordCloudViewer({
       ) : words.length ? (
         <div
           ref={hostRef}
-          className={`relative min-h-0 flex-1 overflow-hidden transition-opacity duration-300 ${
+          className={`relative min-h-0 flex-1 w-full overflow-hidden flex items-center justify-center transition-opacity duration-300 ${
             muted ? "opacity-30" : "opacity-100"
           }`}
         >
-          {positionedWords.map((word) => (
-            <span
-              key={word.text}
-              className="absolute left-1/2 top-1/2 whitespace-nowrap font-semibold leading-none tracking-[-0.04em]"
-              style={{
-                color: word.color,
-                fontSize: word.size,
-                transition:
-                  "font-size 600ms ease-out, transform 600ms ease-out, color 400ms ease",
-                transform: `translate(calc(-50% + ${word.x}px), calc(-50% + ${word.y}px)) rotate(${word.angle}deg)`,
-              }}
-            >
-              {word.text}
-            </span>
-          ))}
+          {/* Centered auto-scaling canvas viewport */}
+          <div
+            className="relative will-change-transform pointer-events-none"
+            style={{
+              width: 0,
+              height: 0,
+              transform: `translate(${-packResult.centerX * packResult.fitScale}px, ${-packResult.centerY * packResult.fitScale}px) scale(${packResult.fitScale})`,
+              transition:
+                "transform 700ms cubic-bezier(0.2, 0, 0.2, 1)",
+            }}
+          >
+            {packResult.words.map((word) => (
+              <span
+                key={word.text}
+                className="absolute whitespace-nowrap font-bold leading-none tracking-[-0.03em] select-none"
+                style={{
+                  left: word.x,
+                  top: word.y,
+                  color: word.color,
+                  fontSize: `${word.size}px`,
+                  transform: `translate(-50%, -50%) rotate(${word.angle}deg)`,
+                  transition:
+                    "font-size 600ms cubic-bezier(0.2, 0, 0.2, 1), transform 600ms cubic-bezier(0.2, 0, 0.2, 1), color 400ms ease, opacity 400ms ease",
+                }}
+              >
+                {word.text}
+              </span>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
@@ -317,3 +359,4 @@ export function WordCloudViewer({
     </section>
   );
 }
+
