@@ -71,10 +71,10 @@ export function useMentiRealtime({
       console.log(`[Realtime] Connected to presentation session (isHost=${isHost}):`, sessionId);
     });
 
-    socketInstance.on("connect_error", (err) => {
+    socketInstance.on("connect_error", (err: any) => {
       setConnectionStatus("error");
-      setError(err.message);
-      console.error("[Realtime] Socket connection error:", err.message);
+      setError(err?.message || "Connection error");
+      console.error("[Realtime] Socket connection error:", err?.message);
     });
 
     socketInstance.on("disconnect", () => {
@@ -84,47 +84,81 @@ export function useMentiRealtime({
 
     socketInstance.on("error", (data: { message: string }) => {
       setError(data.message);
-      console.error("[Realtime] Error event received:", data.message);
     });
 
-    // Session State Synchronizer
-    socketInstance.on("session_state_sync", (state: any) => {
-      const mappedSlide = state.currentSlide
-        ? {
-            ...state.currentSlide,
-            id: state.currentSlide.id || state.currentSlide._id,
-          }
-        : null;
-
-      setSessionState({
-        session: {
-          ...state.session,
-          id: state.session.id || state.session._id,
-        },
-        participantCount: state.participantCount,
-        currentSlide: mappedSlide,
-      });
+    // Session State Sync Event
+    socketInstance.on("session_state", (state: RealtimeSessionState) => {
+      setSessionState(state);
+      setConnectionStatus("connected");
     });
 
-    // Host Analytics Listener
-    if (isHost) {
-      socketInstance.on("slide_analytics_update", (analytics: any) => {
-        if (analytics?.slideId) {
-          setSlideAnalytics(analytics);
-          setSlideAnalyticsMap((prev) => ({
-            ...prev,
-            [analytics.slideId]: analytics,
-          }));
-        }
-      });
-    }
+    // Participant Joined Event
+    socketInstance.on("participant_joined", (data: { count: number }) => {
+      setSessionState((prev) => (prev ? { ...prev, participantCount: data.count } : null));
+    });
+
+    // Participant Left Event
+    socketInstance.on("participant_left", (data: { count: number }) => {
+      setSessionState((prev) => (prev ? { ...prev, participantCount: data.count } : null));
+    });
+
+    // Slide Changed by Host Event
+    socketInstance.on("slide_changed", (data: { slide: MentiSlide; index: number }) => {
+      setSessionState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentSlide: data.slide,
+              session: {
+                ...prev.session,
+                currentSlideId: data.slide.id,
+              },
+            }
+          : null,
+      );
+    });
+
+    // Voting Lock Changed Event
+    socketInstance.on("voting_lock_changed", (data: { isLocked: boolean }) => {
+      setSessionState((prev) =>
+        prev
+          ? {
+              ...prev,
+              session: {
+                ...prev.session,
+                isVotingLocked: data.isLocked,
+              },
+            }
+          : null,
+      );
+    });
+
+    // Session Status Changed Event
+    socketInstance.on("session_status_changed", (data: { status: any }) => {
+      setSessionState((prev) =>
+        prev
+          ? {
+              ...prev,
+              session: {
+                ...prev.session,
+                status: data.status,
+              },
+            }
+          : null,
+      );
+    });
+
+    // Live Aggregate Analytics Update
+    socketInstance.on("results_update", (analytics: any) => {
+      setSlideAnalytics(analytics);
+    });
 
     return () => {
       socketInstance.disconnect();
     };
   }, [sessionId, token, isHost, disabled]);
 
-  // Host Action: Control Slide
+  // Host Action: Navigate Slide
   const changeSlide = useCallback(
     (slideId: string) => {
       if (!socketRef.current || !isHost) return;
@@ -134,7 +168,7 @@ export function useMentiRealtime({
         }
       });
     },
-    [isHost]
+    [isHost],
   );
 
   // Host Action: Toggle Lock
@@ -147,12 +181,12 @@ export function useMentiRealtime({
         }
       });
     },
-    [isHost]
+    [isHost],
   );
 
-  // Host Action: Change Status (live, paused, finished)
+  // Host Action: Change Status (waiting, live, paused, finished, cancelled)
   const changeSessionStatus = useCallback(
-    async (status: "live" | "paused" | "finished") => {
+    async (status: "waiting" | "live" | "paused" | "finished" | "cancelled") => {
       if (!socketRef.current || !isHost) return;
       return new Promise<{ success: boolean }>((resolve, reject) => {
         socketRef.current!.emit("change_session_status", { status }, (response: any) => {
@@ -164,7 +198,7 @@ export function useMentiRealtime({
         });
       });
     },
-    [isHost]
+    [isHost],
   );
 
   // Participant Action: Submit Response
@@ -185,11 +219,11 @@ export function useMentiRealtime({
             } else {
               resolve({ success: true });
             }
-          }
+          },
         );
       });
     },
-    [isHost, sessionState?.currentSlide]
+    [isHost, sessionState?.currentSlide],
   );
 
   return {
