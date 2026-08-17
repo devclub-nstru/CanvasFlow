@@ -258,7 +258,14 @@ export function useMentiRealtime({
         );
       });
     },
-    [isHost, sessionState?.currentSlide?.id, sessionId],
+    [
+      isHost,
+      sessionState?.currentSlide?.id,
+      sessionState?.currentSlide?.type,
+      sessionState?.currentSlide?.responseSettings?.multipleSubmissions,
+      sessionState?.currentSlide?.responseSettings?.maxEntriesPerParticipant,
+      sessionId,
+    ],
   );
 
   return {

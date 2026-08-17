@@ -7,14 +7,13 @@ import { SlideQuestionViewer, SlideQuestionCanvasEditor } from "../questions/reg
 interface Props {
   slide?: MentiSlide | null;
   isInspectorOpen?: boolean;
-  onOpenNewSlideModal: () => void;
+  onOpenNewSlideModal?: () => void;
   onChange?: (updated: Partial<MentiSlide>) => void;
 }
 
 export function SlideCanvasStage({
   slide,
   isInspectorOpen = true,
-  onOpenNewSlideModal,
   onChange,
 }: Props) {
   // If no slide is selected, create a fallback empty slide structure

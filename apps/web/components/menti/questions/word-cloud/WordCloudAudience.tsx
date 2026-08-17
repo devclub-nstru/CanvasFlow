@@ -100,7 +100,7 @@ export function WordCloudAudience({ slide, onSubmit, hasSubmitted }: Props) {
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
               <span>
-                Added <strong className="font-bold">"{lastSubmitted}"</strong> to the word cloud!
+                Added <strong className="font-bold">&ldquo;{lastSubmitted}&rdquo;</strong> to the word cloud!
               </span>
             </div>
             <span className="text-[10px] font-mono text-emerald-600 font-bold">
