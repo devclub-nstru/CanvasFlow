@@ -30,7 +30,6 @@ export function ScalesAudience({ slide, onSubmit, hasSubmitted }: Props) {
 
   const lowLabel = slide.responseSettings?.ratingLowLabel || "Low";
   const highLabel = slide.responseSettings?.ratingHighLabel || "High";
-  const accent = slide.designSettings?.accentColor || "#e4a23e";
 
   if (hasSubmitted) {
     return (

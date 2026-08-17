@@ -58,7 +58,6 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
           {/* Center Interactive Presentation Stage */}
           <SlideCanvasStage
             slide={activeSlide}
-            joinCode={presentation.joinCode}
             isInspectorOpen={isInspectorOpen}
             onOpenNewSlideModal={() => setIsNewSlideModalOpen(true)}
             onChange={activeSlide ? (updated) => updateSlide(activeSlide.id, updated) : undefined}

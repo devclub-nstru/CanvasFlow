@@ -6,7 +6,7 @@ import { MentiPresentation } from "~/lib/menti";
 export function useMentiPresenter(presentation: MentiPresentation) {
   // Step 0 is the Intro Joining Screen. Steps 1..totalQuestions are question slides.
   const [currentStep, setCurrentStep] = useState(0);
-  const [slides, setSlides] = useState(presentation.slides);
+  const slides = presentation.slides;
   const [showJoinCode, setShowJoinCode] = useState(true);
   const [reactionsCount, setReactionsCount] = useState(1);
 

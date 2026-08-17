@@ -2,10 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  Archive,
-  ArchiveRestore,
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
@@ -13,11 +10,9 @@ import {
   Play,
   Plus,
   Search,
-  Share2,
   Trash2,
   Users,
 } from "lucide-react";
-import { MOCK_PRESENTATION } from "~/lib/mock-menti";
 import { MentiPresentation } from "~/lib/menti";
 import { useDebounce } from "~/hooks/useDebounce";
 import { CustomSelect } from "~/components/ui/CustomSelect";
@@ -27,18 +22,6 @@ import { useDashboard } from "~/providers/dashboard-provider";
 import { env } from "~/env";
 
 /* ─── helpers ────────────────────────────────────────────────────────── */
-
-const formatDate = (dateStr: string) => {
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return "—";
-  }
-};
 
 const getRelativeTime = (dateStr: string) => {
   try {
@@ -66,7 +49,6 @@ const ITEMS_PER_PAGE = 6;
 /* ─── page ──────────────────────────────────────────────────────────── */
 
 export default function MentiDashboardPage() {
-  const router = useRouter();
   const { presentations, isLoading: isPresentationsLoading, refetch } = useGetPresentations();
   const { openCreateMentiModal } = useDashboard();
   
@@ -142,7 +124,7 @@ export default function MentiDashboardPage() {
       toast.success("Presentation deleted");
       setConfirmDeleteId(null);
       refetch();
-    } catch(err) {
+    } catch {
       toast.error("Failed to delete presentation");
     }
   };

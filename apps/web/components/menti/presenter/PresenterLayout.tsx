@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MentiPresentation } from "~/lib/menti";
 import { useMentiPresenter } from "~/hooks/useMentiPresenter";
@@ -14,7 +13,6 @@ import {
   Maximize2,
   Minimize2,
   LayoutGrid,
-  QrCode,
   AlertTriangle,
   Copy,
   Check,
@@ -58,7 +56,6 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     slideAnalytics,
     slideAnalyticsMap,
     changeSlide,
-    toggleVotingLock: socketToggleLock,
     changeSessionStatus,
   } = useMentiRealtime({
     sessionId,

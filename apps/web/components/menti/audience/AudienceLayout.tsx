@@ -4,7 +4,7 @@ import React, { useState, useCallback } from "react";
 import { MentiPresentation, MentiSlide } from "~/lib/menti";
 import { SlideAudienceInput } from "../questions/registry";
 import { AudienceLobbyView } from "./AudienceLobbyView";
-import { ThumbsUp, Heart, Flame, Sparkles, XCircle } from "lucide-react";
+import { ThumbsUp, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { VerticalScale } from "~/components/Scale";
 import Noise from "~/components/Noise";

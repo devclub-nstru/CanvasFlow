@@ -48,7 +48,7 @@ export function useMentiRealtime({
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) return parsed.map(String);
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -69,7 +69,7 @@ export function useMentiRealtime({
             setSubmittedSlideIds((prev) => Array.from(new Set([...prev, ...parsed.map(String)])));
           }
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }

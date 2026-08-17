@@ -23,12 +23,10 @@ import {
 
 import { useDashboard } from "~/providers/dashboard-provider";
 import { useGetDashboardStats } from "~/hooks/api/form";
-import { useCreatePresentation } from "~/hooks/api/menti/useCreatePresentation";
 
 export default function DashboardPage() {
   const { openCreateFormModal, openCreateMentiModal } = useDashboard();
   const { stats, isLoading } = useGetDashboardStats();
-  const { createPresentation } = useCreatePresentation();
 
   type TrendRange = "7d" | "30d" | "3m";
   const [trendRange, setTrendRange] = useState<TrendRange>("30d");
