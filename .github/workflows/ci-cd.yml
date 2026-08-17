@@ -65,22 +65,13 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           rm -rf deploy canvasflow-deploy.tar.gz
-          mkdir -p deploy/apps/api deploy/apps/worker deploy/apps/web deploy/packages/database
+          mkdir -p deploy/apps/api deploy/apps/worker deploy/packages/database
 
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs docker-compose.prod.yml deploy/
           cp apps/api/package.json deploy/apps/api/
           cp -R apps/api/dist deploy/apps/api/dist
           cp apps/worker/package.json deploy/apps/worker/
           cp -R apps/worker/dist deploy/apps/worker/dist
-          cp apps/web/package.json deploy/apps/web/
-          mkdir -p deploy/apps/web/.next
-          cp -R apps/web/.next/standalone deploy/apps/web/.next/standalone
-
-          # Next's standalone output does not include these static assets.
-          mkdir -p deploy/apps/web/.next/standalone/apps/web/.next
-          cp -R apps/web/.next/static deploy/apps/web/.next/standalone/apps/web/.next/static
-          cp -R apps/web/public deploy/apps/web/.next/standalone/apps/web/public
-
           cp packages/database/package.json packages/database/migrate.mjs deploy/packages/database/
           cp -R packages/database/drizzle deploy/packages/database/drizzle
           for package in packages/*; do
@@ -156,5 +147,6 @@ jobs:
               node migrate.mjs
             )
 
+            pm2 delete canvasflow-web || true
             pm2 startOrReload ecosystem.config.cjs --update-env
             pm2 save
