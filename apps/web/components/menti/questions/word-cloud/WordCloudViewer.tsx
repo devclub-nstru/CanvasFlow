@@ -21,7 +21,6 @@ interface Props {
   muted?: boolean;
   hideResults?: boolean;
 }
-
 export const DEFAULT_WORD_CLOUD_COLORS = [
   "#5268e8",
   "#ff7378",
@@ -277,3 +276,4 @@ export function WordCloudViewer({
     </section>
   );
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   MentiSlide,
   MentiQuestionType,
@@ -8,10 +8,17 @@ import {
 import { SlideQuestionEditor } from "../questions/registry";
 import {
   BarChart2,
+  Cloud,
+  Star,
+  Sparkles,
   ChevronDown,
   Palette,
   X,
   Sliders,
+  Check,
+  Trophy,
+  ListOrdered,
+  Timer,
 } from "lucide-react";
 
 interface Props {
@@ -19,26 +26,106 @@ interface Props {
   isOpen: boolean;
   onToggleOpen: () => void;
   onChange: (updated: Partial<MentiSlide>) => void;
-  onOpenTypePicker: () => void;
+  onChangeType: (newType: MentiQuestionType) => void;
 }
 
-const QUESTION_TYPE_LABELS: Record<MentiQuestionType, string> = {
-  BAR_GRAPH: "Multiple Choice / Bar Graph",
-  WORD_CLOUD: "Word Cloud (Text)",
-  SCALES: "Scales / Rating",
-  RANKING: "Ranking",
-  QUIZ: "Quiz / Competition",
-  LEADERBOARD: "Leaderboard",
-  CONTENT: "Blank / Text Slide",
-};
+const QUESTION_TYPES: {
+  type: MentiQuestionType;
+  label: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+}[] = [
+  {
+    type: "BAR_GRAPH",
+    label: "Multiple Choice / Bar Graph",
+    desc: "Single & multi-select choices",
+    icon: BarChart2,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-700",
+  },
+  {
+    type: "WORD_CLOUD",
+    label: "Word Cloud (Text)",
+    desc: "Dynamic live word cluster",
+    icon: Cloud,
+    iconBg: "bg-rose-100",
+    iconColor: "text-rose-700",
+  },
+  {
+    type: "SCALES",
+    label: "Scales / Rating",
+    desc: "1–5 rating spectrum",
+    icon: Star,
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-700",
+  },
+  {
+    type: "RANKING",
+    label: "Ranking",
+    desc: "Prioritize and order options",
+    icon: ListOrdered,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-700",
+  },
+  {
+    type: "QUIZ",
+    label: "Quiz / Competition",
+    desc: "Timed question with scoring",
+    icon: Timer,
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-700",
+  },
+  {
+    type: "LEADERBOARD",
+    label: "Leaderboard",
+    desc: "Live standings & scores",
+    icon: Trophy,
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-600",
+  },
+  {
+    type: "CONTENT",
+    label: "Blank / Text Slide",
+    desc: "Headings & takeaways",
+    icon: Sparkles,
+    iconBg: "bg-indigo-100",
+    iconColor: "text-indigo-700",
+  },
+];
 
 export function SlideInspectorPanel({
   slide,
   isOpen,
   onToggleOpen,
   onChange,
-  onOpenTypePicker,
+  onChangeType,
 }: Props) {
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsTypeDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsTypeDropdownOpen(false);
+    };
+
+    if (isTypeDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isTypeDropdownOpen]);
+
   if (!isOpen) {
     return (
       <aside className="flex h-full select-none z-20 shrink-0">
@@ -55,6 +142,10 @@ export function SlideInspectorPanel({
       </aside>
     );
   }
+
+  const currentTypeInfo =
+    QUESTION_TYPES.find((t) => t.type === slide.type) || QUESTION_TYPES[0]!;
+  const CurrentIcon = currentTypeInfo.icon;
 
   return (
     <aside className="w-80 bg-(--cf-cream-2) border-l border-(--cf-line-strong) flex flex-col h-full select-none z-20 shrink-0 animate-in slide-in-from-right-2 duration-200">
@@ -76,25 +167,73 @@ export function SlideInspectorPanel({
       {/* Panel Scrollable Body */}
       <div className="flex-1 p-4 space-y-6 overflow-y-auto">
         {/* 1. Slide Question Type Selector */}
-        <div>
+        <div className="relative" ref={dropdownRef}>
           <label className="cf-meta block mb-1.5 text-(--cf-ink-soft)">
             Slide Type
           </label>
           <button
             type="button"
-            onClick={onOpenTypePicker}
-            className="cf-panel w-full flex items-center justify-between p-2.5 bg-white rounded-(--hex-radius) hover:border-(--cf-ink) text-left transition-colors"
+            onClick={() => setIsTypeDropdownOpen((prev) => !prev)}
+            className="cf-panel w-full flex items-center justify-between p-2.5 bg-white rounded-(--hex-radius) hover:border-(--cf-ink) text-left transition-all border border-(--cf-line-strong) shadow-xs"
           >
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-blue-100 text-blue-700 rounded">
-                <BarChart2 className="w-4 h-4" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`p-1.5 ${currentTypeInfo.iconBg} ${currentTypeInfo.iconColor} rounded-lg shrink-0`}>
+                <CurrentIcon className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-(--cf-ink)">
-                {QUESTION_TYPE_LABELS[slide.type]}
+              <span className="text-xs font-bold text-(--cf-ink) truncate">
+                {currentTypeInfo.label}
               </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-(--cf-ink-soft)" />
+            <ChevronDown
+              className={`w-4 h-4 text-(--cf-ink-soft) transition-transform duration-150 shrink-0 ml-1 ${
+                isTypeDropdownOpen ? "rotate-180" : ""
+              }`}
+            />
           </button>
+
+          {/* Inline Dropdown Popover */}
+          {isTypeDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white border-2 border-(--cf-line-strong) rounded-xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 space-y-1">
+              {QUESTION_TYPES.map((typeOption) => {
+                const Icon = typeOption.icon;
+                const isSelected = slide.type === typeOption.type;
+
+                return (
+                  <button
+                    key={typeOption.type}
+                    type="button"
+                    onClick={() => {
+                      onChangeType(typeOption.type);
+                      setIsTypeDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                      isSelected
+                        ? "bg-(--cf-cream) border border-(--cf-line-strong) font-bold"
+                        : "hover:bg-(--cf-cream-2) text-(--cf-ink)"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`p-1.5 ${typeOption.iconBg} ${typeOption.iconColor} rounded-md shrink-0`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-(--cf-ink) truncate">
+                          {typeOption.label}
+                        </p>
+                        <p className="text-[10px] text-(--cf-ink-soft) truncate">
+                          {typeOption.desc}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-(--cf-orange) shrink-0 stroke-[2.5]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 2. Question Form Editor (Delegated to specific question type) */}

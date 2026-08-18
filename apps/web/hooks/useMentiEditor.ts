@@ -258,6 +258,72 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     }
   };
 
+  const changeSlideType = (slideId: string, newType: MentiQuestionType) => {
+    const targetSlide = presentation.slides.find((s) => s.id === slideId);
+    if (!targetSlide || targetSlide.type === newType) return;
+
+    const defaultQuestions = [
+      "New Multiple Choice Poll",
+      "New Word Cloud Question",
+      "New Rating / Scales Question",
+      "Add your heading here",
+    ];
+    const isDefaultQuestion =
+      !targetSlide.question || defaultQuestions.includes(targetSlide.question.trim());
+
+    const question = isDefaultQuestion
+      ? newType === "BAR_GRAPH"
+        ? "New Multiple Choice Poll"
+        : newType === "WORD_CLOUD"
+        ? "New Word Cloud Question"
+        : newType === "SCALES"
+        ? "New Rating / Scales Question"
+        : "Add your heading here"
+      : targetSlide.question;
+
+    const description =
+      newType === "CONTENT"
+        ? targetSlide.description || "Add a subtitle, takeaway, or body text here."
+        : null;
+
+    let options = targetSlide.options;
+    if (newType === "BAR_GRAPH") {
+      if (!options || options.length === 0 || targetSlide.type === "SCALES") {
+        options = [
+          { id: "opt-1", label: "Option 1", voteCount: 0 },
+          { id: "opt-2", label: "Option 2", voteCount: 0 },
+          { id: "opt-3", label: "Option 3", voteCount: 0 },
+        ];
+      }
+    } else if (newType === "SCALES") {
+      options = [
+        { id: "rate-1", label: "1", voteCount: 0 },
+        { id: "rate-2", label: "2", voteCount: 0 },
+        { id: "rate-3", label: "3", voteCount: 0 },
+        { id: "rate-4", label: "4", voteCount: 0 },
+        { id: "rate-5", label: "5", voteCount: 0 },
+      ];
+    } else if (newType === "WORD_CLOUD" || newType === "CONTENT") {
+      options = [];
+    }
+
+    const responseSettings = {
+      ...targetSlide.responseSettings,
+      multipleSelection: false,
+      maxEntriesPerParticipant: newType === "WORD_CLOUD" ? 1 : undefined,
+      minRating: newType === "SCALES" ? 1 : undefined,
+      maxRating: newType === "SCALES" ? 5 : undefined,
+    };
+
+    updateSlide(slideId, {
+      type: newType,
+      question,
+      description,
+      options,
+      responseSettings,
+    });
+  };
+
   const deleteSlide = async (slideId: string) => {
     if (presentation.slides.length <= 1) return;
 
@@ -361,5 +427,6 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     addSlide,
     deleteSlide,
     reorderSlides,
+    changeSlideType,
   };
 }
