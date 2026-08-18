@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Cloud, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MentiOption, MentiSlide } from "~/lib/menti";
+import { CloudInput, PlacedWord, layoutCloud, layoutSignature } from "./layout";
 
 interface Props {
   slide: MentiSlide;
@@ -12,19 +20,6 @@ interface Props {
   showQuestion?: boolean;
   muted?: boolean;
   hideResults?: boolean;
-}
-
-interface CloudWord {
-  text: string;
-  value: number;
-  color: string;
-  angle: 0 | 90 | -90;
-}
-
-interface PositionedWord extends CloudWord {
-  x: number;
-  y: number;
-  size: number;
 }
 
 export const DEFAULT_WORD_CLOUD_COLORS = [
@@ -36,128 +31,55 @@ export const DEFAULT_WORD_CLOUD_COLORS = [
   "#e4a23e",
 ];
 
+const FALLBACK_FONT =
+  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONT_WEIGHT = 700;
+
 const previewWords: MentiOption[] = [
   { id: "p1", label: "creative", voteCount: 12 },
   { id: "p2", label: "leader", voteCount: 8 },
   { id: "p3", label: "focus", voteCount: 7 },
-  { id: "p4", label: "bold", voteCount: 5 },
-  { id: "p5", label: "collaboration", voteCount: 4 },
-  { id: "p6", label: "inspiration", voteCount: 3 },
-  { id: "p7", label: "growth", voteCount: 6 },
+  { id: "p4", label: "growth", voteCount: 6 },
+  { id: "p5", label: "bold", voteCount: 5 },
+  { id: "p6", label: "collaboration", voteCount: 4 },
+  { id: "p7", label: "inspiration", voteCount: 3 },
   { id: "p8", label: "energy", voteCount: 2 },
 ];
 
-/** Deterministic per-word hash — stable across renders. */
-function wordHash(str: string): number {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-// Only 0° and ±90° — diagonal angles inflate AABB and look messy.
-// Top-2 words are always 0° for impact. ~20% of the rest go vertical.
-function pickAngle(rank: number, text: string): 0 | 90 | -90 {
-  if (rank < 2) return 0;
-  const h = wordHash(text);
-  if (h % 5 === 0) return (h >> 4) & 1 ? 90 : -90;
-  return 0;
-}
+/* ── one word ─────────────────────────────────────────────────────────────── */
 
 /**
- * AABB half-extents for a word at a given rotation.
- * For 0°  → hw = textW/2,   hh = textH/2
- * For 90° → hw = textH/2,   hh = textW/2
+ * Framer owns the entire transform (x / y / rotate / scale). Nothing else may
+ * write `transform` or the position fights the animation — the wrapper is
+ * pinned to the container centre and the offsets already account for the
+ * word's own half-size, so no translate(-50%) is needed.
  */
-function aabb(textW: number, textH: number, angleDeg: number) {
-  if (angleDeg === 0) return { hw: textW / 2, hh: textH / 2 };
-  return { hw: textH / 2, hh: textW / 2 };
-}
+const CloudWord = memo(function CloudWord({ word }: { word: PlacedWord }) {
+  const x = word.x - word.boxW / 2;
+  const y = word.y - word.boxH / 2;
 
-const CHAR_W = 0.55;
-const LINE_H = 1.1;
-const GAP = 1.5;
-
-function packWords(
-  words: CloudWord[],
-  width: number,
-  height: number,
-  isPreview: boolean
-): PositionedWord[] {
-  if (!words.length) return [];
-
-  const maxValue = Math.max(...words.map((w) => w.value), 1);
-  const crowdFactor = Math.max(0.52, 1 - (words.length - 1) * 0.011);
-  const maxSize = Math.min(
-    isPreview ? 52 : 92,
-    (isPreview ? height / 2.8 : height / 2.4) * crowdFactor
+  return (
+    <motion.span
+      className="absolute left-1/2 top-1/2 block whitespace-nowrap font-bold leading-none tracking-[-0.03em]"
+      style={{ color: word.color, transformOrigin: "center", willChange: "transform" }}
+      initial={{ x, y, rotate: word.angle, scale: 0.35, opacity: 0, fontSize: word.fontSize }}
+      animate={{ x, y, rotate: word.angle, scale: 1, opacity: 1, fontSize: word.fontSize }}
+      exit={{ scale: 0.35, opacity: 0 }}
+      transition={{
+        x: { type: "spring", stiffness: 170, damping: 24 },
+        y: { type: "spring", stiffness: 170, damping: 24 },
+        fontSize: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+        rotate: { duration: 0.4, ease: "easeOut" },
+        scale: { type: "spring", stiffness: 320, damping: 22 },
+        opacity: { duration: 0.28, ease: "easeOut" },
+      }}
+    >
+      {word.text}
+    </motion.span>
   );
-  const minSize = Math.max(isPreview ? 10 : 14, maxSize * 0.21);
+});
 
-  const wordSize = (value: number, scale: number) =>
-    (minSize + (maxSize - minSize) * Math.pow(value / maxValue, 0.55)) * scale;
-
-  const limit = Math.hypot(width, height) / 2;
-
-  const tryPack = (scale: number): PositionedWord[] | null => {
-    const boxes: { x: number; y: number; hw: number; hh: number }[] = [];
-    const placed: PositionedWord[] = [];
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i]!;
-      const size = wordSize(word.value, scale);
-      const textW = word.text.length * size * CHAR_W;
-      const textH = size * LINE_H;
-      const { hw, hh } = aabb(textW, textH, word.angle);
-
-      let x = 0,
-        y = 0,
-        found = i === 0;
-
-      for (let radius = 1; !found && radius < limit; radius += 1) {
-        const steps = Math.max(32, Math.ceil((2 * Math.PI * radius) / 4));
-        const startAngle = i * 2.399;
-
-        for (let s = 0; s < steps; s++) {
-          const a = startAngle + (s / steps) * 2 * Math.PI;
-          const nx = Math.cos(a) * radius;
-          const ny = Math.sin(a) * radius * 0.72;
-
-          if (Math.abs(nx) + hw + GAP > width / 2 - 2) continue;
-          if (Math.abs(ny) + hh + GAP > height / 2 - 2) continue;
-
-          let collides = false;
-          for (const b of boxes) {
-            if (
-              Math.abs(nx - b.x) < hw + GAP + b.hw &&
-              Math.abs(ny - b.y) < hh + GAP + b.hh
-            ) {
-              collides = true;
-              break;
-            }
-          }
-
-          if (!collides) {
-            x = nx;
-            y = ny;
-            found = true;
-            break;
-          }
-        }
-      }
-
-      if (!found) return null;
-      boxes.push({ x, y, hw, hh });
-      placed.push({ ...word, x, y, size });
-    }
-    return placed;
-  };
-
-  for (let s = 1.0; s >= 0.4; s -= 0.04) {
-    const result = tryPack(s);
-    if (result) return result;
-  }
-  return tryPack(0.36) ?? [];
-}
+/* ── viewer ───────────────────────────────────────────────────────────────── */
 
 export function WordCloudViewer({
   slide,
@@ -172,105 +94,151 @@ export function WordCloudViewer({
       ? hideResults
       : (slide.responseSettings?.hideResultsFromAudience ?? false);
 
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<[number, number]>(
-    isPreview ? [360, 200] : [1200, 650]
-  );
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stage, setStage] = useState({ width: 0, height: 0 });
+  const [fontFamily, setFontFamily] = useState(FALLBACK_FONT);
 
-  const source = useMemo<MentiOption[]>(() => {
-    if (analytics?.wordCloud && Array.isArray(analytics.wordCloud) && analytics.wordCloud.length > 0) {
-      return analytics.wordCloud.map((w: any, idx: number) => ({
-        id: `word-${idx}-${w.text}`,
-        label: w.text,
-        voteCount: w.value || 0,
+  // Track the stage box and the font actually in use, so measurement matches
+  // what the browser will render.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    const computed = window.getComputedStyle(el).fontFamily;
+    if (computed) setFontFamily(computed);
+
+    const read = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setStage((prev) =>
+        Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1
+          ? prev
+          : { width, height },
+      );
+    };
+
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isHidden]);
+
+  /** Normalise whichever analytics shape arrived into {text, value}. */
+  const words = useMemo<CloudInput[]>(() => {
+    const fromAnalytics = (): CloudInput[] | null => {
+      if (analytics?.wordCloud?.length) {
+        return (analytics.wordCloud as any[]).map((w) => ({
+          text: String(w.text ?? ""),
+          value: Number(w.value ?? 0) || 1,
+        }));
+      }
+      if (analytics?.results?.length) {
+        return (analytics.results as any[]).map((r) => ({
+          text: String(r.label ?? r.text ?? ""),
+          value: Number(r.count ?? r.value ?? r.voteCount ?? 0) || 1,
+        }));
+      }
+      if (analytics?.options?.length) {
+        return (analytics.options as any[]).map((o) => ({
+          text: String(o.label ?? ""),
+          value: Number(o.voteCount ?? 0) || 1,
+        }));
+      }
+      return null;
+    };
+
+    // An analytics payload that exists but is empty means "this slide has no
+    // responses yet" — it must win over the stale options on the slide doc.
+    const live = fromAnalytics();
+    if (live) return live;
+    if (analytics) return [];
+
+    if (slide.options?.length) {
+      return slide.options.map((o) => ({
+        text: o.label,
+        value: o.voteCount || 1,
       }));
     }
-    if (analytics?.options && Array.isArray(analytics.options) && analytics.options.length > 0) {
-      return analytics.options;
-    }
-    if (analytics?.results && Array.isArray(analytics.results) && analytics.results.length > 0) {
-      return analytics.results.map((r: any, idx: number) => ({
-        id: r.id || `word-${idx}-${r.label || r.text}`,
-        label: r.label || r.text,
-        voteCount: r.count || r.value || r.voteCount || 0,
-      }));
-    }
-    if (slide.options && slide.options.length > 0) {
-      return slide.options;
-    }
-    return isPreview ? previewWords : [];
+    return isPreview
+      ? previewWords.map((o) => ({ text: o.label, value: o.voteCount || 1 }))
+      : [];
   }, [analytics, slide.options, isPreview]);
 
-  const colors = slide.designSettings.wordCloudColors?.length
-    ? slide.designSettings.wordCloudColors
-    : DEFAULT_WORD_CLOUD_COLORS;
-
-  const words = useMemo<CloudWord[]>(
+  const colors = useMemo(
     () =>
-      [...source]
-        .sort(
-          (a, b) =>
-            (b.voteCount || 0) - (a.voteCount || 0) ||
-            a.label.localeCompare(b.label)
-        )
-        .slice(0, 40)
-        .map((w, i) => ({
-          text: w.label,
-          value: w.voteCount || 0,
-          color: w.color || colors[i % colors.length]!,
-          angle: pickAngle(i, w.label),
-        })),
-    [source, colors]
+      slide.designSettings.wordCloudColors?.length
+        ? slide.designSettings.wordCloudColors
+        : DEFAULT_WORD_CLOUD_COLORS,
+    [slide.designSettings.wordCloudColors],
   );
 
-  const positionedWords = useMemo(
-    () => packWords(words, size[0], size[1], !!isPreview),
-    [words, size, isPreview]
+  // Layout is the expensive part; keep it off the urgent render path so a burst
+  // of incoming responses can never stall interaction.
+  const deferredWords = useDeferredValue(words);
+  const signature = useMemo(
+    () => layoutSignature(deferredWords, Math.round(stage.width), Math.round(stage.height)),
+    [deferredWords, stage.width, stage.height],
   );
 
-  useEffect(() => {
-    const el = hostRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry!.contentRect;
-      if (width && height) setSize([Math.floor(width), Math.floor(height)]);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const placed = useMemo(
+    () =>
+      layoutCloud(deferredWords, stage.width, stage.height, {
+        colors,
+        fontFamily,
+        fontWeight: FONT_WEIGHT,
+        isPreview,
+      }),
+    // `signature` already encodes words + stage size.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signature, colors, fontFamily, isPreview],
+  );
+
+  const totalResponses = Number(analytics?.totalResponses ?? 0);
+  const hasWords = words.length > 0;
 
   return (
     <section
-      className="flex h-full w-full flex-col select-none relative"
+      className="relative flex h-full w-full select-none flex-col"
       style={{ color: slide.designSettings.textColor || "#17171c" }}
     >
       {showQuestion && (
-        <div className="w-full flex flex-col items-center text-center">
+        <div className="flex w-full flex-col items-center text-center">
           <h2
             className={`shrink-0 font-medium leading-[1.1] tracking-[-0.04em] ${
               isPreview
-                ? "mb-2 text-xl sm:text-2xl max-w-xl mx-auto"
-                : "mb-3 sm:mb-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl mx-auto"
+                ? "mx-auto mb-2 max-w-xl text-xl sm:text-2xl"
+                : "mx-auto mb-3 max-w-4xl text-3xl sm:mb-4 sm:text-4xl md:text-5xl lg:text-6xl"
             }`}
           >
             {slide.question || "What word comes to mind?"}
           </h2>
 
-          {/* Fixed height reservation for status badge */}
-          <div className="h-6 flex items-center justify-center mb-2">
-            <AnimatePresence>
-              {isHidden && (
+          <div className="mb-2 flex h-6 items-center justify-center">
+            <AnimatePresence mode="wait">
+              {isHidden ? (
                 <motion.div
+                  key="hidden"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.15 }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)"
+                  className="inline-flex items-center gap-1.5 rounded-(--hex-radius) border border-(--cf-line-strong) bg-(--cf-cream-2) px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider uppercase text-(--cf-ink)"
                 >
-                  <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
+                  <EyeOff className="h-3 w-3 text-(--cf-ink-soft)" />
                   <span>Responses hidden</span>
                 </motion.div>
-              )}
+              ) : totalResponses > 0 && !isPreview ? (
+                <motion.span
+                  key="count"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="font-mono text-[11px] font-bold tracking-wider uppercase text-(--cf-ink-soft) tabular-nums"
+                >
+                  {totalResponses.toLocaleString()}{" "}
+                  {totalResponses === 1 ? "response" : "responses"}
+                </motion.span>
+              ) : null}
             </AnimatePresence>
           </div>
         </div>
@@ -283,35 +251,27 @@ export function WordCloudViewer({
             Results are hidden from audience
           </p>
         </div>
-      ) : words.length ? (
+      ) : (
         <div
-          ref={hostRef}
+          ref={stageRef}
           className={`relative min-h-0 flex-1 overflow-hidden transition-opacity duration-300 ${
             muted ? "opacity-30" : "opacity-100"
           }`}
         >
-          {positionedWords.map((word) => (
-            <span
-              key={word.text}
-              className="absolute left-1/2 top-1/2 whitespace-nowrap font-semibold leading-none tracking-[-0.04em]"
-              style={{
-                color: word.color,
-                fontSize: word.size,
-                transition:
-                  "font-size 600ms ease-out, transform 600ms ease-out, color 400ms ease",
-                transform: `translate(calc(-50% + ${word.x}px), calc(-50% + ${word.y}px)) rotate(${word.angle}deg)`,
-              }}
-            >
-              {word.text}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
-          <Cloud className={`mb-3 ${isPreview ? "size-7" : "size-10"}`} />
-          <p className={`font-medium ${isPreview ? "text-xs" : "text-sm"}`}>
-            Waiting for responses
-          </p>
+          <AnimatePresence>
+            {placed.map((word) => (
+              <CloudWord key={word.key} word={word} />
+            ))}
+          </AnimatePresence>
+
+          {!hasWords && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400">
+              <Cloud className={`mb-3 ${isPreview ? "size-7" : "size-10"}`} />
+              <p className={`font-medium ${isPreview ? "text-xs" : "text-sm"}`}>
+                Waiting for responses
+              </p>
+            </div>
+          )}
         </div>
       )}
     </section>

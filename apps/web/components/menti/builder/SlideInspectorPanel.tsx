@@ -26,6 +26,9 @@ const QUESTION_TYPE_LABELS: Record<MentiQuestionType, string> = {
   BAR_GRAPH: "Multiple Choice / Bar Graph",
   WORD_CLOUD: "Word Cloud (Text)",
   SCALES: "Scales / Rating",
+  RANKING: "Ranking",
+  QUIZ: "Quiz / Competition",
+  LEADERBOARD: "Leaderboard",
   CONTENT: "Blank / Text Slide",
 };
 

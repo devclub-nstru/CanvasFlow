@@ -1,9 +1,74 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MentiPresentation, MentiSlide, MentiQuestionType } from "~/lib/menti";
+import { MentiOption, MentiPresentation, MentiSlide, MentiQuestionType } from "~/lib/menti";
 import { MOCK_PRESENTATION } from "~/lib/mock-menti";
 import { env } from "~/env";
+
+/** Starting question text for each slide type. */
+const DEFAULT_QUESTION: Record<MentiQuestionType, string> = {
+  BAR_GRAPH: "New Multiple Choice Poll",
+  WORD_CLOUD: "New Word Cloud Question",
+  SCALES: "New Rating / Scales Question",
+  RANKING: "Rank these in order",
+  QUIZ: "Which of these is correct?",
+  LEADERBOARD: "Leaderboard",
+  CONTENT: "Add your heading here",
+};
+
+/**
+ * A leaderboard slide is created automatically after each quiz slide and belongs
+ * to it. `isSlideLocked` reports that pairing so the UI can refuse a direct
+ * delete; removing the quiz removes both.
+ */
+export function isSlideLocked(slides: MentiSlide[], slideId: string): boolean {
+  const index = slides.findIndex((slide) => slide.id === slideId);
+  if (index <= 0) return false;
+  if (slides[index]!.type !== "LEADERBOARD") return false;
+  return slides[index - 1]!.type === "QUIZ";
+}
+
+/** The leaderboard paired with `slideId`, if that slide is a quiz. */
+function pairedLeaderboardId(slides: MentiSlide[], slideId: string): string | null {
+  const index = slides.findIndex((slide) => slide.id === slideId);
+  if (index === -1 || slides[index]!.type !== "QUIZ") return null;
+  const next = slides[index + 1];
+  return next && next.type === "LEADERBOARD" ? next.id : null;
+}
+
+/** Starting options for each slide type; types without options get none. */
+const DEFAULT_OPTIONS: Partial<Record<MentiQuestionType, MentiOption[]>> = {
+  BAR_GRAPH: [
+    { id: "opt-1", label: "Option 1", voteCount: 0 },
+    { id: "opt-2", label: "Option 2", voteCount: 0 },
+  ],
+  SCALES: [
+    { id: "rate-1", label: "1", voteCount: 0 },
+    { id: "rate-2", label: "2", voteCount: 0 },
+    { id: "rate-3", label: "3", voteCount: 0 },
+    { id: "rate-4", label: "4", voteCount: 0 },
+    { id: "rate-5", label: "5", voteCount: 0 },
+  ],
+  RANKING: [
+    { id: "rank-1", label: "Item 1", voteCount: 0 },
+    { id: "rank-2", label: "Item 2", voteCount: 0 },
+    { id: "rank-3", label: "Item 3", voteCount: 0 },
+    { id: "rank-4", label: "Item 4", voteCount: 0 },
+  ],
+  // The first answer starts marked correct — a quiz with nothing correct scores
+  // zero for everyone, so the safe default is a working question.
+  QUIZ: [
+    { id: "quiz-1", label: "Answer 1", isCorrect: true, voteCount: 0 },
+    { id: "quiz-2", label: "Answer 2", isCorrect: false, voteCount: 0 },
+    { id: "quiz-3", label: "Answer 3", isCorrect: false, voteCount: 0 },
+    { id: "quiz-4", label: "Answer 4", isCorrect: false, voteCount: 0 },
+  ],
+};
+
+/** Response settings a type needs beyond the shared defaults. */
+const DEFAULT_RESPONSE_SETTINGS: Partial<Record<MentiQuestionType, Record<string, unknown>>> = {
+  QUIZ: { countdownSeconds: 5, timeLimitSeconds: 20, basePoints: 1000 },
+};
 
 export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRESENTATION) {
   const [presentation, setPresentation] = useState<MentiPresentation>(initialPresentation);
@@ -93,44 +158,30 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     }, 1000);
   };
 
-  const addSlide = async (type: MentiQuestionType) => {
-    const tempId = `temp-${Date.now()}`;
+  /** Create one slide optimistically, then persist it. Returns its real id. */
+  const createSlide = async (
+    type: MentiQuestionType,
+    position: number,
+    { focus }: { focus: boolean },
+  ): Promise<string | null> => {
+    const tempId = `temp-${type}-${Date.now()}-${position}`;
     const newSlide: MentiSlide = {
       id: tempId,
       presentationId: presentation.id,
       type,
-      question:
-        type === "BAR_GRAPH"
-          ? "New Multiple Choice Poll"
-          : type === "WORD_CLOUD"
-            ? "New Word Cloud Question"
-            : type === "SCALES"
-              ? "New Rating / Scales Question"
-              : "Add your heading here",
+      question: DEFAULT_QUESTION[type],
       description:
         type === "CONTENT"
           ? "Add a subtitle, takeaway, or body text here."
           : null,
-      position: presentation.slides.length,
-      options:
-        type === "BAR_GRAPH"
-          ? [
-              { id: "opt-1", label: "Option 1", voteCount: 0 },
-              { id: "opt-2", label: "Option 2", voteCount: 0 },
-            ]
-          : type === "SCALES"
-            ? [
-                { id: "rate-1", label: "1", voteCount: 0 },
-                { id: "rate-2", label: "2", voteCount: 0 },
-                { id: "rate-3", label: "3", voteCount: 0 },
-                { id: "rate-4", label: "4", voteCount: 0 },
-                { id: "rate-5", label: "5", voteCount: 0 },
-              ]
-            : [],
+      position,
+      // Clone so the shared defaults are never mutated by later edits.
+      options: (DEFAULT_OPTIONS[type] ?? []).map((option) => ({ ...option })),
       responseSettings: {
         multipleSelection: false,
         maxEntriesPerParticipant: 1,
         isVotingLocked: false,
+        ...(DEFAULT_RESPONSE_SETTINGS[type] ?? {}),
       },
       designSettings: {
         backgroundColor: "#ffffff",
@@ -147,8 +198,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
       ...prev,
       slides: [...prev.slides, newSlide],
     }));
-    setActiveSlideId(tempId);
-    setIsNewSlideModalOpen(false);
+    if (focus) setActiveSlideId(tempId);
 
     // 2. Real API call
     try {
@@ -180,6 +230,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
       }));
       
       setActiveSlideId((current) => (current === tempId ? realId : current));
+      return realId as string;
     } catch (err) {
       console.error("Failed to add slide to backend:", err);
       // Revert optimistic update on failure
@@ -187,36 +238,74 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
         ...prev,
         slides: prev.slides.filter((s) => s.id !== tempId),
       }));
+      return null;
+    }
+  };
+
+  const addSlide = async (type: MentiQuestionType) => {
+    setIsNewSlideModalOpen(false);
+
+    const basePosition = presentation.slides.length;
+    const createdId = await createSlide(type, basePosition, { focus: true });
+
+    /*
+     * Every quiz is followed by its own leaderboard, so the standings are part
+     * of the deck rather than something to remember to add. Focus stays on the
+     * quiz, which is the slide the user actually came to write.
+     */
+    if (createdId && type === "QUIZ") {
+      await createSlide("LEADERBOARD", basePosition + 1, { focus: false });
     }
   };
 
   const deleteSlide = async (slideId: string) => {
     if (presentation.slides.length <= 1) return;
-    
+
+    // A leaderboard belongs to the quiz before it and cannot be removed alone.
+    if (isSlideLocked(presentation.slides, slideId)) return;
+
+    /*
+     * Deleting a quiz takes its paired leaderboard with it. Leaving the
+     * leaderboard behind would strand a slide that is no longer locked but no
+     * longer means anything either.
+     */
+    const pairedId = pairedLeaderboardId(presentation.slides, slideId);
+    const idsToDelete = pairedId ? [slideId, pairedId] : [slideId];
+
+    // Never empty the deck.
+    if (presentation.slides.length <= idsToDelete.length) return;
+
     // Remember current slides for fallback
     const originalSlides = [...presentation.slides];
     const deletedIdx = presentation.slides.findIndex((s) => s.id === slideId);
-    const remaining = presentation.slides.filter((s) => s.id !== slideId);
+    const remaining = presentation.slides.filter((s) => !idsToDelete.includes(s.id));
 
     // 1. Optimistic Update
-    setPresentation((prev) => ({ ...prev, slides: remaining }));
-    
-    if (activeSlideId === slideId) {
-      // If deleting the last slide, jump to the previous slide; otherwise, jump to the next one
-      const targetActiveId = deletedIdx === remaining.length 
-        ? remaining[deletedIdx - 1]?.id 
-        : remaining[deletedIdx]?.id;
-      
+    setPresentation((prev) => ({
+      ...prev,
+      slides: prev.slides.filter((s) => !idsToDelete.includes(s.id)),
+    }));
+
+    if (idsToDelete.includes(activeSlideId)) {
+      // Land on the slide that took this one's place, or the last one if we
+      // deleted from the end.
+      const targetActiveId =
+        deletedIdx >= remaining.length
+          ? remaining[remaining.length - 1]?.id
+          : remaining[deletedIdx]?.id;
+
       setActiveSlideId(targetActiveId || "");
     }
 
     // 2. Real API call
     try {
-      const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${slideId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete slide");
+      for (const id of idsToDelete) {
+        const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to delete slide");
+      }
     } catch (err) {
       console.error(`Failed to delete slide ${slideId}:`, err);
       // Revert on error

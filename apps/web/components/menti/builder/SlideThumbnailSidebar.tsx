@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, BarChart2, Cloud, Star, Sparkles, GripVertical } from "lucide-react";
+import { Plus, Trash2, BarChart2, Cloud, Star, Sparkles, GripVertical, ListOrdered, Trophy, Medal, Lock } from "lucide-react";
 import { MentiSlide, MentiQuestionType } from "~/lib/menti";
+import { isSlideLocked } from "~/hooks/useMentiEditor";
 
 interface Props {
   slides: MentiSlide[];
@@ -17,6 +18,9 @@ const QUESTION_ICONS: Record<MentiQuestionType, React.ReactNode> = {
   BAR_GRAPH: <BarChart2 className="w-3.5 h-3.5 text-(--cf-orange)" />,
   WORD_CLOUD: <Cloud className="w-3.5 h-3.5 text-rose-600" />,
   SCALES: <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />,
+  RANKING: <ListOrdered className="w-3.5 h-3.5 text-emerald-600" />,
+  QUIZ: <Trophy className="w-3.5 h-3.5 text-amber-600" />,
+  LEADERBOARD: <Medal className="w-3.5 h-3.5 text-amber-500" />,
   CONTENT: <Sparkles className="w-3.5 h-3.5 text-indigo-600" />,
 };
 
@@ -144,18 +148,33 @@ export function SlideThumbnailSidebar({
                       {QUESTION_ICONS[slide.type] || <BarChart2 className="w-3.5 h-3.5" />}
                     </div>
 
-                    {slides.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteSlide(slide.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-(--cf-ink-soft) hover:text-(--cf-danger) transition-opacity rounded"
-                        title="Delete slide"
+                    {/* A leaderboard is owned by the quiz before it — show a lock
+                        instead of a delete control so the pairing is visible. */}
+                    {isSlideLocked(slides, slide.id) ? (
+                      <span
+                        className="p-0.5 text-(--cf-ink-soft) opacity-0 transition-opacity group-hover:opacity-100"
+                        title="Removed together with its quiz slide"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        <Lock className="w-3 h-3" />
+                      </span>
+                    ) : (
+                      slides.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSlide(slide.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 text-(--cf-ink-soft) hover:text-(--cf-danger) transition-opacity rounded"
+                          title={
+                            slide.type === "QUIZ"
+                              ? "Delete slide (also removes its leaderboard)"
+                              : "Delete slide"
+                          }
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )
                     )}
                   </div>
 

@@ -6,6 +6,8 @@ import { Users, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScalesViewer } from "../questions/scales/ScalesViewer";
 import { WordCloudViewer } from "../questions/word-cloud/WordCloudViewer";
+import { RankingViewer } from "../questions/ranking/RankingViewer";
+import { QuizViewer } from "../questions/quiz/QuizViewer";
 
 interface Props {
   presentation: MentiPresentation;
@@ -180,6 +182,20 @@ function SlideResultCard({
               isPreview={false}
               showQuestion={false}
             />
+          </div>
+        )}
+
+        {slide.type === "RANKING" && (
+          <div className="p-4 sm:p-6 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) overflow-hidden">
+            <RankingViewer slide={slide} isPreview={false} showQuestion={false} />
+          </div>
+        )}
+
+        {slide.type === "QUIZ" && (
+          <div className="p-4 sm:p-6 bg-(--cf-cream-2) rounded-xl border border-(--cf-line) overflow-hidden">
+            {/* isReview: a finished session with no live clock, so the correct
+                answer and final tally are safe to show outright. */}
+            <QuizViewer slide={slide} isPreview={false} showQuestion={false} isReview />
           </div>
         )}
       </div>

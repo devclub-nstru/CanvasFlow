@@ -59,5 +59,25 @@ services:
       retries: 15
       start_period: 3s
 
+  # MongoDB for the menti (live quiz/poll) service
+  mongodb:
+    image: mongo:7
+    container_name: canvasflow-mongo
+    restart: unless-stopped
+
+    ports:
+      - "${MONGO_PORT:-27018}:27017"
+
+    volumes:
+      - mongo_data:/data/db
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
 volumes:
   pg_data:
+  mongo_data:

@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { MentiPresentation, MentiSlide } from "~/lib/menti";
+import type { LastQuizResult } from "~/hooks/useMentiRealtime";
 import { SlideAudienceInput } from "../questions/registry";
 import { AudienceLobbyView } from "./AudienceLobbyView";
 import { ThumbsUp, XCircle } from "lucide-react";
@@ -17,6 +18,12 @@ interface Props {
   participantCount?: number;
   submittedSlideIds?: string[];
   onSubmitAnswer?: (answer: any, slideId?: string) => Promise<any> | void;
+  /** Start instant of the current timed question, for quiz countdowns. */
+  questionStartedAt?: string | null;
+  /** serverClock - deviceClock, so a skewed device still counts down correctly. */
+  serverOffsetMs?: number;
+  /** Verdict from the last quiz question, shown on the leaderboard slide. */
+  lastQuizResult?: LastQuizResult | null;
 }
 
 interface ReactionParticle {
@@ -36,6 +43,9 @@ export function AudienceLayout({
   participantCount = 1,
   submittedSlideIds = [],
   onSubmitAnswer,
+  questionStartedAt,
+  serverOffsetMs = 0,
+  lastQuizResult,
 }: Props) {
   const [localSubmittedSlideIds, setLocalSubmittedSlideIds] = useState<string[]>([]);
   const [particles, setParticles] = useState<ReactionParticle[]>([]);
@@ -80,12 +90,19 @@ export function AudienceLayout({
         prev.includes(currentSlideId) ? prev : [...prev, currentSlideId]
       );
     }
-    if (onSubmitAnswer) {
-      try {
-        await onSubmitAnswer(val, currentSlideId);
-      } catch (err) {
-        console.error("Submission response error:", err);
+    if (!onSubmitAnswer) return;
+
+    try {
+      // Returned so timed types can read their own result out of the ack.
+      return await onSubmitAnswer(val, currentSlideId);
+    } catch (err) {
+      // Release the local lock: the answer was not recorded, so the participant
+      // must not be left looking at a submitted state.
+      if (!isUnlimitedWordCloud) {
+        setLocalSubmittedSlideIds((prev) => prev.filter((id) => id !== currentSlideId));
       }
+      // Rethrow so the question component can surface the reason.
+      throw err;
     }
   };
 
@@ -222,6 +239,9 @@ export function AudienceLayout({
               slide={currentSlide}
               onSubmit={handleVoteSubmit}
               hasSubmitted={isCurrentSlideSubmitted}
+              questionStartedAt={questionStartedAt}
+              serverOffsetMs={serverOffsetMs}
+              lastQuizResult={lastQuizResult}
             />
           ) : (
             <div className="text-center p-6 sm:p-8 text-(--cf-ink-soft) text-xs sm:text-sm font-medium">

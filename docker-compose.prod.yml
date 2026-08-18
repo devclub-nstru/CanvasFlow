@@ -67,6 +67,42 @@ services:
       retries: 15
       start_period: 5s
 
+  # Backing store for the menti (live quiz/poll) service.
+  mongodb:
+    image: mongo:7
+    container_name: canvasflow-mongo-prod
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-canvasflow}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+
+    command:
+      - mongod
+      # Mongo otherwise reserves ~50% of host RAM for its cache, which is far
+      # too much alongside Postgres, Redis and the Node processes on one VM.
+      - --wiredTigerCacheSizeGB
+      - "0.5"
+
+    # 27018 on the host to avoid colliding with any system mongod on 27017.
+    ports:
+      - "127.0.0.1:27018:27017"
+
+    volumes:
+      - mongo_data_prod:/data/db
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
 volumes:
   pg_data_prod:
   redis_data_prod:
+  mongo_data_prod:

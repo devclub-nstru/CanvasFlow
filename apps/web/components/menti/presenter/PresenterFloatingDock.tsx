@@ -25,6 +25,8 @@ interface Props {
   showAsPercentage: boolean;
   onNext: () => void;
   onPrev: () => void;
+  /** False while a quiz round is still accepting answers. */
+  canGoNext?: boolean;
   onEndPresentation: () => void;
   onToggleJoinCode: () => void;
   onToggleLock: () => void;
@@ -44,6 +46,7 @@ export function PresenterFloatingDock({
   showAsPercentage,
   onNext,
   onPrev,
+  canGoNext = true,
   onEndPresentation,
   onToggleJoinCode,
   onToggleLock,
@@ -81,8 +84,15 @@ export function PresenterFloatingDock({
           <button
             type="button"
             onClick={onNext}
-            className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) cf-raised cf-press transition-colors"
-            title={isIntro ? "Start first question (Right Arrow or Space)" : "Next question (Right Arrow or Space)"}
+            disabled={canGoNext === false}
+            className="size-10 flex items-center justify-center border-2 border-(--cf-line-strong) rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) cf-raised cf-press transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            title={
+              canGoNext === false
+                ? "Wait for the question timer to finish before moving on"
+                : isIntro
+                  ? "Start first question (Right Arrow or Space)"
+                  : "Next question (Right Arrow or Space)"
+            }
           >
             <ChevronRight className="w-4 h-4" />
           </button>

@@ -1,4 +1,14 @@
-export type MentiQuestionType = "BAR_GRAPH" | "WORD_CLOUD" | "SCALES" | "CONTENT";
+export type MentiQuestionType =
+  | "BAR_GRAPH"
+  | "WORD_CLOUD"
+  | "SCALES"
+  | "RANKING"
+  | "QUIZ"
+  | "LEADERBOARD"
+  | "CONTENT";
+
+/** Phase of a timed quiz question, derived from `questionStartedAt`. */
+export type QuizPhase = "idle" | "countdown" | "open" | "ended";
 
 export type MentiVisualizationType = "BAR" | "DONUT" | "PIE" | "BUBBLES";
 
@@ -43,6 +53,11 @@ export interface MentiSlideResponseSettings {
   maxRating?: number;
   ratingLowLabel?: string;
   ratingHighLabel?: string;
+
+  // Quiz settings
+  countdownSeconds?: number; // reading time before answering opens
+  timeLimitSeconds?: number; // how long answers are accepted
+  basePoints?: number; // points for an instant correct answer
 
   // General controls
   timerSeconds?: number | null;

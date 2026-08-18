@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { env } from "~/env";
-import type { MentiSlide } from "~/lib/menti";
+import type { MentiSlide, QuizPhase } from "~/lib/menti";
 
 export interface RealtimeSessionState {
   session: {
@@ -14,10 +14,36 @@ export interface RealtimeSessionState {
     settings?: any;
     currentSlideId: string | null;
     isVotingLocked: boolean;
+    /** Start of the current timed question's countdown, if any. */
+    questionStartedAt?: string | null;
+    /** Server-derived phase; clients re-derive it locally to animate. */
+    quizPhase?: QuizPhase | null;
   };
   participantCount: number;
   currentSlide: MentiSlide | null;
   submittedSlideIds?: string[];
+}
+
+/** Result of a quiz submission, returned by the server's ack. */
+export interface SubmitResult {
+  success: boolean;
+  isCorrect?: boolean;
+  pointsAwarded?: number;
+  responseTimeMs?: number;
+}
+
+/**
+ * The participant's verdict on the most recent quiz question.
+ *
+ * Held here rather than inside the question component because that component
+ * unmounts when the host advances, and the leaderboard slide that follows needs
+ * to keep showing the participant whether they were right.
+ */
+export interface LastQuizResult {
+  slideId: string;
+  isCorrect: boolean;
+  pointsAwarded: number;
+  responseTimeMs: number;
 }
 
 export interface UseMentiRealtimeProps {
@@ -55,8 +81,26 @@ export function useMentiRealtime({
     return [];
   });
   const [error, setError] = useState<string | null>(null);
+  /**
+   * serverClock - deviceClock, in ms. Quiz countdowns are derived from a server
+   * timestamp, so a device with a skewed clock would otherwise show the wrong
+   * remaining time. Slightly conservative: it ignores network latency, which
+   * makes the client believe it has marginally MORE time than it does — the
+   * server's grace window absorbs that.
+   */
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [lastQuizResult, setLastQuizResult] = useState<LastQuizResult | null>(() => {
+    if (typeof window === "undefined" || !sessionId) return null;
+    try {
+      const stored = sessionStorage.getItem(`cf_last_quiz_result_${sessionId}`);
+      return stored ? (JSON.parse(stored) as LastQuizResult) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const socketRef = useRef<Socket | null>(null);
+  const currentSlideIdRef = useRef<string | null>(null);
 
   // Sync with sessionStorage whenever sessionId changes
   useEffect(() => {
@@ -120,12 +164,24 @@ export function useMentiRealtime({
 
     // Session State Sync Event from backend syncer
     socketInstance.on("session_state_sync", (state: any) => {
+      if (typeof state.serverNow === "number") {
+        setServerOffsetMs(state.serverNow - Date.now());
+      }
+
       const mappedSlide = state.currentSlide
         ? {
             ...state.currentSlide,
             id: state.currentSlide.id || state.currentSlide._id,
           }
         : null;
+
+      // Clear stale analytics immediately when the slide changes so the previous
+      // slide's data is never shown under the new slide's renderer.
+      const incomingSlideId = state.session?.currentSlideId ?? null;
+      if (incomingSlideId !== currentSlideIdRef.current) {
+        currentSlideIdRef.current = incomingSlideId;
+        setSlideAnalytics(null);
+      }
 
       // If presenter reset session to waiting, clear submitted slides
       if (state.session?.status === "waiting") {
@@ -241,7 +297,26 @@ export function useMentiRealtime({
         });
       }
 
-      return new Promise<{ success: boolean }>((resolve, reject) => {
+      /**
+       * Undo the optimistic mark above when the server refuses the answer,
+       * otherwise a rejected attempt (e.g. submitted a hair too early) would
+       * leave the participant permanently locked out of the question. An
+       * "already submitted" refusal is left marked — that one is accurate.
+       */
+      const rollbackOptimisticMark = (message: string) => {
+        if (isUnlimitedWordCloud) return;
+        if (message.toLowerCase().includes("already submitted")) return;
+
+        setSubmittedSlideIds((prev) => {
+          const next = prev.filter((id) => id !== activeSlideIdStr);
+          if (typeof window !== "undefined" && sessionId) {
+            sessionStorage.setItem(`cf_submitted_slides_${sessionId}`, JSON.stringify(next));
+          }
+          return next;
+        });
+      };
+
+      return new Promise<SubmitResult>((resolve, reject) => {
         socketRef.current!.emit(
           "submit_response",
           {
@@ -250,9 +325,33 @@ export function useMentiRealtime({
           },
           (response: any) => {
             if (response?.error) {
+              rollbackOptimisticMark(String(response.error));
               reject(new Error(response.error));
             } else {
-              resolve({ success: true });
+              // Pass the ack through verbatim — quiz slides return isCorrect and
+              // pointsAwarded here, which is the participant's only way to learn
+              // their result before the host reveals it.
+              const result: SubmitResult = { success: true, ...(response ?? {}) };
+
+              // Remember a quiz verdict so the leaderboard slide can still show
+              // it after the question component unmounts.
+              if (typeof result.isCorrect === "boolean") {
+                const verdict: LastQuizResult = {
+                  slideId: activeSlideIdStr,
+                  isCorrect: result.isCorrect,
+                  pointsAwarded: Number(result.pointsAwarded ?? 0),
+                  responseTimeMs: Number(result.responseTimeMs ?? 0),
+                };
+                setLastQuizResult(verdict);
+                if (typeof window !== "undefined" && sessionId) {
+                  sessionStorage.setItem(
+                    `cf_last_quiz_result_${sessionId}`,
+                    JSON.stringify(verdict),
+                  );
+                }
+              }
+
+              resolve(result);
             }
           },
         );
@@ -268,6 +367,16 @@ export function useMentiRealtime({
     ],
   );
 
+  // Host Action: (re)start the timer on the current quiz question
+  const startQuestion = useCallback(() => {
+    if (!socketRef.current || !isHost) return;
+    socketRef.current.emit("start_question", {}, (response: any) => {
+      if (response?.error) {
+        console.error("[Realtime] Failed to start question:", response.error);
+      }
+    });
+  }, [isHost]);
+
   return {
     socket,
     connectionStatus,
@@ -275,10 +384,13 @@ export function useMentiRealtime({
     slideAnalytics,
     slideAnalyticsMap,
     submittedSlideIds,
+    serverOffsetMs,
+    lastQuizResult,
     error,
     changeSlide,
     toggleVotingLock,
     changeSessionStatus,
+    startQuestion,
     submitResponse,
   };
 }

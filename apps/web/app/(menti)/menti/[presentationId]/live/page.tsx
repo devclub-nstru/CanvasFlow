@@ -88,7 +88,13 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   }, [presentationId, token, sessionId]);
 
   // Realtime Participant Store
-  const { sessionState, submitResponse, submittedSlideIds } = useMentiRealtime({
+  const {
+    sessionState,
+    submitResponse,
+    submittedSlideIds,
+    serverOffsetMs,
+    lastQuizResult,
+  } = useMentiRealtime({
     sessionId,
     token,
     isHost: false,
@@ -129,6 +135,9 @@ export default function MentiLiveAudiencePage({ params }: Props) {
       participantCount={sessionState?.participantCount ?? presentation?.participantCount ?? 1}
       submittedSlideIds={submittedSlideIds}
       onSubmitAnswer={submitResponse}
+      questionStartedAt={sessionState?.session?.questionStartedAt ?? null}
+      serverOffsetMs={serverOffsetMs}
+      lastQuizResult={lastQuizResult}
     />
   );
 }

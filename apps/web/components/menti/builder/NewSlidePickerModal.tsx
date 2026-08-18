@@ -7,6 +7,8 @@ import {
   Cloud,
   Star,
   Sparkles,
+  ListOrdered,
+  Trophy,
 } from "lucide-react";
 import { MentiQuestionType } from "~/lib/menti";
 
@@ -45,6 +47,20 @@ const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
     desc: "Audience rates statements on a 1–5 spectrum with live computed average score calculations and trends.",
     badge: "1–5 Rating Spectrum",
     icon: <Star className="w-6 h-6 text-amber-500 fill-amber-500" />,
+  },
+  {
+    type: "RANKING",
+    title: "Ranking",
+    desc: "Audience drags items into their preferred order. Results are scored with a Borda count to reveal the consensus ranking and average position.",
+    badge: "Ordered Preference",
+    icon: <ListOrdered className="w-6 h-6 text-emerald-600" />,
+  },
+  {
+    type: "QUIZ",
+    title: "Quiz / Competition",
+    desc: "Timed question with a right answer. A countdown opens voting, the fastest correct answers score the most, and points add up into a live leaderboard.",
+    badge: "Timed & Scored",
+    icon: <Trophy className="w-6 h-6 text-amber-600" />,
   },
   {
     type: "CONTENT",

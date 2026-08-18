@@ -1,9 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MentiPresentation } from "~/lib/menti";
 
-export function useMentiPresenter(presentation: MentiPresentation) {
+interface PresenterOptions {
+  /**
+   * Consulted immediately before every forward move. Return false to refuse.
+   *
+   * Read through a ref at call time rather than captured, so the caller can
+   * derive it from state that only exists after this hook has run (the active
+   * slide, for instance).
+   */
+  canAdvance?: () => boolean;
+}
+
+export function useMentiPresenter(
+  presentation: MentiPresentation,
+  options?: PresenterOptions,
+) {
   // Step 0 is the Intro Joining Screen. Steps 1..totalQuestions are question slides.
   const [currentStep, setCurrentStep] = useState(0);
   const slides = presentation.slides;
@@ -27,7 +41,12 @@ export function useMentiPresenter(presentation: MentiPresentation) {
     }
   }, [currentStep, isIntro, currentSlide?.responseSettings?.isVotingLocked]);
 
+  const canAdvanceRef = useRef(options?.canAdvance);
+  canAdvanceRef.current = options?.canAdvance;
+
   const nextStep = useCallback(() => {
+    // Gating here rather than at the button covers the keyboard shortcuts too.
+    if (canAdvanceRef.current?.() === false) return;
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
   }, [totalSteps]);
 

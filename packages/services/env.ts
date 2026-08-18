@@ -5,9 +5,10 @@ const envSchema = z.object({
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
+  // See packages/database/env.ts — skips validation, never discards real values.
   if (env.SKIP_ENV_VALIDATION) {
     return {
-      JWT_SECRET: "",
+      JWT_SECRET: env.JWT_SECRET ?? "",
     };
   }
   const safeParseResult = envSchema.safeParse(env);

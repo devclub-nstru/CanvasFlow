@@ -22,6 +22,7 @@ import { VerticalScale } from "~/components/Scale";
 import { motion, AnimatePresence } from "motion/react";
 
 import { useMentiRealtime } from "~/hooks/useMentiRealtime";
+import { readTiming, roundClosesAt, timerForDisplayedSlide } from "~/lib/quiz";
 
 interface Props {
   presentation: MentiPresentation;
@@ -34,6 +35,14 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showConfirmEndModal, setShowConfirmEndModal] = useState(false);
   const [headerCopied, setHeaderCopied] = useState(false);
+
+  /*
+   * Forward navigation is refused while a quiz round is running, so the host
+   * cannot skip past a question participants are still answering. Held in a ref
+   * because the flag derives from the active slide, which only exists after
+   * useMentiPresenter has run.
+   */
+  const forwardLockedRef = useRef(false);
 
   const {
     isIntro,
@@ -48,13 +57,15 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     prevStep,
     toggleJoinCode,
     toggleLock,
-  } = useMentiPresenter(presentation);
+  } = useMentiPresenter(presentation, {
+    canAdvance: () => !forwardLockedRef.current,
+  });
 
   // Connect Host to WebSocket store
   const {
     sessionState,
-    slideAnalytics,
     slideAnalyticsMap,
+    serverOffsetMs,
     changeSlide,
     changeSessionStatus,
   } = useMentiRealtime({
@@ -79,17 +90,81 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     setTimeout(() => setHeaderCopied(false), 2000);
   };
 
+  // Track whether the session has ever gone live in this page load so that
+  // navigating back to the intro screen doesn't revert participants to "waiting".
+  const hasGoneLiveRef = useRef(false);
+
   // Sync active slide change with WebSocket server when host navigates
   useEffect(() => {
     if (!isIntro && currentSlide?.id && sessionId) {
+      hasGoneLiveRef.current = true;
       changeSlide(currentSlide.id);
       changeSessionStatus("live");
-    } else if (isIntro && sessionId) {
+    } else if (isIntro && sessionId && !hasGoneLiveRef.current) {
+      // Only send "waiting" before the session has started — never regress from live.
       changeSessionStatus("waiting");
     }
   }, [currentStep, isIntro, currentSlide?.id, sessionId, changeSlide, changeSessionStatus]);
 
   const participantCount = sessionState?.participantCount ?? presentation.participantCount ?? 0;
+
+  /*
+   * Only trust the question timer when the server agrees which slide is active.
+   *
+   * Navigation is optimistic locally, so for a moment after advancing, the
+   * displayed slide is the new one while `questionStartedAt` still describes the
+   * PREVIOUS question. If that one had finished, the new quiz slide would
+   * compute as "ended" and flash its correct answer on the big screen. Treating
+   * a mismatch as "not started" closes that window.
+   */
+  const activeQuestionStartedAt = timerForDisplayedSlide(
+    sessionState?.session?.currentSlideId,
+    currentSlide?.id,
+    sessionState?.session?.questionStartedAt,
+  );
+
+  /*
+   * Whether a quiz round is still accepting answers.
+   *
+   * Derived with a single timeout at the round's end rather than a ticking
+   * clock — polling here would re-render the whole presenter every 100ms and
+   * fight the animations on screen.
+   */
+  const [isQuizRoundActive, setIsQuizRoundActive] = useState(false);
+
+  useEffect(() => {
+    if (currentSlide?.type !== "QUIZ" || !activeQuestionStartedAt) {
+      setIsQuizRoundActive(false);
+      return;
+    }
+
+    const timing = readTiming(currentSlide.responseSettings);
+    const closesAt = roundClosesAt(activeQuestionStartedAt, timing);
+    if (closesAt === null) {
+      setIsQuizRoundActive(false);
+      return;
+    }
+
+    const msLeft = closesAt - (Date.now() + serverOffsetMs);
+
+    if (msLeft <= 0) {
+      setIsQuizRoundActive(false);
+      return;
+    }
+
+    setIsQuizRoundActive(true);
+    const timer = setTimeout(() => setIsQuizRoundActive(false), msLeft);
+    return () => clearTimeout(timer);
+  }, [
+    currentSlide?.type,
+    currentSlide?.responseSettings,
+    activeQuestionStartedAt,
+    serverOffsetMs,
+  ]);
+
+  // Written during render on purpose: it is only read from event handlers, and
+  // an effect would leave a frame in which the lock had not taken hold yet.
+  forwardLockedRef.current = isQuizRoundActive;
 
   const [hideResults, setHideResults] = useState(
     currentSlide?.responseSettings?.hideResultsFromAudience ?? false,
@@ -283,10 +358,15 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                 {currentSlide && (
                   <SlideQuestionViewer
                     slide={currentSlide}
-                    analytics={slideAnalyticsMap[currentSlide.id] || slideAnalytics}
+                    // Keyed strictly by slide: the shared `slideAnalytics` value
+                    // holds whichever payload arrived last, which could belong
+                    // to a different slide and drive this one's animation.
+                    analytics={slideAnalyticsMap[currentSlide.id]}
                     isPreview={false}
                     hideResults={hideResults}
                     showAsPercentage={showAsPercentage}
+                    questionStartedAt={activeQuestionStartedAt}
+                    serverOffsetMs={serverOffsetMs}
                   />
                 )}
               </motion.div>
@@ -308,6 +388,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         showAsPercentage={showAsPercentage}
         onNext={nextStep}
         onPrev={prevStep}
+        canGoNext={!isQuizRoundActive}
         onEndPresentation={handleEndPresentation}
         onToggleJoinCode={toggleJoinCode}
         onToggleLock={toggleLock}

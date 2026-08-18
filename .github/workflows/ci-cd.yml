@@ -65,13 +65,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           rm -rf deploy canvasflow-deploy.tar.gz
-          mkdir -p deploy/apps/api deploy/apps/worker deploy/packages/database
+          mkdir -p deploy/apps/api deploy/apps/worker deploy/apps/menti deploy/packages/database
 
           cp package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs docker-compose.prod.yml deploy/
           cp apps/api/package.json deploy/apps/api/
           cp -R apps/api/dist deploy/apps/api/dist
           cp apps/worker/package.json deploy/apps/worker/
           cp -R apps/worker/dist deploy/apps/worker/dist
+          cp apps/menti/package.json deploy/apps/menti/
+          cp -R apps/menti/dist deploy/apps/menti/dist
           mkdir -p deploy/apps/web
           cp apps/web/package.json deploy/apps/web/
           cp packages/database/package.json packages/database/migrate.mjs deploy/packages/database/
@@ -137,9 +139,9 @@ jobs:
 
             cd "$DEPLOY_DIR"
             corepack enable
-            pnpm install --prod --frozen-lockfile --filter "@repo/api..." --filter "@repo/worker..."
+            pnpm install --prod --frozen-lockfile --filter "@repo/api..." --filter "@repo/worker..." --filter "@repo/menti..."
 
-            docker compose -f docker-compose.prod.yml up -d --wait postgres redis
+            docker compose -f docker-compose.prod.yml up -d --wait postgres redis mongodb
 
             set -a
             . "$DEPLOY_DIR/.env"

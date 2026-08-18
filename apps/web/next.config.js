@@ -24,8 +24,15 @@ function resolveApiOrigins() {
     .split(",")
     .map((value) => safeOrigin(value.trim()))
     .filter(Boolean);
+  // The menti (live quiz/poll) service is a separate origin the browser opens
+  // both fetch() and Socket.io connections to. CSP matches a wss:// request
+  // against an https:// source expression on the same origin (schemes are
+  // upgraded for comparison per the Fetch/CSP spec), so listing the plain
+  // https origin here also authorizes the WebSocket upgrade — no separate
+  // wss:// entry is needed.
+  const menti = safeOrigin(process.env.NEXT_PUBLIC_MENTI_API_URL);
 
-  return Array.from(new Set([primary, ...extras]));
+  return Array.from(new Set([primary, ...extras, ...(menti ? [menti] : [])]));
 }
 
 const API_ORIGINS = resolveApiOrigins();
