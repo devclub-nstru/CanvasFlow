@@ -99,7 +99,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = DEFAULT_
       if (payload.responseSettings) {
         payload.quizSettings = {
           timeLimitSeconds: payload.responseSettings.timeToRespondSeconds || 30,
-          maxPoints: 1000,
+          maxPoints: 100,
           gradingScheme: payload.responseSettings.scoreAllocation === "fixed" ? "answer_based" : "time_based",
         };
       }
@@ -167,7 +167,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = DEFAULT_
         type === "QUIZ"
           ? {
               timeLimitSeconds: 30,
-              maxPoints: 1000,
+              maxPoints: 100,
               gradingScheme: "time_based",
             }
           : undefined,
@@ -177,7 +177,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = DEFAULT_
         isVotingLocked: false,
         timeToRespondSeconds: type === "QUIZ" ? 30 : undefined,
         scoreAllocation: type === "QUIZ" ? "time_based" : undefined,
-        pointsPerQuestion: type === "QUIZ" ? 1000 : undefined,
+        pointsPerQuestion: type === "QUIZ" ? 100 : undefined,
         addLeaderboard: type === "QUIZ" ? true : undefined,
       },
       designSettings: {

@@ -136,7 +136,7 @@ export function QuizEditor({
     const updatedResponseSettings = { ...slide.responseSettings, ...patch };
     const updatedQuizSettings = {
       timeLimitSeconds: updatedResponseSettings.timeToRespondSeconds || 30,
-      maxPoints: 1000,
+      maxPoints: 100,
       gradingScheme: (updatedResponseSettings.scoreAllocation === "fixed"
         ? "answer_based"
         : "time_based") as "answer_based" | "time_based",

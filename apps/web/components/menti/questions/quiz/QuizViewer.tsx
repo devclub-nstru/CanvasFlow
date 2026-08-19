@@ -245,7 +245,7 @@ export function QuizViewer({
                         mass: 0.85,
                         delay: isHidden ? 0 : globalIndex * 0.04,
                       }}
-                      className={`w-full relative rounded-t-[16px] sm:rounded-t-[22px] transition-all duration-300 ${
+                      className={`w-full relative rounded-t-[16px] sm:rounded-t-[22px] ${
                         isRevealed && isCorrect
                           ? "ring-4 ring-emerald-500/50 shadow-lg border-2 border-emerald-500"
                           : ""
