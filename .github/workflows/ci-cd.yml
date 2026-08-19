@@ -17,7 +17,6 @@ permissions:
 concurrency:
   group: canvasflow-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'production' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   verify:
     name: Verify
