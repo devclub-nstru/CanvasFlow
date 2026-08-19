@@ -1,4 +1,10 @@
-export type MentiQuestionType = "BAR_GRAPH" | "WORD_CLOUD" | "SCALES" | "CONTENT";
+export type MentiQuestionType =
+  | "BAR_GRAPH"
+  | "WORD_CLOUD"
+  | "SCALES"
+  | "CONTENT"
+  | "QUIZ"
+  | "LEADERBOARD";
 
 export type MentiVisualizationType = "BAR" | "DONUT" | "PIE" | "BUBBLES";
 
@@ -8,6 +14,12 @@ export interface MentiOption {
   isCorrect?: boolean;
   color?: string;
   voteCount?: number;
+}
+
+export interface MentiQuizSettings {
+  timeLimitSeconds?: number;
+  maxPoints?: number;
+  gradingScheme?: "answer_based" | "time_based";
 }
 
 export interface MentiSlideDesignSettings {
@@ -58,6 +70,7 @@ export interface MentiSlide {
   description?: string | null;
   visualizationType?: MentiVisualizationType;
   options: MentiOption[];
+  quizSettings?: MentiQuizSettings;
   responseSettings: MentiSlideResponseSettings;
   designSettings: MentiSlideDesignSettings;
   position: number;
@@ -84,4 +97,16 @@ export interface MentiParticipantResponse {
   participantName?: string;
   value: string | string[] | number | Record<string, unknown>;
   submittedAt: string;
+}
+
+export interface MentiLeaderboardParticipant {
+  participantId: string;
+  nickname: string;
+  score: number;
+  rank: number;
+}
+
+export interface MentiLeaderboardSnapshot {
+  sessionId: string;
+  topParticipants: MentiLeaderboardParticipant[];
 }
