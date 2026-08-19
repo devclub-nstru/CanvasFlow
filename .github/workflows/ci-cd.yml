@@ -77,60 +77,47 @@ jobs:
           script: |
             set -euo pipefail
 
-            DEPLOY_DIR="$HOME/projects/CanvasFlow"
+            DEPLOY_DIR="$HOME/projects/canvasflow"
 
             cd "$DEPLOY_DIR"
 
             echo "==> Updating source"
-
             git fetch origin main
             git reset --hard origin/main
 
             echo "==> Updating environment"
-
             umask 077
             printf '%s\n' "$ENV_FILE_CONTENT" > .env
 
-            echo "==> Validating Compose configuration"
+            echo "==> Running setup"
+            chmod +x setup.sh
+            ./setup.sh
 
+            echo "==> Validating Compose configuration"
             docker compose -f docker-compose.prod.yml config -q
 
             echo "==> Starting infrastructure"
-
-            docker compose -f docker-compose.prod.yml \
-              up -d postgres redis
+            docker compose -f docker-compose.prod.yml up -d postgres redis
 
             echo "==> Waiting for infrastructure"
+            docker compose -f docker-compose.prod.yml up -d --wait postgres redis
 
-            docker compose -f docker-compose.prod.yml \
-              up -d --wait postgres redis
-
-            echo "==> Building application images"
-
-            docker compose -f docker-compose.prod.yml \
-              build api worker web migrate
+            echo "==> Building Docker images"
+            docker compose -f docker-compose.prod.yml build api worker web migrate
 
             echo "==> Running database migrations"
-
-            docker compose -f docker-compose.prod.yml \
-              run --rm migrate
+            docker compose -f docker-compose.prod.yml run --rm migrate
 
             echo "==> Starting application"
-
-            docker compose -f docker-compose.prod.yml \
-              up -d api worker web
+            docker compose -f docker-compose.prod.yml up -d api worker web
 
             echo "==> Waiting for application health"
-
-            docker compose -f docker-compose.prod.yml \
-              up -d --wait api worker web
+            docker compose -f docker-compose.prod.yml up -d --wait api worker web
 
             echo "==> Deployment status"
-
             docker compose -f docker-compose.prod.yml ps
 
-            echo "==> Cleaning unused Docker images"
-
+            echo "==> Cleaning unused images"
             docker image prune -f
 
             echo "==> Deployment complete"
