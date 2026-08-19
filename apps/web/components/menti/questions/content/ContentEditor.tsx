@@ -86,7 +86,7 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
             <img
               src={contentImageUrl}
               alt={title || "PowerPoint Slide"}
-              className="w-full h-full object-contain max-h-full max-w-full drop-shadow-sm select-none"
+              className="w-full h-full object-fill drop-shadow-sm select-none"
               loading="eager"
             />
           </div>

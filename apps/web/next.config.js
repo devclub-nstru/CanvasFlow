@@ -41,7 +41,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE}`,
+  `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE} https://*.r2.dev`,
   "font-src 'self' data:",
   `connect-src 'self' ${CONNECT_SRC_API_ORIGINS} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
   "worker-src 'self' blob:",
@@ -81,6 +81,11 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "ik.imagekit.io",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.r2.dev",
         pathname: "/**",
       },
     ],

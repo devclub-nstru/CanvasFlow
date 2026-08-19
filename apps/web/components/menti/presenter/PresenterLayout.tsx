@@ -283,7 +283,9 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.02 }}
                 transition={{ duration: 0.2 }}
-                className="w-full h-full flex items-center justify-center p-6 sm:p-10"
+                className={`w-full h-full flex items-center justify-center ${
+                  currentSlide?.designSettings?.contentImageUrl ? "p-0" : "p-6 sm:p-10"
+                }`}
               >
                 {currentSlide && (
                   <SlideQuestionViewer

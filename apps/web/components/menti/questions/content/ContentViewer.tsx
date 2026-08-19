@@ -36,7 +36,7 @@ export function ContentViewer({ slide, isPreview }: Props) {
         <img
           src={contentImageUrl}
           alt={title || "PowerPoint Slide"}
-          className="w-full h-full object-contain max-h-full max-w-full drop-shadow-xs select-none pointer-events-none"
+          className="w-full h-full object-fill drop-shadow-xs select-none pointer-events-none"
           loading="eager"
         />
       </section>

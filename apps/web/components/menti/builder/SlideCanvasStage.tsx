@@ -40,7 +40,9 @@ export function SlideCanvasStage({
       {/* Active 16:9 Presentation Stage */}
       <div
         className={`relative flex flex-col items-center justify-center w-full aspect-[16/9] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
-          isInspectorOpen
+          currentSlide.designSettings?.contentImageUrl
+            ? "p-0"
+            : isInspectorOpen
             ? "max-w-5xl 2xl:max-w-6xl max-h-[82vh] p-6 sm:p-10"
             : "max-w-6xl 2xl:max-w-7xl max-h-[86vh] p-8 sm:p-12"
         }`}

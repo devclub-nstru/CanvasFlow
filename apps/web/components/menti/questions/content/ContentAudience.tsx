@@ -36,7 +36,7 @@ export function ContentAudience({ slide }: Props) {
           <img
             src={contentImageUrl}
             alt={title || "PowerPoint Slide"}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-fill"
             loading="eager"
           />
         </div>
