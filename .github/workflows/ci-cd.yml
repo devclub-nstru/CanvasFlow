@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 30
 
     concurrency:
-      group: canvasflow-production
+      group: canvasflow-deploy-production
       cancel-in-progress: false
 
     steps:
