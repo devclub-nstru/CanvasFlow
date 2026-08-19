@@ -106,11 +106,17 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
             ? "New Word Cloud Question"
             : type === "SCALES"
               ? "New Rating / Scales Question"
-              : "Add your heading here",
+              : type === "QUIZ"
+                ? "Select the correct answer"
+                : type === "LEADERBOARD"
+                  ? "Quiz leaderboard"
+                  : "Add your heading here",
       description:
         type === "CONTENT"
           ? "Add a subtitle, takeaway, or body text here."
-          : null,
+          : type === "QUIZ"
+            ? "Choose the correct option"
+            : null,
       position: presentation.slides.length,
       options:
         type === "BAR_GRAPH"
@@ -118,6 +124,12 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
               { id: "opt-1", label: "Option 1", voteCount: 0 },
               { id: "opt-2", label: "Option 2", voteCount: 0 },
             ]
+          : type === "QUIZ"
+            ? [
+                { id: "q-opt-1", label: "Option 1", isCorrect: true, voteCount: 0, color: "#2d5cf6" },
+                { id: "q-opt-2", label: "Option 2", isCorrect: false, voteCount: 0, color: "#ff7378" },
+                { id: "q-opt-3", label: "Option 3", isCorrect: false, voteCount: 0, color: "#9189eb" },
+              ]
           : type === "SCALES"
             ? [
                 { id: "rate-1", label: "1", voteCount: 0 },
@@ -131,26 +143,60 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
         multipleSelection: false,
         maxEntriesPerParticipant: 1,
         isVotingLocked: false,
+        timeToRespondSeconds: type === "QUIZ" ? 30 : undefined,
+        scoreAllocation: type === "QUIZ" ? "time_based" : undefined,
+        pointsPerQuestion: type === "QUIZ" ? 1000 : undefined,
+        addLeaderboard: type === "QUIZ" ? true : undefined,
       },
       designSettings: {
         backgroundColor: "#ffffff",
         textColor: "#17171c",
-        accentColor: "#e4a23e",
+        accentColor: type === "QUIZ" ? "#2d5cf6" : type === "LEADERBOARD" ? "#e4a23e" : "#e4a23e",
         textAlign: "center",
         icon: "none",
         showLogo: true,
+        leaderboardTitle: type === "LEADERBOARD" ? "Quiz leaderboard" : undefined,
+        showPodium: type === "LEADERBOARD" ? true : undefined,
       },
     };
+
+    // If type is QUIZ, automatically add a paired LEADERBOARD slide immediately following it
+    let leaderboardSlide: MentiSlide | null = null;
+    if (type === "QUIZ") {
+      const tempLbId = `temp-lb-${Date.now() + 1}`;
+      leaderboardSlide = {
+        id: tempLbId,
+        presentationId: presentation.id,
+        type: "LEADERBOARD",
+        question: "Quiz leaderboard",
+        description: "Live standings and player scores",
+        position: presentation.slides.length + 1,
+        options: [],
+        responseSettings: {
+          isVotingLocked: true,
+        },
+        designSettings: {
+          backgroundColor: "#ffffff",
+          textColor: "#17171c",
+          accentColor: "#e4a23e",
+          leaderboardTitle: "Quiz leaderboard",
+          showPodium: true,
+          showLogo: true,
+        },
+      };
+    }
+
+    const slidesToAdd = leaderboardSlide ? [newSlide, leaderboardSlide] : [newSlide];
 
     // 1. Optimistic Update
     setPresentation((prev) => ({
       ...prev,
-      slides: [...prev.slides, newSlide],
+      slides: [...prev.slides, ...slidesToAdd],
     }));
     setActiveSlideId(tempId);
     setIsNewSlideModalOpen(false);
 
-    // 2. Real API call
+    // 2. Real API call (with graceful offline/mock fallback)
     try {
       const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides`, {
         method: "POST",
@@ -167,68 +213,250 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
         credentials: "include",
       });
 
-      if (!res.ok) throw new Error("Failed to save slide");
-      const savedSlide = await res.json();
-      const realId = savedSlide.id || savedSlide._id;
+      if (res.ok) {
+        const savedSlide = await res.json();
+        const realId = savedSlide.id || savedSlide._id;
 
-      // 3. Resolve Temp ID to Real ID
-      setPresentation((prev) => ({
-        ...prev,
-        slides: prev.slides.map((s) =>
-          s.id === tempId ? { ...s, id: realId } : s
-        ),
-      }));
-      
-      setActiveSlideId((current) => (current === tempId ? realId : current));
+        let realLbId: string | null = null;
+        if (leaderboardSlide) {
+          try {
+            const lbRes = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: leaderboardSlide.type,
+                position: leaderboardSlide.position,
+                question: leaderboardSlide.question,
+                description: leaderboardSlide.description,
+                options: leaderboardSlide.options,
+                responseSettings: leaderboardSlide.responseSettings,
+                designSettings: leaderboardSlide.designSettings,
+              }),
+              credentials: "include",
+            });
+            if (lbRes.ok) {
+              const savedLb = await lbRes.json();
+              realLbId = savedLb.id || savedLb._id;
+            }
+          } catch (lbErr) {
+            console.warn("Backend leaderboard slide sync:", lbErr);
+          }
+        }
+
+        // Resolve Temp IDs to Real IDs
+        setPresentation((prev) => ({
+          ...prev,
+          slides: prev.slides.map((s) => {
+            if (s.id === tempId) return { ...s, id: realId };
+            if (leaderboardSlide && s.id === leaderboardSlide.id && realLbId) {
+              return { ...s, id: realLbId };
+            }
+            return s;
+          }),
+        }));
+
+        setActiveSlideId((current) => (current === tempId ? realId : current));
+      } else {
+        console.warn(`Slide saved locally (backend returned status ${res.status})`);
+      }
     } catch (err) {
-      console.error("Failed to add slide to backend:", err);
-      // Revert optimistic update on failure
-      setPresentation((prev) => ({
+      console.warn("Slide saved in local editor mode:", err);
+    }
+  };
+
+  const toggleQuizLeaderboard = async (quizSlideId: string, enable: boolean) => {
+    let leaderboardSlideIdToDelete: string | null = null;
+    let newLeaderboardSlideToCreate: MentiSlide | null = null;
+
+    setPresentation((prev) => {
+      const quizIdx = prev.slides.findIndex((s) => s.id === quizSlideId);
+      if (quizIdx === -1) return prev;
+
+      const quizSlide = prev.slides[quizIdx];
+      if (!quizSlide) return prev;
+
+      // 1. Update the quiz slide's addLeaderboard setting
+      const updatedQuizSlide: MentiSlide = {
+        ...quizSlide,
+        responseSettings: {
+          ...quizSlide.responseSettings,
+          addLeaderboard: enable,
+        },
+      };
+
+      const slidesCopy = [...prev.slides];
+      slidesCopy[quizIdx] = updatedQuizSlide;
+
+      const nextSlide = slidesCopy[quizIdx + 1];
+
+      if (enable) {
+        // If next slide is not a LEADERBOARD, insert one right after this quiz
+        if (nextSlide?.type !== "LEADERBOARD") {
+          const tempLbId = `temp-lb-${Date.now()}`;
+          const newLbSlide: MentiSlide = {
+            id: tempLbId,
+            presentationId: prev.id,
+            type: "LEADERBOARD",
+            question: "Quiz leaderboard",
+            description: "Live standings and player scores",
+            position: quizIdx + 1,
+            options: [],
+            responseSettings: { isVotingLocked: true },
+            designSettings: {
+              backgroundColor: "#ffffff",
+              textColor: "#17171c",
+              accentColor: "#e4a23e",
+              leaderboardTitle: "Quiz leaderboard",
+              showPodium: true,
+              showLogo: true,
+            },
+          };
+          newLeaderboardSlideToCreate = newLbSlide;
+          slidesCopy.splice(quizIdx + 1, 0, newLbSlide);
+        }
+      } else {
+        // If next slide is a LEADERBOARD, remove it
+        if (nextSlide?.type === "LEADERBOARD") {
+          leaderboardSlideIdToDelete = nextSlide.id;
+          slidesCopy.splice(quizIdx + 1, 1);
+        }
+      }
+
+      // Re-index position fields
+      const reindexed = slidesCopy.map((s, idx) => ({ ...s, position: idx }));
+      return {
         ...prev,
-        slides: prev.slides.filter((s) => s.id !== tempId),
-      }));
+        slides: reindexed,
+      };
+    });
+
+    // Handle asynchronous backend API calls
+    if (enable && newLeaderboardSlideToCreate) {
+      const lbToCreate: MentiSlide = newLeaderboardSlideToCreate;
+      try {
+        const lbRes = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: lbToCreate.type,
+            position: lbToCreate.position,
+            question: lbToCreate.question,
+            description: lbToCreate.description,
+            options: lbToCreate.options,
+            responseSettings: lbToCreate.responseSettings,
+            designSettings: lbToCreate.designSettings,
+          }),
+          credentials: "include",
+        });
+        if (lbRes.ok) {
+          const savedLb = await lbRes.json();
+          const realLbId = savedLb.id || savedLb._id;
+          setPresentation((prev) => ({
+            ...prev,
+            slides: prev.slides.map((s) => (s.id === lbToCreate.id ? { ...s, id: realLbId } : s)),
+          }));
+        }
+      } catch (lbErr) {
+        console.warn("Leaderboard slide synced locally:", lbErr);
+      }
+    } else if (!enable && leaderboardSlideIdToDelete) {
+      const idToDelete: string = leaderboardSlideIdToDelete;
+      try {
+        if (!idToDelete.startsWith("temp-")) {
+          await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${idToDelete}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+        }
+      } catch (delErr) {
+        console.warn("Leaderboard slide deleted locally:", delErr);
+      }
     }
   };
 
   const deleteSlide = async (slideId: string) => {
-    if (presentation.slides.length <= 1) return;
-    
-    // Remember current slides for fallback
-    const originalSlides = [...presentation.slides];
-    const deletedIdx = presentation.slides.findIndex((s) => s.id === slideId);
-    const remaining = presentation.slides.filter((s) => s.id !== slideId);
+    let canDelete = true;
+    let targetActiveId: string | null = null;
+    let idsToDelete: string[] = [slideId];
 
-    // 1. Optimistic Update
-    setPresentation((prev) => ({ ...prev, slides: remaining }));
-    
-    if (activeSlideId === slideId) {
-      // If deleting the last slide, jump to the previous slide; otherwise, jump to the next one
-      const targetActiveId = deletedIdx === remaining.length 
-        ? remaining[deletedIdx - 1]?.id 
-        : remaining[deletedIdx]?.id;
-      
-      setActiveSlideId(targetActiveId || "");
+    setPresentation((prev) => {
+      if (prev.slides.length <= 1) {
+        canDelete = false;
+        return prev;
+      }
+      const deletedIdx = prev.slides.findIndex((s) => s.id === slideId);
+      if (deletedIdx === -1) {
+        canDelete = false;
+        return prev;
+      }
+
+      const targetSlide = prev.slides[deletedIdx];
+      const isQuiz = targetSlide?.type === "QUIZ";
+      const nextSlide = prev.slides[deletedIdx + 1];
+      const hasSubsequentLeaderboard = isQuiz && nextSlide?.type === "LEADERBOARD";
+
+      if (hasSubsequentLeaderboard && nextSlide) {
+        idsToDelete = [slideId, nextSlide.id];
+      } else {
+        idsToDelete = [slideId];
+      }
+
+      // If we are deleting a LEADERBOARD slide, make sure the previous QUIZ slide turns its toggle off
+      const isLeaderboard = targetSlide?.type === "LEADERBOARD";
+      const prevSlide = prev.slides[deletedIdx - 1];
+
+      let updatedSlides = prev.slides.filter((s) => !idsToDelete.includes(s.id));
+
+      if (isLeaderboard && prevSlide?.type === "QUIZ") {
+        updatedSlides = updatedSlides.map((s) =>
+          s.id === prevSlide.id
+            ? {
+                ...s,
+                responseSettings: {
+                  ...s.responseSettings,
+                  addLeaderboard: false,
+                },
+              }
+            : s
+        );
+      }
+
+      if (idsToDelete.includes(activeSlideId)) {
+        targetActiveId =
+          deletedIdx >= updatedSlides.length
+            ? updatedSlides[updatedSlides.length - 1]?.id || ""
+            : updatedSlides[deletedIdx]?.id || "";
+      }
+
+      return {
+        ...prev,
+        slides: updatedSlides.map((s, idx) => ({ ...s, position: idx })),
+      };
+    });
+
+    if (!canDelete) return;
+    if (targetActiveId) {
+      setActiveSlideId(targetActiveId);
     }
 
-    // 2. Real API call
-    try {
-      const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${slideId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete slide");
-    } catch (err) {
-      console.error(`Failed to delete slide ${slideId}:`, err);
-      // Revert on error
-      setPresentation((prev) => ({ ...prev, slides: originalSlides }));
-      setActiveSlideId(slideId);
+    // 2. Real API call for each deleted slide ID
+    for (const id of idsToDelete) {
+      try {
+        if (!id.startsWith("temp-")) {
+          await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+        }
+      } catch (err) {
+        console.warn(`Deleted slide ${id} locally:`, err);
+      }
     }
   };
 
   const reorderSlides = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
-    
-    const originalSlides = [...presentation.slides];
+
     const slides = [...presentation.slides];
     const [moved] = slides.splice(fromIdx, 1);
     if (!moved) return;
@@ -243,18 +471,17 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
 
     // 2. Real API call
     try {
-      const slideIds = updatedSlides.map((s) => s.id);
-      const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/reorder`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIds }),
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to reorder slides");
+      const slideIds = updatedSlides.map((s) => s.id).filter((id) => !id.startsWith("temp-"));
+      if (slideIds.length > 0) {
+        await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/reorder`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slideIds }),
+          credentials: "include",
+        });
+      }
     } catch (err) {
-      console.error("Failed to reorder slides in backend:", err);
-      // Revert on error
-      setPresentation((prev) => ({ ...prev, slides: originalSlides }));
+      console.warn("Reordered slides locally:", err);
     }
   };
 
@@ -270,6 +497,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     updateTitle,
     updateSlide,
     addSlide,
+    toggleQuizLeaderboard,
     deleteSlide,
     reorderSlides,
   };

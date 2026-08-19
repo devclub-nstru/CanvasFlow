@@ -12,6 +12,11 @@ import {
   Palette,
   X,
   Sliders,
+  HelpCircle,
+  Trophy,
+  Cloud,
+  Star,
+  Sparkles,
 } from "lucide-react";
 
 interface Props {
@@ -20,13 +25,25 @@ interface Props {
   onToggleOpen: () => void;
   onChange: (updated: Partial<MentiSlide>) => void;
   onOpenTypePicker: () => void;
+  onToggleQuizLeaderboard?: (quizSlideId: string, enable: boolean) => void;
 }
 
 const QUESTION_TYPE_LABELS: Record<MentiQuestionType, string> = {
+  QUIZ: "Quiz (Select Answer)",
+  LEADERBOARD: "Quiz Leaderboard",
   BAR_GRAPH: "Multiple Choice / Bar Graph",
   WORD_CLOUD: "Word Cloud (Text)",
   SCALES: "Scales / Rating",
   CONTENT: "Blank / Text Slide",
+};
+
+const QUESTION_TYPE_ICONS: Record<MentiQuestionType, React.ReactNode> = {
+  QUIZ: <HelpCircle className="w-4 h-4 text-emerald-600" />,
+  LEADERBOARD: <Trophy className="w-4 h-4 text-amber-500" />,
+  BAR_GRAPH: <BarChart2 className="w-4 h-4 text-(--cf-orange)" />,
+  WORD_CLOUD: <Cloud className="w-4 h-4 text-rose-600" />,
+  SCALES: <Star className="w-4 h-4 text-amber-500 fill-amber-500" />,
+  CONTENT: <Sparkles className="w-4 h-4 text-indigo-600" />,
 };
 
 export function SlideInspectorPanel({
@@ -35,6 +52,7 @@ export function SlideInspectorPanel({
   onToggleOpen,
   onChange,
   onOpenTypePicker,
+  onToggleQuizLeaderboard,
 }: Props) {
   if (!isOpen) {
     return (
@@ -83,11 +101,11 @@ export function SlideInspectorPanel({
             className="cf-panel w-full flex items-center justify-between p-2.5 bg-white rounded-(--hex-radius) hover:border-(--cf-ink) text-left transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="p-1 bg-blue-100 text-blue-700 rounded">
-                <BarChart2 className="w-4 h-4" />
+              <div className="p-1 bg-neutral-100 rounded">
+                {QUESTION_TYPE_ICONS[slide.type] || <BarChart2 className="w-4 h-4" />}
               </div>
               <span className="text-xs font-bold text-(--cf-ink)">
-                {QUESTION_TYPE_LABELS[slide.type]}
+                {QUESTION_TYPE_LABELS[slide.type] || "Select Type"}
               </span>
             </div>
             <ChevronDown className="w-4 h-4 text-(--cf-ink-soft)" />
@@ -96,7 +114,11 @@ export function SlideInspectorPanel({
 
         {/* 2. Question Form Editor (Delegated to specific question type) */}
         <div className="pt-2 border-t border-(--cf-line)">
-          <SlideQuestionEditor slide={slide} onChange={onChange} />
+          <SlideQuestionEditor
+            slide={slide}
+            onChange={onChange}
+            onToggleQuizLeaderboard={onToggleQuizLeaderboard}
+          />
         </div>
 
         {/* 3. Design & Colors */}

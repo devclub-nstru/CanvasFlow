@@ -37,6 +37,10 @@ export interface MentiSlideDesignSettings {
   eyebrow?: string;
   icon?: "none" | "sparkles" | "star" | "lightbulb" | "heart" | "info" | "quote";
   layoutStyle?: "statement" | "header_body" | "quote";
+
+  // Leaderboard specific design settings
+  leaderboardTitle?: string;
+  showPodium?: boolean;
 }
 
 export interface MentiSlideResponseSettings {
@@ -55,6 +59,13 @@ export interface MentiSlideResponseSettings {
   maxRating?: number;
   ratingLowLabel?: string;
   ratingHighLabel?: string;
+
+  // Quiz / Competition settings
+  scoreAllocation?: "time_based" | "fixed" | "none";
+  pointsPerQuestion?: number;
+  timeToRespondSeconds?: number;
+  addLeaderboard?: boolean;
+  linkedLeaderboardSlideId?: string | null;
 
   // General controls
   timerSeconds?: number | null;

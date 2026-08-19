@@ -137,6 +137,54 @@ export const MOCK_SLIDES: MentiSlide[] = [
       showLogo: true,
     },
   },
+  {
+    id: "slide-6",
+    presentationId: "demo-pres-1",
+    type: "QUIZ",
+    question: "What is the time complexity of searching in a balanced BST?",
+    description: "Select Answer quiz with speed-based points",
+    position: 5,
+    totalResponses: 36,
+    options: [
+      { id: "q-opt-1", label: "O(log n)", isCorrect: true, voteCount: 28, color: "#2d5cf6" },
+      { id: "q-opt-2", label: "O(n)", isCorrect: false, voteCount: 6, color: "#ff7378" },
+      { id: "q-opt-3", label: "O(1)", isCorrect: false, voteCount: 2, color: "#9189eb" },
+    ],
+    responseSettings: {
+      timeToRespondSeconds: 30,
+      scoreAllocation: "time_based",
+      pointsPerQuestion: 1000,
+      addLeaderboard: true,
+      isVotingLocked: false,
+    },
+    designSettings: {
+      backgroundColor: "#ffffff",
+      textColor: "#1a1d29",
+      accentColor: "#2d5cf6",
+      showLogo: true,
+    },
+  },
+  {
+    id: "slide-7",
+    presentationId: "demo-pres-1",
+    type: "LEADERBOARD",
+    question: "Quiz leaderboard",
+    description: "Live standings and player scores",
+    position: 6,
+    totalResponses: 0,
+    options: [],
+    responseSettings: {
+      isVotingLocked: true,
+    },
+    designSettings: {
+      backgroundColor: "#ffffff",
+      textColor: "#1a1d29",
+      accentColor: "#e4a23e",
+      leaderboardTitle: "Quiz leaderboard",
+      showPodium: true,
+      showLogo: true,
+    },
+  },
 ];
 
 export const MOCK_PRESENTATION: MentiPresentation = {

@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   X,
   BarChart2,
   Cloud,
   Star,
+  Type,
   Sparkles,
 } from "lucide-react";
 import { MentiQuestionType } from "~/lib/menti";
@@ -16,105 +17,191 @@ interface Props {
   onSelectType: (type: MentiQuestionType) => void;
 }
 
-interface QuestionTypeCard {
-  type: MentiQuestionType;
-  title: string;
-  desc: string;
-  badge: string;
-  icon: React.ReactNode;
-}
-
-const CORE_QUESTION_TYPES: QuestionTypeCard[] = [
-  {
-    type: "BAR_GRAPH",
-    title: "Multiple Choice / Poll",
-    desc: "Single and multi-selection choices with real-time rising bars, vote counts, and percentage distribution modes.",
-    badge: "Choice & Checkbox",
-    icon: <BarChart2 className="w-6 h-6 text-(--cf-orange)" />,
-  },
-  {
-    type: "WORD_CLOUD",
-    title: "Word Cloud (Text)",
-    desc: "Dynamic live word cloud where recurring participant answers dynamically cluster and expand in visual weight.",
-    badge: "Single & Multi-Text",
-    icon: <Cloud className="w-6 h-6 text-rose-600" />,
-  },
-  {
-    type: "SCALES",
-    title: "Scales / Rating",
-    desc: "Audience rates statements on a 1–5 spectrum with live computed average score calculations and trends.",
-    badge: "1–5 Rating Spectrum",
-    icon: <Star className="w-6 h-6 text-amber-500 fill-amber-500" />,
-  },
-  {
-    type: "CONTENT",
-    title: "Blank / Text Slide",
-    desc: "Customizable text slide with titles, subtitles, kickers, alignments, and icons for section headers, key takeaways, announcements, or thank you notes.",
-    badge: "Text & Section Header",
-    icon: <Sparkles className="w-6 h-6 text-indigo-600" />,
-  },
-];
-
 export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape or click outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
+  const handleSelect = (type: MentiQuestionType) => {
+    onSelectType(type);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs select-none">
-      <div className="flex flex-col w-full max-w-4xl bg-(--cf-cream) rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden animate-in fade-in zoom-in-95 duration-150 shadow-2xl">
-        {/* Modal Header */}
-        <div className="cf-pane-bar px-6 sm:px-8 py-3 flex items-center justify-between">
-          <div>
-            <span className="cf-eyebrow text-(--cf-ink)">Add a new slide</span>
+    <>
+      {/* Invisible backdrop overlay to capture outside clicks */}
+      <div className="fixed inset-0 z-40 bg-black/5" />
+
+      {/* Floating Popover Menu anchored at top-left */}
+      <div
+        ref={menuRef}
+        className="fixed top-14 left-4 sm:left-5 z-50 w-[340px] sm:w-[380px] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised shadow-2xl flex flex-col overflow-hidden select-none animate-in fade-in zoom-in-95 duration-150"
+      >
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
+            <span className="cf-eyebrow text-(--cf-ink)">Add slide</span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+              title="Close menu"
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cf-danger-ghost p-1 rounded"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* Modal Body */}
-        <div className="p-6 sm:p-8 space-y-4">
-          <h3 className="cf-meta text-(--cf-ink-soft)">
-            Slide types & templates
-          </h3>
+          {/* 1. Interactive questions section */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                Interactive questions
+              </span>
+            </div>
 
-          {/* 2x2 Grid with Generous Sizing */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {CORE_QUESTION_TYPES.map((card) => (
+            <div className="grid grid-cols-1 gap-1">
+              {/* Multiple Choice / BAR_GRAPH */}
               <button
-                key={card.type}
                 type="button"
-                onClick={() => onSelectType(card.type)}
-                className="cf-panel cf-raised cf-press flex flex-col justify-between p-5 sm:p-6 text-left bg-white rounded-2xl border-2 border-(--cf-line-strong) transition-all group min-h-[190px]"
+                onClick={() => handleSelect("BAR_GRAPH")}
+                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div>
-                  <div className="flex items-center mb-3.5">
-                    <div className="p-2.5 bg-(--cf-cream) border-2 border-(--cf-line-strong) rounded-xl shadow-xs group-hover:scale-105 transition-transform">
-                      {card.icon}
-                    </div>
-                  </div>
-                  <span className="text-sm sm:text-base font-bold text-(--cf-ink) group-hover:text-(--cf-orange) transition-colors">
-                    {card.title}
-                  </span>
-                  <p className="mt-1.5 text-xs sm:text-[13px] text-(--cf-ink-soft) leading-relaxed">
-                    {card.desc}
-                  </p>
+                <div className="size-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-200 group-hover:scale-105 transition-transform">
+                  <BarChart2 className="size-4" />
                 </div>
-
-                <div className="mt-4 pt-2">
-                  <span className="cf-meta inline-block px-2.5 py-1 text-[10px] font-bold text-(--cf-ink) bg-(--cf-cream) border border-(--cf-line) rounded-(--hex-radius)">
-                    {card.badge}
+                <div>
+                  <span className="text-xs font-bold text-neutral-800 group-hover:text-blue-600 transition-colors block">
+                    Multiple Choice
+                  </span>
+                  <span className="text-[11px] text-neutral-400 block">
+                    Polls & bar charts
                   </span>
                 </div>
               </button>
-            ))}
+
+              {/* Word Cloud / WORD_CLOUD */}
+              <button
+                type="button"
+                onClick={() => handleSelect("WORD_CLOUD")}
+                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+              >
+                <div className="size-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 border border-rose-200 group-hover:scale-105 transition-transform">
+                  <Cloud className="size-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-neutral-800 group-hover:text-rose-600 transition-colors block">
+                    Word Cloud
+                  </span>
+                  <span className="text-[11px] text-neutral-400 block">
+                    Live dynamic text clustering
+                  </span>
+                </div>
+              </button>
+
+              {/* Scales / SCALES */}
+              <button
+                type="button"
+                onClick={() => handleSelect("SCALES")}
+                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+              >
+                <div className="size-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-200 group-hover:scale-105 transition-transform">
+                  <Star className="size-4 fill-amber-500 text-amber-500" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-neutral-800 group-hover:text-amber-600 transition-colors block">
+                    Scales
+                  </span>
+                  <span className="text-[11px] text-neutral-400 block">
+                    1–5 rating statements
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Quiz competitions section */}
+          <div className="pt-2 border-t border-neutral-100 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                Quiz competitions
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-1">
+              {/* Select Answer / QUIZ */}
+              <button
+                type="button"
+                onClick={() => handleSelect("QUIZ")}
+                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+              >
+                <div className="size-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 group-hover:scale-105 transition-transform">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-neutral-800 group-hover:text-indigo-600 transition-colors block">
+                    Select Answer (Quiz)
+                  </span>
+                  <span className="text-[11px] text-neutral-400 block">
+                    Timed quiz with points & auto leaderboard
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Content slides section */}
+          <div className="pt-2 border-t border-neutral-100 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                Content slides
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-1">
+              {/* Text / CONTENT */}
+              <button
+                type="button"
+                onClick={() => handleSelect("CONTENT")}
+                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+              >
+                <div className="size-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 group-hover:scale-105 transition-transform">
+                  <Type className="size-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-neutral-800 group-hover:text-emerald-600 transition-colors block">
+                    Heading / Text
+                  </span>
+                  <span className="text-[11px] text-neutral-400 block">
+                    Section dividers & key points
+                  </span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

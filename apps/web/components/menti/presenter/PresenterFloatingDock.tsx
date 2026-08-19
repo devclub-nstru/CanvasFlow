@@ -11,6 +11,7 @@ import {
   Eye,
   Percent,
   Hash,
+  CheckCircle2,
 } from "lucide-react";
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
   showJoinCode: boolean;
   hideResults: boolean;
   showAsPercentage: boolean;
+  isQuizSlide?: boolean;
+  isRevealed?: boolean;
   onNext: () => void;
   onPrev: () => void;
   onEndPresentation: () => void;
@@ -30,6 +33,7 @@ interface Props {
   onToggleLock: () => void;
   onToggleHideResults: () => void;
   onTogglePercentage: () => void;
+  onToggleReveal?: () => void;
 }
 
 export function PresenterFloatingDock({
@@ -42,6 +46,8 @@ export function PresenterFloatingDock({
   showJoinCode,
   hideResults,
   showAsPercentage,
+  isQuizSlide,
+  isRevealed,
   onNext,
   onPrev,
   onEndPresentation,
@@ -49,6 +55,7 @@ export function PresenterFloatingDock({
   onToggleLock,
   onToggleHideResults,
   onTogglePercentage,
+  onToggleReveal,
 }: Props) {
   const isLastStep = currentStep >= totalSteps - 1;
 
@@ -99,8 +106,25 @@ export function PresenterFloatingDock({
 
           <div className="w-px h-5 bg-(--cf-line-strong) mx-0.5" />
 
+          {/* Quiz Reveal Answer Toggle */}
+          {isQuizSlide && onToggleReveal && (
+            <button
+              type="button"
+              onClick={onToggleReveal}
+              className={`px-2.5 py-1 text-xs font-bold font-mono rounded-(--hex-radius) flex items-center gap-1.5 transition-colors ${
+                isRevealed
+                  ? "bg-emerald-600 text-white"
+                  : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200"
+              }`}
+              title="Reveal correct answer"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{isRevealed ? "Answer Shown" : "Reveal Answer"}</span>
+            </button>
+          )}
+
           {/* Toggle Percentage / Absolute Votes */}
-          {!isIntro && (
+          {!isIntro && !isQuizSlide && (
             <button
               type="button"
               onClick={onTogglePercentage}

@@ -19,6 +19,14 @@ import { ContentViewer } from "./content/ContentViewer";
 import { ContentEditor } from "./content/ContentEditor";
 import { ContentAudience } from "./content/ContentAudience";
 
+import { QuizViewer } from "./quiz/QuizViewer";
+import { QuizEditor } from "./quiz/QuizEditor";
+import { QuizAudience } from "./quiz/QuizAudience";
+
+import { LeaderboardViewer } from "./leaderboard/LeaderboardViewer";
+import { LeaderboardEditor } from "./leaderboard/LeaderboardEditor";
+import { LeaderboardAudience } from "./leaderboard/LeaderboardAudience";
+
 // 1. Viewer Renderer (Used in Slide Canvas & Presenter Fullscreen Mode)
 export function SlideQuestionViewer({
   slide,
@@ -26,12 +34,16 @@ export function SlideQuestionViewer({
   isPreview,
   hideResults,
   showAsPercentage,
+  isRevealed,
+  onRevealAnswer,
 }: {
   slide: MentiSlide;
   analytics?: any;
   isPreview?: boolean;
   hideResults?: boolean;
   showAsPercentage?: boolean;
+  isRevealed?: boolean;
+  onRevealAnswer?: () => void;
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
@@ -50,6 +62,20 @@ export function SlideQuestionViewer({
       return <ScalesViewer slide={slide} analytics={analytics} isPreview={isPreview} hideResults={hideResults} />;
     case "CONTENT":
       return <ContentViewer slide={slide} isPreview={isPreview} />;
+    case "QUIZ":
+      return (
+        <QuizViewer
+          slide={slide}
+          analytics={analytics}
+          isPreview={isPreview}
+          hideResults={hideResults}
+          showAsPercentage={showAsPercentage}
+          isRevealed={isRevealed}
+          onRevealAnswer={onRevealAnswer}
+        />
+      );
+    case "LEADERBOARD":
+      return <LeaderboardViewer slide={slide} analytics={analytics} isPreview={isPreview} />;
     default:
       return <div className="p-8 text-neutral-400">Unknown Question Type</div>;
   }
@@ -59,9 +85,11 @@ export function SlideQuestionViewer({
 export function SlideQuestionEditor({
   slide,
   onChange,
+  onToggleQuizLeaderboard,
 }: {
   slide: MentiSlide;
   onChange: (updated: Partial<MentiSlide>) => void;
+  onToggleQuizLeaderboard?: (quizSlideId: string, enable: boolean) => void;
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
@@ -72,6 +100,17 @@ export function SlideQuestionEditor({
       return <ScalesEditor slide={slide} onChange={onChange} />;
     case "CONTENT":
       return <ContentEditor slide={slide} onChange={onChange} />;
+    case "QUIZ":
+      return (
+        <QuizEditor
+          slide={slide}
+          onChange={onChange}
+          onToggleQuizLeaderboard={onToggleQuizLeaderboard}
+          variant="panel"
+        />
+      );
+    case "LEADERBOARD":
+      return <LeaderboardEditor slide={slide} onChange={onChange} variant="panel" />;
     default:
       return null;
   }
@@ -94,6 +133,10 @@ export function SlideQuestionCanvasEditor({
       return <ScalesEditor slide={slide} onChange={onChange} variant="canvas" />;
     case "CONTENT":
       return <ContentEditor slide={slide} onChange={onChange} variant="canvas" />;
+    case "QUIZ":
+      return <QuizEditor key={slide.id} slide={slide} onChange={onChange} variant="canvas" />;
+    case "LEADERBOARD":
+      return <LeaderboardEditor key={slide.id} slide={slide} onChange={onChange} variant="canvas" />;
     default:
       return <SlideQuestionViewer slide={slide} isPreview />;
   }
@@ -118,6 +161,10 @@ export function SlideAudienceInput({
       return <ScalesAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "CONTENT":
       return <ContentAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+    case "QUIZ":
+      return <QuizAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+    case "LEADERBOARD":
+      return <LeaderboardAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     default:
       return <div className="p-4 text-neutral-500">Waiting for next question...</div>;
   }

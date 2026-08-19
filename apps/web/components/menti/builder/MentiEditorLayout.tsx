@@ -28,6 +28,7 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
     updateTitle,
     updateSlide,
     addSlide,
+    toggleQuizLeaderboard,
     deleteSlide,
     reorderSlides,
   } = useMentiEditor(initialPresentation);
@@ -50,7 +51,8 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
             slides={presentation.slides}
             activeSlideId={activeSlideId}
             onSelectSlide={setActiveSlideId}
-            onOpenNewSlideModal={() => setIsNewSlideModalOpen(true)}
+            onOpenNewSlideModal={() => setIsNewSlideModalOpen((prev) => !prev)}
+            isNewSlideMenuOpen={isNewSlideModalOpen}
             onDeleteSlide={deleteSlide}
             onReorderSlide={reorderSlides}
           />
@@ -71,6 +73,7 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
               onToggleOpen={() => setIsInspectorOpen((prev) => !prev)}
               onChange={(updated) => updateSlide(activeSlide.id, updated)}
               onOpenTypePicker={() => setIsNewSlideModalOpen(true)}
+              onToggleQuizLeaderboard={toggleQuizLeaderboard}
             />
           )}
         </div>

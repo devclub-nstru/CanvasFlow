@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, BarChart2, Cloud, Star, Sparkles, GripVertical } from "lucide-react";
+import {
+  Plus,
+  X,
+  Trash2,
+  BarChart2,
+  Cloud,
+  Star,
+  Sparkles,
+  HelpCircle,
+  Trophy,
+  GripVertical,
+} from "lucide-react";
 import { MentiSlide, MentiQuestionType } from "~/lib/menti";
 
 interface Props {
@@ -9,11 +20,14 @@ interface Props {
   activeSlideId: string;
   onSelectSlide: (id: string) => void;
   onOpenNewSlideModal: () => void;
+  isNewSlideMenuOpen?: boolean;
   onDeleteSlide: (id: string) => void;
   onReorderSlide?: (fromIdx: number, toIdx: number) => void;
 }
 
 const QUESTION_ICONS: Record<MentiQuestionType, React.ReactNode> = {
+  QUIZ: <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />,
+  LEADERBOARD: <Trophy className="w-3.5 h-3.5 text-amber-500" />,
   BAR_GRAPH: <BarChart2 className="w-3.5 h-3.5 text-(--cf-orange)" />,
   WORD_CLOUD: <Cloud className="w-3.5 h-3.5 text-rose-600" />,
   SCALES: <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />,
@@ -25,6 +39,7 @@ export function SlideThumbnailSidebar({
   activeSlideId,
   onSelectSlide,
   onOpenNewSlideModal,
+  isNewSlideMenuOpen = false,
   onDeleteSlide,
   onReorderSlide,
 }: Props) {
@@ -73,15 +88,28 @@ export function SlideThumbnailSidebar({
 
   return (
     <aside className="flex flex-col w-48 h-full bg-(--cf-cream-2) border-r border-(--cf-line-strong) select-none shrink-0">
-      {/* Top CTA: + New slide */}
+      {/* Top CTA: + New slide / ✕ New slide */}
       <div className="p-3">
         <button
           type="button"
           onClick={onOpenNewSlideModal}
-          className="cf-btn cf-raised cf-press w-full py-2 px-3 text-xs font-bold justify-center rounded-full"
+          className={`w-full py-2 px-3 text-xs font-bold justify-center rounded-full transition-all flex items-center shadow-xs ${
+            isNewSlideMenuOpen
+              ? "bg-neutral-900 text-white hover:bg-neutral-800"
+              : "cf-btn cf-raised cf-press"
+          }`}
         >
-          <Plus className="w-4 h-4 mr-1 stroke-[3]" />
-          New slide
+          {isNewSlideMenuOpen ? (
+            <>
+              <X className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
+              New slide
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-1 stroke-[3]" />
+              New slide
+            </>
+          )}
         </button>
       </div>
 

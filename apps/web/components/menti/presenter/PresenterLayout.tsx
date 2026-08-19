@@ -97,14 +97,16 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   const [showAsPercentage, setShowAsPercentage] = useState(
     currentSlide?.responseSettings?.showResultsAsPercentage ?? false,
   );
+  const [quizRevealed, setQuizRevealed] = useState(false);
 
   // Sync state whenever active slide changes
   useEffect(() => {
     if (!isIntro && currentSlide?.responseSettings) {
       setHideResults(currentSlide.responseSettings.hideResultsFromAudience ?? false);
       setShowAsPercentage(currentSlide.responseSettings.showResultsAsPercentage ?? false);
+      setQuizRevealed(false);
     }
-  }, [currentStep, isIntro, currentSlide?.responseSettings]);
+  }, [currentStep, isIntro, currentSlide?.id, currentSlide?.responseSettings]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -128,13 +130,15 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // Keyboard shortcut listener for H (hide results) and P (percentage)
+  // Keyboard shortcut listener for H (hide results), P (percentage), R (reveal quiz answer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "h" || e.key === "H") {
         setHideResults((prev) => !prev);
       } else if (e.key === "p" || e.key === "P" || e.key === "%") {
         setShowAsPercentage((prev) => !prev);
+      } else if (e.key === "r" || e.key === "R") {
+        setQuizRevealed((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -287,6 +291,8 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                     isPreview={false}
                     hideResults={hideResults}
                     showAsPercentage={showAsPercentage}
+                    isRevealed={quizRevealed}
+                    onRevealAnswer={() => setQuizRevealed((prev) => !prev)}
                   />
                 )}
               </motion.div>
@@ -306,6 +312,8 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         showJoinCode={showJoinCode}
         hideResults={hideResults}
         showAsPercentage={showAsPercentage}
+        isQuizSlide={currentSlide?.type === "QUIZ"}
+        isRevealed={quizRevealed}
         onNext={nextStep}
         onPrev={prevStep}
         onEndPresentation={handleEndPresentation}
@@ -313,6 +321,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         onToggleLock={toggleLock}
         onToggleHideResults={() => setHideResults((prev) => !prev)}
         onTogglePercentage={() => setShowAsPercentage((prev) => !prev)}
+        onToggleReveal={() => setQuizRevealed((prev) => !prev)}
       />
 
       {/* 4. Bottom-Right Live Participant Count Badge */}
