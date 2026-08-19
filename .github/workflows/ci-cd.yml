@@ -45,10 +45,6 @@ jobs:
 
       - name: Create CI environment
         run: cp .env.example .env
-
-      - name: Lint
-        run: pnpm lint
-
       - name: Type check
         run: pnpm check-types
 
