@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MentiPresentation, MentiSlide, MentiQuestionType } from "~/lib/menti";
 import { env } from "~/env";
+import { toast } from "sonner";
 
 const DEFAULT_INITIAL_PRESENTATION: MentiPresentation = {
   id: "",
@@ -405,87 +406,103 @@ export function useMentiEditor(initialPresentation: MentiPresentation = DEFAULT_
       }
     }
   };
-
   const deleteSlide = async (slideId: string) => {
-    let canDelete = true;
-    let targetActiveId: string | null = null;
+    if (presentation.slides.length <= 1) {
+      toast.error("You cannot delete the only remaining slide");
+      return;
+    }
+
+    const oldSlides = presentation.slides;
+    const oldActiveId = activeSlideId;
+
+    const deletedIdx = oldSlides.findIndex((s) => s.id === slideId);
+    if (deletedIdx === -1) return;
+
+    const targetSlide = oldSlides[deletedIdx];
+    const isQuiz = targetSlide?.type === "QUIZ";
+    const nextSlide = oldSlides[deletedIdx + 1];
+    const hasSubsequentLeaderboard = isQuiz && nextSlide?.type === "LEADERBOARD";
+
     let idsToDelete: string[] = [slideId];
+    if (hasSubsequentLeaderboard && nextSlide) {
+      idsToDelete = [slideId, nextSlide.id];
+    }
 
-    setPresentation((prev) => {
-      if (prev.slides.length <= 1) {
-        canDelete = false;
-        return prev;
-      }
-      const deletedIdx = prev.slides.findIndex((s) => s.id === slideId);
-      if (deletedIdx === -1) {
-        canDelete = false;
-        return prev;
-      }
+    // 1. Instantly update visually
+    const isLeaderboard = targetSlide?.type === "LEADERBOARD";
+    const prevSlide = oldSlides[deletedIdx - 1];
 
-      const targetSlide = prev.slides[deletedIdx];
-      const isQuiz = targetSlide?.type === "QUIZ";
-      const nextSlide = prev.slides[deletedIdx + 1];
-      const hasSubsequentLeaderboard = isQuiz && nextSlide?.type === "LEADERBOARD";
+    let updatedSlides = oldSlides.filter((s) => !idsToDelete.includes(s.id));
 
-      if (hasSubsequentLeaderboard && nextSlide) {
-        idsToDelete = [slideId, nextSlide.id];
-      } else {
-        idsToDelete = [slideId];
-      }
+    if (isLeaderboard && prevSlide?.type === "QUIZ") {
+      updatedSlides = updatedSlides.map((s) =>
+        s.id === prevSlide.id
+          ? {
+              ...s,
+              responseSettings: {
+                ...s.responseSettings,
+                addLeaderboard: false,
+              },
+            }
+          : s
+      );
+    }
 
-      // If we are deleting a LEADERBOARD slide, make sure the previous QUIZ slide turns its toggle off
-      const isLeaderboard = targetSlide?.type === "LEADERBOARD";
-      const prevSlide = prev.slides[deletedIdx - 1];
+    let targetActiveId = activeSlideId;
+    if (idsToDelete.includes(activeSlideId)) {
+      targetActiveId =
+        deletedIdx >= updatedSlides.length
+          ? updatedSlides[updatedSlides.length - 1]?.id || ""
+          : updatedSlides[deletedIdx]?.id || "";
+    }
 
-      let updatedSlides = prev.slides.filter((s) => !idsToDelete.includes(s.id));
-
-      if (isLeaderboard && prevSlide?.type === "QUIZ") {
-        updatedSlides = updatedSlides.map((s) =>
-          s.id === prevSlide.id
-            ? {
-                ...s,
-                responseSettings: {
-                  ...s.responseSettings,
-                  addLeaderboard: false,
-                },
-              }
-            : s
-        );
-      }
-
-      if (idsToDelete.includes(activeSlideId)) {
-        targetActiveId =
-          deletedIdx >= updatedSlides.length
-            ? updatedSlides[updatedSlides.length - 1]?.id || ""
-            : updatedSlides[deletedIdx]?.id || "";
-      }
-
-      return {
-        ...prev,
-        slides: updatedSlides.map((s, idx) => ({ ...s, position: idx })),
-      };
-    });
-
-    if (!canDelete) return;
+    setPresentation((prev) => ({
+      ...prev,
+      slides: updatedSlides.map((s, idx) => ({ ...s, position: idx })),
+    }));
     if (targetActiveId) {
       setActiveSlideId(targetActiveId);
     }
 
-    // 2. Real API call for each deleted slide ID
-    for (const id of idsToDelete) {
-      try {
-        if (!id.startsWith("temp-")) {
-          await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${id}`, {
-            method: "DELETE",
-            credentials: "include",
-          });
-        }
-      } catch (err) {
-        console.warn(`Deleted slide ${id} locally:`, err);
-      }
-    }
-  };
+    // Flag to determine if the deletion was undone by the user
+    let isUndone = false;
 
+    // 2. Show toast with Undo action
+    toast("Slide deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          isUndone = true;
+          // Restore visual slides
+          setPresentation((prev) => ({
+            ...prev,
+            slides: oldSlides,
+          }));
+          setActiveSlideId(oldActiveId);
+          toast.success("Delete undone");
+        },
+      },
+      duration: 3000,
+    });
+
+    // 3. Process the API delete call after 3 seconds unless undone
+    setTimeout(async () => {
+      if (isUndone) return;
+
+      for (const id of idsToDelete) {
+        try {
+          if (!id.startsWith("temp-")) {
+            await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${id}`, {
+              method: "DELETE",
+              credentials: "include",
+            });
+          }
+        } catch (err) {
+          console.warn(`Deleted slide ${id} locally:`, err);
+        }
+      }
+    }, 3000);
+  };
   const reorderSlides = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
 

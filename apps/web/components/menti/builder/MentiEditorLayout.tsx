@@ -77,7 +77,6 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
               isOpen={isInspectorOpen}
               onToggleOpen={() => setIsInspectorOpen((prev) => !prev)}
               onChange={(updated) => updateSlide(activeSlide.id, updated)}
-              onOpenTypePicker={() => setIsNewSlideModalOpen(true)}
               onToggleQuizLeaderboard={toggleQuizLeaderboard}
             />
           )}
