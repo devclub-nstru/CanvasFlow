@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { MentiSlide } from "~/lib/menti";
 import { Check, Clock, EyeOff, X } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
@@ -157,29 +157,37 @@ export function QuizViewer({
           {slide.question || "Select the correct answer"}
         </h2>
 
-        {/* Clean Status & Countdown Bar */}
-        <div className="h-7 flex items-center justify-center gap-2 mt-2">
+        {/* Fixed height reservation for status badge & countdown */}
+        <div className="h-6 flex items-center justify-center gap-2 mt-1">
           {/* Live Monospace Countdown Badge */}
           {!isPreview && (
             <div
-              className={`inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-xs font-mono font-bold tracking-wider ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-(--hex-radius) border text-[10px] font-mono font-bold tracking-wider uppercase ${
                 timeLeft <= 5 && timeLeft > 0
-                  ? "border-rose-500 text-rose-600 animate-pulse"
-                  : "text-(--cf-ink)"
+                  ? "bg-rose-50 border-rose-400 text-rose-700 animate-pulse"
+                  : "bg-(--cf-cream-2) border-(--cf-line-strong) text-(--cf-ink)"
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-(--cf-orange)" />
+              <Clock className="w-3 h-3 text-(--cf-orange)" />
               <span className="tabular-nums">{timeLeft}s</span>
             </div>
           )}
 
           {/* Responses Hidden Badge */}
-          {isHidden && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-xs font-mono font-bold tracking-wider text-(--cf-ink-soft) uppercase">
-              <EyeOff className="w-3.5 h-3.5" />
-              <span>Hidden</span>
-            </div>
-          )}
+          <AnimatePresence>
+            {isHidden && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.15 }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)"
+              >
+                <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
+                <span>Responses hidden</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -273,18 +281,18 @@ export function QuizViewer({
                     </motion.div>
                   </div>
 
-                  {/* Option Label + Correct/Incorrect Badge */}
-                  <div className="mt-2.5 flex flex-col items-center justify-center gap-1 w-full">
+                  {/* Option Label + Correct/Incorrect Badge below baseline */}
+                  <div className="mt-2 flex flex-col items-center justify-center gap-1 w-full">
                     {isRevealed && (
                       <div className="animate-in fade-in zoom-in-90 duration-300">
                         {isCorrect ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-sm">
-                            <Check className="size-3.5 stroke-[3]" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-sm">
+                            <Check className="size-3 stroke-[3]" />
                             <span>Correct</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-semibold">
-                            <X className="size-3 stroke-[2.5]" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-semibold">
+                            <X className="size-2.5 stroke-[2.5]" />
                             <span>Incorrect</span>
                           </span>
                         )}
@@ -292,12 +300,12 @@ export function QuizViewer({
                     )}
 
                     <p
-                      className={`truncate text-center font-medium transition-colors ${
+                      className={`truncate w-full text-center font-medium transition-colors ${
                         isRevealed
                           ? isCorrect
                             ? "text-emerald-950 font-bold"
                             : "text-neutral-400 font-normal"
-                          : "text-neutral-800"
+                          : "text-neutral-700"
                       } ${
                         isPreview
                           ? "text-[11px] sm:text-xs"

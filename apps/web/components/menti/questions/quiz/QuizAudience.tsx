@@ -31,8 +31,15 @@ export function QuizAudience({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     lastResponseResult?.selectedOptionId || null
   );
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(hasSubmitted);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const startTimeRef = useRef<number>(Date.now());
+
+  // Reset when slide changes
+  useEffect(() => {
+    setSelectedOptionId(null);
+    setIsSubmitted(false);
+  }, [slide.id]);
 
   // Countdown timer synced with server endsAt
   useEffect(() => {
@@ -64,24 +71,33 @@ export function QuizAudience({
   }, [slide.id, timeLimit, quizState?.endsAt]);
 
   const isTimerEnded = timeLeft === 0 || Boolean(quizState?.isLocked);
-  const isLocked = hasSubmitted || Boolean(selectedOptionId) || isTimerEnded;
+  const isLocked = isSubmitted || hasSubmitted || isTimerEnded;
   const hasResult = lastResponseResult !== null && lastResponseResult !== undefined;
 
-  const handleSelect = (optionId: string) => {
+  const handleSelectOption = (optionId: string) => {
     if (isLocked) return;
-
     setSelectedOptionId(optionId);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOptionId || isLocked) return;
+
+    setIsSubmitted(true);
     const timeTakenMs = Date.now() - startTimeRef.current;
 
     onSubmit({
-      optionId,
+      optionId: selectedOptionId,
       timeTakenMs,
       timestamp: new Date().toISOString(),
     });
   };
 
   return (
-    <div className="flex flex-col w-full space-y-4 sm:space-y-5 select-none animate-in fade-in duration-200">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col w-full space-y-4 sm:space-y-5 select-none animate-in fade-in duration-200"
+    >
       {/* 1. Header with Question & Timer */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
@@ -94,13 +110,16 @@ export function QuizAudience({
             }`}
           >
             <Clock className="w-3 h-3 text-(--cf-orange)" />
-            <span>{timeLeft}s</span>
+            <span className="tabular-nums">{timeLeft}s</span>
           </div>
         </div>
 
         <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug text-(--cf-ink)">
           {slide.question || "Select the correct answer"}
         </h2>
+        <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
+          {isLocked ? "Response locked in" : "Select one option and submit"}
+        </p>
       </div>
 
       {/* 2. Options Choice Cards */}
@@ -114,7 +133,7 @@ export function QuizAudience({
               key={option.id}
               type="button"
               disabled={isLocked}
-              onClick={() => handleSelect(option.id)}
+              onClick={() => handleSelectOption(option.id)}
               className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all min-h-[52px] ${
                 isSelected
                   ? "bg-white border-2 border-(--cf-ink) cf-raised ring-1 ring-(--cf-ink)"
@@ -142,7 +161,21 @@ export function QuizAudience({
         })}
       </div>
 
-      {/* 3. Post-submission / Post-timer Status Feedback */}
+      {/* 3. Submit Button (When not yet submitted and timer active) */}
+      {!isLocked && (
+        <div className="pt-1">
+          <button
+            type="submit"
+            disabled={!selectedOptionId}
+            className="cf-btn cf-raised cf-press w-full py-3.5 sm:py-4 px-4 text-sm sm:text-base font-bold justify-center rounded-(--hex-radius) disabled:opacity-40 disabled:cursor-not-allowed shadow-md min-h-[48px]"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Submit Answer
+          </button>
+        </div>
+      )}
+
+      {/* 4. Post-submission Feedback (Before Timer Ends) */}
       {isLocked && !isTimerEnded && (
         <div className="p-3.5 bg-white border border-(--cf-line-strong) cf-raised rounded-xl text-center space-y-0.5 animate-in fade-in">
           <p className="text-xs font-bold text-(--cf-ink) font-mono">Answer locked in</p>
@@ -179,7 +212,7 @@ export function QuizAudience({
           )}
         </div>
       )}
-    </div>
+    </form>
   );
 }
 
