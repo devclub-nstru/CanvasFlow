@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:15
-    container_name: canvasflow-postgres-prod
     restart: unless-stopped
 
     environment:
@@ -14,9 +13,6 @@ services:
       - -c
       - max_connections=300
 
-    ports:
-      - "127.0.0.1:5444:5432"
-
     volumes:
       - pg_data_prod:/var/lib/postgresql/data
 
@@ -24,7 +20,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready --host=127.0.0.1 --port=5432 -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-canvasflow}"
+          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-canvasflow}",
         ]
       interval: 5s
       timeout: 5s
@@ -33,7 +29,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: canvasflow-redis-prod
     restart: unless-stopped
 
     environment:
@@ -50,22 +45,110 @@ services:
       - --requirepass
       - ${REDIS_PASSWORD}
 
-    ports:
-      - "127.0.0.1:6333:6379"
-
     volumes:
       - redis_data_prod:/data
 
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"
-        ]
+        ["CMD-SHELL", 'redis-cli -a "$${REDIS_PASSWORD}" ping | grep -q PONG']
       interval: 5s
       timeout: 5s
       retries: 15
       start_period: 5s
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: api
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8000/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      target: worker
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: web
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   pg_data_prod:
