@@ -8,8 +8,8 @@ import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to
 import cookieParser from "cookie-parser";
 
 import { serverRouter, createContext } from "@repo/trpc/server";
-import { auth } from "@repo/trpc/server/auth";
-import { toNodeHandler } from "better-auth/node";
+import { authRouter } from "@repo/trpc/server/auth";
+
 
 import { env } from "./env";
 import { uploadRouter, uploadErrorHandler } from "./routes/upload";
@@ -91,7 +91,7 @@ const authGlobalLimiter = leakyBucketRateLimiter({
 
 app.use(["/trpc/form.submitForm", "/trpc/feedback.submitFeedback"], publicWriteLimiter);
 
-app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use("/api/auth", authRouter);
 
 app.use(uploadRouter);
 

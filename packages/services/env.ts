@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  JWT_SECRET: z.string().describe("Secret key for JWT tokens"),
+  JWT_SECRET: z.string().default(() => process.env.BETTER_AUTH_SECRET || "default-secret-key-123456"),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {

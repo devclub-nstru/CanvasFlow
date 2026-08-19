@@ -11,7 +11,6 @@ import { toast } from "sonner";
 
 import { Field, PasswordField, SocialButtons } from "~/components/auth/AuthFields";
 import { useSignIn } from "~/hooks/api/auth";
-import { authClient } from "~/lib/auth-client";
 import { safeRedirect } from "~/lib/utils";
 
 const SignInUserWithEmailAndPasswordInputModel = z.object({
@@ -31,7 +30,11 @@ function SignInForm() {
 
   React.useEffect(() => {
     if (switchAccount) {
-      authClient.signOut().then(() => {
+      let apiURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      if (apiURL.endsWith("/trpc")) {
+        apiURL = apiURL.replace(/\/trpc$/, "");
+      }
+      fetch(`${apiURL}/api/auth/signout`, { method: "POST" }).finally(() => {
         document.cookie =
           "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
       });
@@ -55,10 +58,11 @@ function SignInForm() {
       const callback = new URL("/auth/callback", window.location.origin);
       if (redirectTo !== "/dashboard") callback.searchParams.set("redirect", redirectTo);
 
-      await authClient.signIn.social({
-        provider,
-        callbackURL: callback.toString(),
-      });
+      let apiURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      if (apiURL.endsWith("/trpc")) {
+        apiURL = apiURL.replace(/\/trpc$/, "");
+      }
+      window.location.href = `${apiURL}/api/auth/login/${provider}?redirect=${encodeURIComponent(callback.toString())}`;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start social sign-in.");
       setIsSocialPending(false);

@@ -512,6 +512,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      jsonwebtoken:
+        specifier: ^9.0.3
+        version: 9.0.3
       trpc-to-openapi:
         specifier: ^3.1.0
         version: 3.1.0(@trpc/server@11.8.1(typescript@5.9.3))(zod-openapi@5.4.5(zod@4.3.5))(zod@4.3.5)
@@ -531,6 +534,9 @@ importers:
       '@types/express-serve-static-core':
         specifier: ^5.1.1
         version: 5.1.1
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
       '@types/qs':
         specifier: ^6.15.1
         version: 6.15.1
