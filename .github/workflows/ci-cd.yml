@@ -77,7 +77,7 @@ jobs:
           script: |
             set -euo pipefail
 
-            DEPLOY_DIR="$HOME/projects/canvasflow"
+            DEPLOY_DIR="$HOME/projects/CanvasFlow"
 
             cd "$DEPLOY_DIR"
 
