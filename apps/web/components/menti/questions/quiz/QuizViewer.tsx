@@ -22,7 +22,7 @@ interface Props {
   } | null;
 }
 
-const colors = ["#2d5cf6", "#ff7378", "#9189eb", "#43b7a6", "#e4a23e", "#313c8e"];
+const colors = ["#5268e8", "#ff7378", "#313c8e", "#9189eb", "#43b7a6", "#e4a23e"];
 
 function splitIntoBalancedRows<T>(items: T[]): T[][] {
   const n = items.length;
@@ -51,37 +51,40 @@ export function QuizViewer({
   quizState,
 }: Props) {
   const options = slide.options || [];
-  const timeLimit = slide.quizSettings?.timeLimitSeconds || slide.responseSettings.timeToRespondSeconds || 30;
+  const timeLimit = slide.quizSettings?.timeLimitSeconds || slide.responseSettings?.timeToRespondSeconds || 30;
 
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [internalRevealed, setInternalRevealed] = useState(false);
 
   const isRevealed =
-    propIsRevealed !== undefined
-      ? propIsRevealed
-      : quizState?.isLocked
-      ? true
-      : internalRevealed;
+    propIsRevealed === true ||
+    timeLeft === 0 ||
+    quizState?.isLocked === true ||
+    internalRevealed;
 
-  // Server-authoritative or local countdown timer
+  // Synchronized countdown timer
   useEffect(() => {
     if (isPreview) {
       setInternalRevealed(true);
       return;
     }
 
+    const mountTime = Date.now();
+    const fallbackEndsAt = mountTime + timeLimit * 1000;
+
     const computeTimeLeft = () => {
       if (quizState?.endsAt) {
         const diff = Math.ceil((new Date(quizState.endsAt).getTime() - Date.now()) / 1000);
         return Math.max(0, diff);
       }
-      return timeLimit;
+      const localDiff = Math.ceil((fallbackEndsAt - Date.now()) / 1000);
+      return Math.max(0, localDiff);
     };
 
     const initial = computeTimeLeft();
     setTimeLeft(initial);
 
-    if (quizState?.isLocked || initial === 0) {
+    if (quizState?.isLocked || (quizState?.endsAt && initial === 0)) {
       setInternalRevealed(true);
       return;
     }
@@ -95,14 +98,14 @@ export function QuizViewer({
         clearInterval(timer);
         setInternalRevealed(true);
       }
-    }, 1000);
+    }, 250);
 
     return () => clearInterval(timer);
   }, [slide.id, timeLimit, isPreview, quizState?.endsAt, quizState?.isLocked]);
 
   const getVoteCount = (optionId: string, fallback: number = 0) => {
     if (analytics?.results && Array.isArray(analytics.results)) {
-      const match = analytics.results.find((r: any) => r.id === optionId);
+      const match = analytics.results.find((r: any) => String(r.id) === String(optionId));
       if (match && typeof match.count === "number") return match.count;
     }
     return fallback;
@@ -114,33 +117,33 @@ export function QuizViewer({
       (total, option) => total + getVoteCount(option.id, option.voteCount || 0),
       0
     );
+
   const maxVotes = Math.max(
     1,
     ...options.map((option) => getVoteCount(option.id, option.voteCount || 0))
   );
-  const textColor = slide.designSettings.textColor || "#17171c";
+
+  const textColor = slide.designSettings?.textColor || "#17171c";
 
   const isPercentage =
     showAsPercentage !== undefined
       ? showAsPercentage
-      : (slide.responseSettings.showResultsAsPercentage ?? false);
+      : (slide.responseSettings?.showResultsAsPercentage ?? false);
 
   const isHidden =
     hideResults !== undefined
       ? hideResults
-      : (slide.responseSettings.hideResultsFromAudience ?? false);
+      : (slide.responseSettings?.hideResultsFromAudience ?? false);
 
   const rows = splitIntoBalancedRows(options);
   const isMultiRow = rows.length > 1;
-
-  const timerProgress = timeLimit > 0 ? (timeLeft / timeLimit) * 100 : 0;
 
   return (
     <section
       className="flex flex-col justify-between items-center h-full w-full max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 select-none relative"
       style={{ color: textColor }}
     >
-      {/* 1. Question Heading & Status / Countdown Bar */}
+      {/* 1. Question Heading & Status / Countdown */}
       <div className="w-full flex flex-col items-center text-center">
         <h2
           className={`font-medium leading-[1.1] tracking-[-0.04em] ${
@@ -154,51 +157,33 @@ export function QuizViewer({
           {slide.question || "Select the correct answer"}
         </h2>
 
-        {/* Status bar & Timer */}
-        <div className="flex items-center justify-center gap-3 mt-3">
-          {/* Live Countdown Pill */}
+        {/* Clean Status & Countdown Bar */}
+        <div className="h-7 flex items-center justify-center gap-2 mt-2">
+          {/* Live Monospace Countdown Badge */}
           {!isPreview && (
             <div
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono font-bold tracking-wider transition-colors ${
-                timeLeft === 0
-                  ? "bg-rose-50 border-rose-300 text-rose-700"
-                  : timeLeft <= 5
-                  ? "bg-amber-50 border-amber-300 text-amber-700 animate-pulse"
-                  : "bg-white border-neutral-300 text-neutral-800 shadow-xs"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-xs font-mono font-bold tracking-wider ${
+                timeLeft <= 5 && timeLeft > 0
+                  ? "border-rose-500 text-rose-600 animate-pulse"
+                  : "text-(--cf-ink)"
               }`}
             >
-              <Clock className="size-3.5" />
-              <span>{timeLeft}s</span>
-              <div className="w-12 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-1000 ${
-                    timeLeft <= 5 ? "bg-rose-500" : "bg-(--cf-orange)"
-                  }`}
-                  style={{ width: `${timerProgress}%` }}
-                />
-              </div>
+              <Clock className="w-3.5 h-3.5 text-(--cf-orange)" />
+              <span className="tabular-nums">{timeLeft}s</span>
             </div>
           )}
 
-          {/* Reveal Status Chip */}
-          {isRevealed && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-300 text-emerald-700 rounded-full text-xs font-bold font-mono uppercase tracking-wider">
-              <Check className="size-3 stroke-[2.5]" />
-              <span>Answer revealed</span>
-            </span>
-          )}
-
-          {/* Hidden Responses Badge */}
+          {/* Responses Hidden Badge */}
           {isHidden && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-100 border border-neutral-300 text-neutral-700 rounded-full text-xs font-mono font-bold uppercase tracking-wider">
-              <EyeOff className="size-3" />
-              <span>Responses hidden</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-xs font-mono font-bold tracking-wider text-(--cf-ink-soft) uppercase">
+              <EyeOff className="w-3.5 h-3.5" />
+              <span>Hidden</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* 2. Options Grid with Correct / Incorrect Spring Reveal */}
+      {/* 2. Options Grid with Clean Spring Animation */}
       <div
         className={`flex flex-col items-center justify-end w-full max-w-5xl mx-auto ${
           isMultiRow ? "gap-4 sm:gap-6 pb-1" : "pb-2"
@@ -215,7 +200,7 @@ export function QuizViewer({
               const displayValue = isPercentage
                 ? `${totalVotes ? Math.round((count / totalVotes) * 100) : 0}%`
                 : count;
-              const fill = totalVotes > 0 ? Math.max(14, (count / maxVotes) * 100) : 0;
+              const fill = totalVotes > 0 ? Math.max(12, (count / maxVotes) * 100) : 0;
               const isCorrect = Boolean(option.isCorrect);
               const color = option.color || colors[globalIndex % colors.length];
 
@@ -238,12 +223,12 @@ export function QuizViewer({
                         : "h-56 sm:h-64 md:h-76 lg:h-84"
                     }`}
                   >
-                    {/* Animated Bar Pill */}
+                    {/* Dynamic Bar */}
                     <motion.div
                       initial={false}
                       animate={{
                         height: isHidden ? "0%" : `${fill}%`,
-                        opacity: isRevealed && !isCorrect ? 0.4 : 1,
+                        opacity: isRevealed && !isCorrect ? 0.25 : 1,
                       }}
                       transition={{
                         type: "spring",
@@ -252,14 +237,14 @@ export function QuizViewer({
                         mass: 0.85,
                         delay: isHidden ? 0 : globalIndex * 0.04,
                       }}
-                      className={`w-full relative rounded-t-[16px] sm:rounded-t-[22px] transition-shadow ${
-                        isRevealed && isCorrect ? "shadow-lg ring-2 ring-emerald-500" : ""
+                      className={`w-full relative rounded-t-[16px] sm:rounded-t-[22px] transition-all duration-300 ${
+                        isRevealed && isCorrect
+                          ? "ring-4 ring-emerald-500/50 shadow-lg border-2 border-emerald-500"
+                          : ""
                       }`}
-                      style={{
-                        backgroundColor: color,
-                      }}
+                      style={{ backgroundColor: color }}
                     >
-                      {/* Attached Value Label - Sits directly above the bar */}
+                      {/* Floating Score Label */}
                       <motion.div
                         initial={false}
                         animate={{
@@ -288,28 +273,31 @@ export function QuizViewer({
                     </motion.div>
                   </div>
 
-                  {/* Option Label + Correct/Incorrect Indicator */}
-                  <div className="mt-2.5 flex items-center gap-1.5 w-full justify-center">
-                    {/* Status Badge (revealed or in preview) */}
-                    {(isRevealed || isPreview) && (
-                      <div
-                        className={`size-5 rounded-full flex items-center justify-center shrink-0 ${
-                          isCorrect
-                            ? "bg-emerald-600 text-white shadow-xs"
-                            : "bg-rose-100 text-rose-600 border border-rose-300"
-                        }`}
-                      >
+                  {/* Option Label + Correct/Incorrect Badge */}
+                  <div className="mt-2.5 flex flex-col items-center justify-center gap-1 w-full">
+                    {isRevealed && (
+                      <div className="animate-in fade-in zoom-in-90 duration-300">
                         {isCorrect ? (
-                          <Check className="size-3 stroke-[3]" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-sm">
+                            <Check className="size-3.5 stroke-[3]" />
+                            <span>Correct</span>
+                          </span>
                         ) : (
-                          <X className="size-3 stroke-[3]" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-semibold">
+                            <X className="size-3 stroke-[2.5]" />
+                            <span>Incorrect</span>
+                          </span>
                         )}
                       </div>
                     )}
 
                     <p
-                      className={`truncate text-center font-medium ${
-                        isRevealed && !isCorrect ? "text-neutral-400" : "text-neutral-800"
+                      className={`truncate text-center font-medium transition-colors ${
+                        isRevealed
+                          ? isCorrect
+                            ? "text-emerald-950 font-bold"
+                            : "text-neutral-400 font-normal"
+                          : "text-neutral-800"
                       } ${
                         isPreview
                           ? "text-[11px] sm:text-xs"

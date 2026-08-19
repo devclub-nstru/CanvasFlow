@@ -43,7 +43,7 @@ export function PresenterIntroStage({ title, joinCode, participantCount = 0, onS
         <p className="text-base sm:text-lg md:text-xl font-bold text-(--cf-ink)">
           Go to{" "}
           <span className="text-(--cf-orange) underline underline-offset-4 decoration-2">
-            canvasflow.dittya.dev/menti/join
+            {typeof window !== "undefined" ? window.location.host : "canvasflow.dittya.dev"}/menti/join
           </span>
         </p>
 

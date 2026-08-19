@@ -84,7 +84,6 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   useEffect(() => {
     if (!isIntro && currentSlide?.id && sessionId) {
       changeSlide(currentSlide.id);
-      changeSessionStatus("live");
     } else if (isIntro && sessionId) {
       changeSessionStatus("waiting");
     }
@@ -234,7 +233,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                   <span className="text-sm sm:text-base md:text-lg font-medium text-(--cf-ink-soft) tracking-tight">
                     Join at{" "}
                     <strong className="text-(--cf-ink) font-bold underline underline-offset-4 decoration-2 decoration-(--cf-orange)">
-                      canvasflow.dittya.dev/menti/join
+                      {typeof window !== "undefined" ? window.location.host : "canvasflow.dittya.dev"}/menti/join
                     </strong>
                   </span>
                   <span className="text-sm sm:text-base text-(--cf-ink-soft)">•</span>
