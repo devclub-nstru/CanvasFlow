@@ -237,6 +237,7 @@ export function useMentiRealtime({
       return new Promise<{ success: boolean }>((resolve, reject) => {
         socketRef.current!.emit("change_session_status", { status }, (response: any) => {
           if (response?.error) {
+            console.error("[Realtime] Failed to change session status:", response.error);
             reject(new Error(response.error));
           } else {
             resolve({ success: true });
