@@ -55,6 +55,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     sessionState,
     slideAnalytics,
     slideAnalyticsMap,
+    leaderboard,
     changeSlide,
     changeSessionStatus,
   } = useMentiRealtime({
@@ -288,6 +289,8 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                   <SlideQuestionViewer
                     slide={currentSlide}
                     analytics={slideAnalyticsMap[currentSlide.id] || slideAnalytics}
+                    leaderboard={leaderboard || sessionState?.leaderboard}
+                    quizState={sessionState?.session?.quizState}
                     isPreview={false}
                     hideResults={hideResults}
                     showAsPercentage={showAsPercentage}

@@ -19,6 +19,7 @@ const ICON_MAP = {
 };
 
 export function ContentViewer({ slide, isPreview }: Props) {
+  const contentImageUrl = slide.designSettings?.contentImageUrl;
   const title = slide.question || "";
   const description = slide.description || "";
   const eyebrow = slide.designSettings?.eyebrow;
@@ -26,6 +27,21 @@ export function ContentViewer({ slide, isPreview }: Props) {
   const iconKey = slide.designSettings?.icon;
   const accentColor = slide.designSettings?.accentColor || "#e4a23e";
   const textColor = slide.designSettings?.textColor || "#17171c";
+
+  // If this slide is a PowerPoint / visual image slide, render the full-stage visual
+  if (contentImageUrl) {
+    return (
+      <section className="relative w-full h-full flex items-center justify-center overflow-hidden select-none bg-neutral-900/5 rounded-xl">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={contentImageUrl}
+          alt={title || "PowerPoint Slide"}
+          className="w-full h-full object-contain max-h-full max-w-full drop-shadow-xs select-none pointer-events-none"
+          loading="eager"
+        />
+      </section>
+    );
+  }
 
   const IconComponent = iconKey && iconKey !== "none" ? ICON_MAP[iconKey as keyof typeof ICON_MAP] : null;
 

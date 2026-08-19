@@ -11,6 +11,9 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  FileSpreadsheet,
+  ExternalLink,
+  Layers,
 } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
 
@@ -40,6 +43,8 @@ const ACCENT_COLORS = [
 ];
 
 export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
+  const contentImageUrl = slide.designSettings?.contentImageUrl;
+  const isPptxImport = slide.metadata?.source === "pptx_import" || Boolean(contentImageUrl);
   const title = slide.question || "";
   const description = slide.description || "";
   const eyebrow = slide.designSettings?.eyebrow || "";
@@ -58,7 +63,38 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
     });
   };
 
+  // 1. CANVAS VIEW
   if (variant === "canvas") {
+    // If it's a PowerPoint / image visual slide
+    if (contentImageUrl) {
+      return (
+        <section className="relative w-full h-full flex flex-col items-center justify-center p-2 select-none overflow-hidden">
+          {/* Top Status Pill */}
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 bg-white/90 backdrop-blur-md border border-neutral-200/90 cf-raised rounded-full shadow-xs text-xs font-bold text-neutral-800 animate-in fade-in zoom-in-95 duration-150">
+            <FileSpreadsheet className="size-3.5 text-(--cf-orange)" />
+            <span>PowerPoint Visual Slide</span>
+            {slide.metadata?.originalSlideNumber && (
+              <span className="text-neutral-400 font-mono text-[10px]">
+                • Slide #{slide.metadata.originalSlideNumber}
+              </span>
+            )}
+          </div>
+
+          {/* Full visual image presentation */}
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-xl bg-neutral-900/5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={contentImageUrl}
+              alt={title || "PowerPoint Slide"}
+              className="w-full h-full object-contain max-h-full max-w-full drop-shadow-sm select-none"
+              loading="eager"
+            />
+          </div>
+        </section>
+      );
+    }
+
+    // Standard Text Slide Canvas View
     const qLength = title.length;
     const titleSizeClass =
       qLength > 40
@@ -163,9 +199,7 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
         </div>
 
         {/* Canvas Text Stage */}
-        <div
-          className={`flex flex-col space-y-4 max-w-3xl w-full my-auto ${alignClasses}`}
-        >
+        <div className={`flex flex-col space-y-4 max-w-3xl w-full my-auto ${alignClasses}`}>
           {/* Optional Icon */}
           {icon !== "none" && (
             <div
@@ -231,7 +265,78 @@ export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
     );
   }
 
-  // Panel Inspector Form
+  // 2. PANEL INSPECTOR FORM
+  if (contentImageUrl) {
+    return (
+      <div className="space-y-5">
+        {/* PowerPoint Source Card */}
+        <div className="p-3.5 bg-white rounded-2xl border border-neutral-200/90 shadow-2xs space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-orange-50 border border-orange-200 text-(--cf-orange)">
+              <FileSpreadsheet className="size-4" />
+            </div>
+            <div>
+              <h5 className="text-xs font-bold text-(--cf-ink)">PowerPoint Slide</h5>
+              <p className="text-[10px] text-(--cf-ink-soft) font-mono">
+                {slide.metadata?.originalSlideNumber
+                  ? `Original slide #${slide.metadata.originalSlideNumber}`
+                  : "Imported visual"}
+              </p>
+            </div>
+          </div>
+
+          {/* Thumbnail preview */}
+          <div className="relative aspect-video rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100 group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={contentImageUrl}
+              alt={title || "Slide Image"}
+              className="w-full h-full object-cover"
+            />
+            <a
+              href={contentImageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 text-white text-xs font-bold transition-opacity"
+            >
+              <ExternalLink className="size-3.5" />
+              <span>Open image</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Slide Title / Label */}
+        <div className="space-y-1.5">
+          <label className="cf-meta text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider block">
+            Slide Title / Label
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onChange({ question: e.target.value })}
+            placeholder="e.g. Introduction"
+            className="w-full py-2 px-3 text-xs font-semibold rounded-lg border border-neutral-200 bg-white text-(--cf-ink) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)"
+          />
+        </div>
+
+        {/* Presenter Notes / Description */}
+        <div className="space-y-1.5">
+          <label className="cf-meta text-[11px] font-bold text-(--cf-ink-soft) uppercase tracking-wider block">
+            Presenter Notes
+          </label>
+          <textarea
+            value={description || ""}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Add private notes for presenter view..."
+            rows={4}
+            className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-(--cf-ink) outline-none transition focus:border-(--cf-orange) focus:ring-1 focus:ring-(--cf-orange)"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Standard Panel Inspector Form (For non-image text slides)
   return (
     <div className="space-y-6">
       {/* Text Alignment */}

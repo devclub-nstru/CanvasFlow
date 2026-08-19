@@ -8,8 +8,6 @@ import { useMentiRealtime } from "~/hooks/useMentiRealtime";
 import type { MentiPresentation } from "~/lib/menti";
 import Noise from "~/components/Noise";
 
-import { MOCK_PRESENTATION } from "~/lib/mock-menti";
-
 interface Props {
   params: Promise<{ presentationId: string }>;
 }
@@ -21,6 +19,7 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   const searchParams = useSearchParams();
   const querySessionId = searchParams.get("sessionId") || "";
   const queryToken = searchParams.get("token") || "";
+  const queryName = searchParams.get("name") || "";
 
   const [sessionId, setSessionId] = useState<string>(
     querySessionId || (typeof window !== "undefined" ? sessionStorage.getItem("cf_session_id") || "" : "")
@@ -28,9 +27,13 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   const [token, setToken] = useState<string>(
     queryToken || (typeof window !== "undefined" ? sessionStorage.getItem("cf_participant_token") || "" : "")
   );
+  const [participantName, setParticipantName] = useState<string>(
+    queryName || (typeof window !== "undefined" ? sessionStorage.getItem("menti_participant_name") || sessionStorage.getItem("cf_voter_nickname") || "Participant" : "Participant")
+  );
 
   const [presentation, setPresentation] = useState<MentiPresentation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch public presentation details and ensure active participant token/session
   useEffect(() => {
@@ -40,10 +43,10 @@ export default function MentiLiveAudiencePage({ params }: Props) {
       try {
         const mentiApiUrl = env.NEXT_PUBLIC_MENTI_API_URL || "http://localhost:8080";
         const res = await fetch(`${mentiApiUrl}/api/presentations/public/${presentationId}`);
-        if (!res.ok) throw new Error("Failed to load presentation");
+        if (!res.ok) throw new Error("Failed to load presentation details");
         const data = await res.json();
-        
-        const mappedData = {
+
+        const mappedData: MentiPresentation = {
           ...data,
           id: data.id || data._id,
           slides: (data.slides || []).map((s: any) => ({
@@ -55,7 +58,7 @@ export default function MentiLiveAudiencePage({ params }: Props) {
 
         // Auto-join active session if token or sessionId is missing
         if ((!token || !sessionId) && presentationId) {
-          const name = (typeof window !== "undefined" ? sessionStorage.getItem("menti_participant_name") : null) || "Participant";
+          const name = participantName || "Participant";
           const joinRes = await fetch(`${mentiApiUrl}/api/sessions/join-by-presentation/${presentationId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -73,22 +76,24 @@ export default function MentiLiveAudiencePage({ params }: Props) {
               if (typeof window !== "undefined") {
                 sessionStorage.setItem("cf_participant_token", newToken);
                 sessionStorage.setItem("cf_session_id", newSessionId);
+                sessionStorage.setItem("menti_participant_name", name);
               }
             }
           }
         }
-      } catch (err) {
-        console.error("Failed to load public presentation details for audience:", err);
+      } catch (err: any) {
+        console.error("Failed to load presentation for audience:", err);
+        setError(err?.message || "Failed to connect to presentation");
       } finally {
         setLoading(false);
       }
     };
 
     fetchPresentationAndSession();
-  }, [presentationId, token, sessionId]);
+  }, [presentationId, token, sessionId, participantName]);
 
   // Realtime Participant Store
-  const { sessionState, submitResponse, submittedSlideIds } = useMentiRealtime({
+  const { sessionState, submitResponse, submittedSlideIds, leaderboard, lastResponseResult } = useMentiRealtime({
     sessionId,
     token,
     isHost: false,
@@ -104,32 +109,52 @@ export default function MentiLiveAudiencePage({ params }: Props) {
     );
   }
 
+  if (error || !presentation) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-(--cf-cream) p-6 text-center text-(--cf-ink)">
+        <Noise />
+        <div className="cf-panel cf-raised max-w-sm w-full p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl space-y-3">
+          <h2 className="text-lg font-black text-rose-600 uppercase tracking-tight">
+            Connection Error
+          </h2>
+          <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+            {error || "Unable to load presentation. Please verify your join code or link."}
+          </p>
+          <a
+            href="/menti/join"
+            className="cf-btn cf-raised cf-press block w-full py-2 text-xs font-bold rounded-lg border-2 border-(--cf-line-strong) bg-white text-(--cf-ink)"
+          >
+            Enter Join Code
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // Active slide from realtime socket or fallback to first slide
-  const activeSlide = sessionState?.currentSlide || presentation?.slides[0];
-  const activeSlideIndex = presentation?.slides.findIndex((s) => s.id === activeSlide?.id) ?? 0;
+  const activeSlide = sessionState?.currentSlide || presentation.slides[0];
+  const activeSlideIndex = presentation.slides.findIndex((s) => s.id === activeSlide?.id) ?? 0;
 
   const formattedJoinCode = sessionState?.session?.code
     ? sessionState.session.code.replace(/(.{3})/g, "$1 ").trim()
-    : presentation?.joinCode || MOCK_PRESENTATION.joinCode;
-
-  const effectivePresentation: MentiPresentation = presentation || {
-    ...MOCK_PRESENTATION,
-    id: presentationId,
-  };
+    : presentation.joinCode;
 
   return (
     <AudienceLayout
       presentation={{
-        ...effectivePresentation,
+        ...presentation,
         joinCode: formattedJoinCode,
       }}
-      currentSlide={sessionState?.currentSlide || effectivePresentation.slides[0]}
+      currentSlide={sessionState?.currentSlide || presentation.slides[0]}
       activeSlideIndex={activeSlideIndex >= 0 ? activeSlideIndex : 0}
       sessionStatus={sessionState?.session?.status || "live"}
-      participantCount={sessionState?.participantCount ?? presentation?.participantCount ?? 1}
+      participantCount={sessionState?.participantCount ?? presentation.participantCount ?? 1}
       submittedSlideIds={submittedSlideIds}
+      quizState={sessionState?.session?.quizState}
+      lastResponseResult={lastResponseResult}
+      leaderboard={leaderboard || sessionState?.leaderboard}
+      participantName={participantName}
       onSubmitAnswer={submitResponse}
     />
   );
 }
-

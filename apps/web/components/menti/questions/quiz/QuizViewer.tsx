@@ -13,6 +13,13 @@ interface Props {
   showAsPercentage?: boolean;
   isRevealed?: boolean;
   onRevealAnswer?: () => void;
+  quizState?: {
+    slideId?: string | null;
+    startedAt?: string | null;
+    endsAt?: string | null;
+    durationMs?: number | null;
+    isLocked?: boolean;
+  } | null;
 }
 
 const colors = ["#2d5cf6", "#ff7378", "#9189eb", "#43b7a6", "#e4a23e", "#313c8e"];
@@ -41,38 +48,57 @@ export function QuizViewer({
   hideResults,
   showAsPercentage,
   isRevealed: propIsRevealed,
+  quizState,
 }: Props) {
   const options = slide.options || [];
-  const timeLimit = slide.responseSettings.timeToRespondSeconds || 30;
+  const timeLimit = slide.quizSettings?.timeLimitSeconds || slide.responseSettings.timeToRespondSeconds || 30;
 
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [internalRevealed, setInternalRevealed] = useState(false);
 
-  const isRevealed = propIsRevealed !== undefined ? propIsRevealed : internalRevealed;
+  const isRevealed =
+    propIsRevealed !== undefined
+      ? propIsRevealed
+      : quizState?.isLocked
+      ? true
+      : internalRevealed;
 
-  // Countdown timer for live presentation mode (only if not a preview)
+  // Server-authoritative or local countdown timer
   useEffect(() => {
     if (isPreview) {
       setInternalRevealed(true);
       return;
     }
 
-    setTimeLeft(timeLimit);
+    const computeTimeLeft = () => {
+      if (quizState?.endsAt) {
+        const diff = Math.ceil((new Date(quizState.endsAt).getTime() - Date.now()) / 1000);
+        return Math.max(0, diff);
+      }
+      return timeLimit;
+    };
+
+    const initial = computeTimeLeft();
+    setTimeLeft(initial);
+
+    if (quizState?.isLocked || initial === 0) {
+      setInternalRevealed(true);
+      return;
+    }
+
     setInternalRevealed(false);
 
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setInternalRevealed(true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = computeTimeLeft();
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(timer);
+        setInternalRevealed(true);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [slide.id, timeLimit, isPreview]);
+  }, [slide.id, timeLimit, isPreview, quizState?.endsAt, quizState?.isLocked]);
 
   const getVoteCount = (optionId: string, fallback: number = 0) => {
     if (analytics?.results && Array.isArray(analytics.results)) {

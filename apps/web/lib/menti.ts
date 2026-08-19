@@ -86,6 +86,13 @@ export interface MentiSlide {
   designSettings: MentiSlideDesignSettings;
   position: number;
   totalResponses?: number;
+  metadata?: {
+    source?: string;
+    importId?: string;
+    originalSlideNumber?: number;
+    assetId?: string;
+    [key: string]: any;
+  };
 }
 
 export interface MentiPresentation {

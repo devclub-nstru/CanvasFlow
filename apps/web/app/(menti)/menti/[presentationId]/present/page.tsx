@@ -4,7 +4,6 @@ import React, { use, useEffect, useState } from "react";
 import { PresenterLayout } from "~/components/menti/presenter/PresenterLayout";
 import { env } from "~/env";
 import type { MentiPresentation } from "~/lib/menti";
-import { MOCK_PRESENTATION } from "~/lib/mock-menti";
 import Noise from "~/components/Noise";
 import { useSearchParams } from "next/navigation";
 
@@ -20,8 +19,9 @@ export default function MentiPresentPage({ params }: Props) {
   const querySessionId = searchParams.get("sessionId");
 
   const [presentation, setPresentation] = useState<MentiPresentation | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(querySessionId || "demo-session");
+  const [sessionId, setSessionId] = useState<string | null>(querySessionId || null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!presentationId) return;
@@ -34,10 +34,10 @@ export default function MentiPresentPage({ params }: Props) {
         const presRes = await fetch(`${mentiApiUrl}/api/presentations/${presentationId}`, {
           credentials: "include",
         });
-        if (!presRes.ok) throw new Error("Failed to load presentation details");
+        if (!presRes.ok) throw new Error("Failed to load presentation details from server");
         const presData = await presRes.json();
 
-        const mappedPresentation = {
+        const mappedPresentation: MentiPresentation = {
           ...presData,
           id: presData.id || presData._id,
           slides: (presData.slides || []).map((s: any) => ({
@@ -47,36 +47,33 @@ export default function MentiPresentPage({ params }: Props) {
         };
 
         // 2. Start or Resume active Session for the presentation
-        let activeSessionId = querySessionId || "demo-session";
-        try {
-          const sessionRes = await fetch(`${mentiApiUrl}/api/sessions`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ presentationId }),
-            credentials: "include",
-          });
-          if (sessionRes.ok) {
-            const sessionData = await sessionRes.json();
-            const activeSession = sessionData.session;
-            activeSessionId = activeSession.id || activeSession._id || querySessionId || "demo-session";
+        let activeSessionId = querySessionId || null;
 
-            if (activeSession?.code) {
-              mappedPresentation.joinCode = activeSession.code.replace(/(.{3})/g, "$1 ").trim();
-            }
-          }
-        } catch (sessErr) {
-          console.warn("Session init fallback to demo session:", sessErr);
+        const sessionRes = await fetch(`${mentiApiUrl}/api/sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ presentationId }),
+          credentials: "include",
+        });
+
+        if (!sessionRes.ok) {
+          const errData = await sessionRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to initialize live presenter session");
+        }
+
+        const sessionData = await sessionRes.json();
+        const activeSession = sessionData.session;
+        activeSessionId = activeSession.id || activeSession._id;
+
+        if (activeSession?.code) {
+          mappedPresentation.joinCode = activeSession.code.replace(/(.{3})/g, "$1 ").trim();
         }
 
         setPresentation(mappedPresentation);
         setSessionId(activeSessionId);
       } catch (err: any) {
-        console.warn("Using offline / mock presentation for presenter stage:", err);
-        setPresentation({
-          ...MOCK_PRESENTATION,
-          id: presentationId,
-        });
-        setSessionId(querySessionId || "demo-session");
+        console.error("Presenter initialization error:", err);
+        setError(err?.message || "Failed to start presenter session");
       } finally {
         setLoading(false);
       }
@@ -99,20 +96,21 @@ export default function MentiPresentPage({ params }: Props) {
     );
   }
 
-  if (!presentation || !sessionId) {
+  if (error || !presentation || !sessionId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-(--cf-cream) p-6 text-center text-(--cf-ink)">
         <Noise />
-        <div className="cf-panel cf-raised max-w-sm w-full p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl">
+        <div className="cf-panel cf-raised max-w-sm w-full p-6 bg-white border-2 border-(--cf-line-strong) rounded-2xl space-y-3">
           <h2 className="text-lg font-black text-rose-600 uppercase tracking-tight">
             Presenter Stage Error
           </h2>
-          <p className="mt-2 text-xs text-(--cf-ink-soft) leading-relaxed">
-            Unable to initialize presentation metadata.
+          <p className="text-xs text-(--cf-ink-soft) leading-relaxed">
+            {error || "Unable to initialize presentation metadata."}
           </p>
           <button
+            type="button"
             onClick={() => window.location.reload()}
-            className="cf-btn cf-raised cf-press mt-4 w-full py-2 text-xs font-bold rounded-lg border-2 border-(--cf-line-strong) bg-white"
+            className="cf-btn cf-raised cf-press w-full py-2 text-xs font-bold rounded-lg border-2 border-(--cf-line-strong) bg-white text-(--cf-ink)"
           >
             Retry Stage
           </button>
@@ -128,4 +126,3 @@ export default function MentiPresentPage({ params }: Props) {
     />
   );
 }
-

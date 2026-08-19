@@ -1,46 +1,72 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Check, Clock, Lock, Sparkles, Zap } from "lucide-react";
+import { Check, Clock, Lock, Sparkles, Zap, Trophy, X } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
+import type { QuizResponseResult, QuizSessionState } from "~/hooks/useMentiRealtime";
 
 interface Props {
   slide: MentiSlide;
   onSubmit: (val: any) => void;
   hasSubmitted?: boolean;
+  quizState?: QuizSessionState | null;
+  lastResponseResult?: QuizResponseResult | null;
 }
 
 const colors = ["#2d5cf6", "#ff7378", "#9189eb", "#43b7a6", "#e4a23e", "#313c8e"];
 const optionLetters = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-export function QuizAudience({ slide, onSubmit, hasSubmitted = false }: Props) {
+export function QuizAudience({
+  slide,
+  onSubmit,
+  hasSubmitted = false,
+  quizState,
+  lastResponseResult,
+}: Props) {
   const options = slide.options || [];
-  const timeLimit = slide.responseSettings.timeToRespondSeconds || 30;
-  const isTimeBased = slide.responseSettings.scoreAllocation !== "fixed" && slide.responseSettings.scoreAllocation !== "none";
+  const timeLimit =
+    slide.quizSettings?.timeLimitSeconds ||
+    slide.responseSettings.timeToRespondSeconds ||
+    30;
+  const isTimeBased =
+    slide.quizSettings?.gradingScheme === "time_based" ||
+    (slide.responseSettings.scoreAllocation !== "fixed" &&
+      slide.responseSettings.scoreAllocation !== "none");
 
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
+    lastResponseResult?.selectedOptionId || null
+  );
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const startTimeRef = useRef<number>(Date.now());
 
+  // Countdown timer synced with server endsAt
   useEffect(() => {
     startTimeRef.current = Date.now();
-    setTimeLeft(timeLimit);
+
+    const computeTimeLeft = () => {
+      if (quizState?.endsAt) {
+        const diff = Math.ceil((new Date(quizState.endsAt).getTime() - Date.now()) / 1000);
+        return Math.max(0, diff);
+      }
+      return timeLimit;
+    };
+
+    const initial = computeTimeLeft();
+    setTimeLeft(initial);
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = computeTimeLeft();
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [slide.id, timeLimit]);
+  }, [slide.id, timeLimit, quizState?.endsAt]);
 
   const handleSelect = (optionId: string) => {
-    if (hasSubmitted || selectedOptionId || timeLeft === 0) return;
+    if (hasSubmitted || selectedOptionId || timeLeft === 0 || quizState?.isLocked) return;
 
     setSelectedOptionId(optionId);
     const timeTakenMs = Date.now() - startTimeRef.current;
@@ -52,7 +78,14 @@ export function QuizAudience({ slide, onSubmit, hasSubmitted = false }: Props) {
     });
   };
 
-  const isLocked = hasSubmitted || Boolean(selectedOptionId) || timeLeft === 0;
+  const isLocked =
+    hasSubmitted ||
+    Boolean(selectedOptionId) ||
+    timeLeft === 0 ||
+    Boolean(quizState?.isLocked);
+
+  const isTimerEnded = timeLeft === 0 || Boolean(quizState?.isLocked);
+  const hasResult = lastResponseResult !== null && lastResponseResult !== undefined;
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-4 select-none animate-in fade-in duration-200">
@@ -137,18 +170,48 @@ export function QuizAudience({ slide, onSubmit, hasSubmitted = false }: Props) {
         })}
       </div>
 
-      {/* 3. Post-submission Confirmation Message */}
-      {isLocked && (
+      {/* 3. Post-submission / Post-timer Status Card */}
+      {isLocked && !isTimerEnded && (
         <div className="cf-panel p-4 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-center space-y-1 animate-in fade-in slide-in-from-bottom-2">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase font-mono tracking-wider">
             <Lock className="size-3.5" />
             <span>Answer locked in</span>
           </div>
           <p className="text-xs text-emerald-700">
-            {timeLeft > 0
-              ? `Waiting for timer (${timeLeft}s) to reveal the results...`
-              : "Time is up! Look at the main screen for results."}
+            Waiting for timer ({timeLeft}s) to reveal the results...
           </p>
+        </div>
+      )}
+
+      {/* 4. Revealed Score Breakdown (When timer has ended) */}
+      {isTimerEnded && hasResult && (
+        <div
+          className={`cf-panel p-4 border-2 rounded-xl text-center space-y-2 animate-in fade-in zoom-in-95 ${
+            lastResponseResult?.isCorrect
+              ? "bg-emerald-50 border-emerald-500 text-emerald-900"
+              : "bg-rose-50 border-rose-400 text-rose-900"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {lastResponseResult?.isCorrect ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-full text-xs font-mono font-bold uppercase tracking-wider">
+                <Check className="size-3.5 stroke-[3]" />
+                <span>Correct! +{lastResponseResult.pointsAwarded ?? 0} pts</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 border border-rose-300 text-rose-800 rounded-full text-xs font-mono font-bold uppercase tracking-wider">
+                <X className="size-3.5 stroke-[3]" />
+                <span>Incorrect (0 pts)</span>
+              </span>
+            )}
+          </div>
+
+          {typeof lastResponseResult?.totalScore === "number" && (
+            <div className="pt-2 border-t border-black/10 flex items-center justify-center gap-2 text-xs font-mono">
+              <Trophy className="size-3.5 text-amber-600" />
+              <span>Your total score: <strong>{lastResponseResult.totalScore.toLocaleString()} pts</strong></span>
+            </div>
+          )}
         </div>
       )}
     </div>

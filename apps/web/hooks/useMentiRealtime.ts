@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { env } from "~/env";
-import type { MentiSlide } from "~/lib/menti";
+import type { MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
+
+export interface QuizSessionState {
+  slideId: string | null;
+  startedAt: string | null;
+  endsAt: string | null;
+  durationMs: number | null;
+  isLocked: boolean;
+}
 
 export interface RealtimeSessionState {
   session: {
@@ -14,10 +22,20 @@ export interface RealtimeSessionState {
     settings?: any;
     currentSlideId: string | null;
     isVotingLocked: boolean;
+    quizState?: QuizSessionState | null;
   };
   participantCount: number;
   currentSlide: MentiSlide | null;
   submittedSlideIds?: string[];
+  leaderboard?: MentiLeaderboardSnapshot | null;
+}
+
+export interface QuizResponseResult {
+  success: boolean;
+  isCorrect?: boolean;
+  pointsAwarded?: number;
+  totalScore?: number;
+  selectedOptionId?: string;
 }
 
 export interface UseMentiRealtimeProps {
@@ -40,6 +58,8 @@ export function useMentiRealtime({
   const [sessionState, setSessionState] = useState<RealtimeSessionState | null>(null);
   const [slideAnalytics, setSlideAnalytics] = useState<any | null>(null);
   const [slideAnalyticsMap, setSlideAnalyticsMap] = useState<Record<string, any>>({});
+  const [leaderboard, setLeaderboard] = useState<MentiLeaderboardSnapshot | null>(null);
+  const [lastResponseResult, setLastResponseResult] = useState<QuizResponseResult | null>(null);
   const [submittedSlideIds, setSubmittedSlideIds] = useState<string[]>(() => {
     if (typeof window !== "undefined" && sessionId) {
       try {
@@ -143,14 +163,20 @@ export function useMentiRealtime({
         });
       }
 
+      if (state.leaderboard) {
+        setLeaderboard(state.leaderboard);
+      }
+
       setSessionState({
         session: {
           ...state.session,
           id: state.session.id || state.session._id,
+          quizState: state.session.quizState || null,
         },
         participantCount: state.participantCount,
         currentSlide: mappedSlide,
         submittedSlideIds: state.submittedSlideIds || [],
+        leaderboard: state.leaderboard || null,
       });
       setConnectionStatus("connected");
     });
@@ -163,6 +189,13 @@ export function useMentiRealtime({
           [analytics.slideId]: analytics,
         }));
         setSlideAnalytics(analytics);
+      }
+    });
+
+    // Live Leaderboard Update Event from backend syncer
+    socketInstance.on("leaderboard_update", (leaderboardData: MentiLeaderboardSnapshot) => {
+      if (leaderboardData) {
+        setLeaderboard(leaderboardData);
       }
     });
 
@@ -241,7 +274,7 @@ export function useMentiRealtime({
         });
       }
 
-      return new Promise<{ success: boolean }>((resolve, reject) => {
+      return new Promise<QuizResponseResult>((resolve, reject) => {
         socketRef.current!.emit(
           "submit_response",
           {
@@ -252,7 +285,18 @@ export function useMentiRealtime({
             if (response?.error) {
               reject(new Error(response.error));
             } else {
-              resolve({ success: true });
+              // The ack wrapper returns { success: true, data: result }
+              // The quiz result fields are inside response.data
+              const resultData = response?.data ?? response;
+              const result: QuizResponseResult = {
+                success: true,
+                isCorrect: resultData?.isCorrect,
+                pointsAwarded: resultData?.pointsAwarded,
+                totalScore: resultData?.totalScore,
+                selectedOptionId: resultData?.selectedOptionId,
+              };
+              setLastResponseResult(result);
+              resolve(result);
             }
           },
         );
@@ -274,6 +318,8 @@ export function useMentiRealtime({
     sessionState,
     slideAnalytics,
     slideAnalyticsMap,
+    leaderboard,
+    lastResponseResult,
     submittedSlideIds,
     error,
     changeSlide,

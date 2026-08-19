@@ -2,15 +2,29 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MentiPresentation, MentiSlide, MentiQuestionType } from "~/lib/menti";
-import { MOCK_PRESENTATION } from "~/lib/mock-menti";
 import { env } from "~/env";
 
-export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRESENTATION) {
+const DEFAULT_INITIAL_PRESENTATION: MentiPresentation = {
+  id: "",
+  title: "Untitled Menti",
+  slug: "untitled-menti",
+  joinCode: "------",
+  isLive: false,
+  activeSlideId: null,
+  ownerId: "",
+  participantCount: 0,
+  slides: [],
+  createdAt: "",
+  updatedAt: "",
+};
+
+export function useMentiEditor(initialPresentation: MentiPresentation = DEFAULT_INITIAL_PRESENTATION) {
   const [presentation, setPresentation] = useState<MentiPresentation>(initialPresentation);
   const [activeSlideId, setActiveSlideId] = useState<string>(
     initialPresentation?.slides?.[0]?.id || ""
   );
   const [isNewSlideModalOpen, setIsNewSlideModalOpen] = useState(false);
+  const [isPptxModalOpen, setIsPptxModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"create" | "results">("create");
 
   const updateTitleTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -74,11 +88,20 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     }
 
     updateSlideTimeouts.current[slideId] = setTimeout(async () => {
-      const payload = pendingSlideUpdates.current[slideId];
+      const payload = { ...pendingSlideUpdates.current[slideId] };
       if (!payload) return;
       
       // Clear pending updates for this slide before network call
       delete pendingSlideUpdates.current[slideId];
+
+      // Automatically sync quizSettings with responseSettings if present
+      if (payload.responseSettings) {
+        payload.quizSettings = {
+          timeLimitSeconds: payload.responseSettings.timeToRespondSeconds || 30,
+          maxPoints: 1000,
+          gradingScheme: payload.responseSettings.scoreAllocation === "fixed" ? "answer_based" : "time_based",
+        };
+      }
 
       try {
         await fetch(`${baseUrl}/api/presentations/${presentation.id}/slides/${slideId}`, {
@@ -139,6 +162,14 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
                 { id: "rate-5", label: "5", voteCount: 0 },
               ]
             : [],
+      quizSettings:
+        type === "QUIZ"
+          ? {
+              timeLimitSeconds: 30,
+              maxPoints: 1000,
+              gradingScheme: "time_based",
+            }
+          : undefined,
       responseSettings: {
         multipleSelection: false,
         maxEntriesPerParticipant: 1,
@@ -207,6 +238,7 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
           question: newSlide.question,
           description: newSlide.description,
           options: newSlide.options,
+          quizSettings: newSlide.quizSettings,
           responseSettings: newSlide.responseSettings,
           designSettings: newSlide.designSettings,
         }),
@@ -485,8 +517,41 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     }
   };
 
+  const refreshPresentation = async (targetActivePosition?: number) => {
+    try {
+      const res = await fetch(`${baseUrl}/api/presentations/${presentation.id}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const mappedData: MentiPresentation = {
+        ...data,
+        id: data.id || data._id,
+        slides: (data.slides || []).map((s: any) => ({
+          ...s,
+          id: s.id || s._id,
+        })),
+      };
+
+      setPresentation(mappedData);
+
+      if (typeof targetActivePosition === "number" && mappedData.slides.length > 0) {
+        const slideAtPos =
+          mappedData.slides.find((s) => s.position === targetActivePosition) ||
+          mappedData.slides[targetActivePosition] ||
+          mappedData.slides[mappedData.slides.length - 1];
+        if (slideAtPos) {
+          setActiveSlideId(slideAtPos.id);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to refresh presentation:", err);
+    }
+  };
+
   return {
     presentation,
+    setPresentation,
     activeSlide,
     activeSlideId,
     setActiveSlideId,
@@ -494,11 +559,14 @@ export function useMentiEditor(initialPresentation: MentiPresentation = MOCK_PRE
     setActiveTab,
     isNewSlideModalOpen,
     setIsNewSlideModalOpen,
+    isPptxModalOpen,
+    setIsPptxModalOpen,
     updateTitle,
     updateSlide,
     addSlide,
     toggleQuizLeaderboard,
     deleteSlide,
     reorderSlides,
+    refreshPresentation,
   };
 }

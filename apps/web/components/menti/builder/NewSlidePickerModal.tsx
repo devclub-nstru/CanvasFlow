@@ -7,7 +7,8 @@ import {
   Cloud,
   Star,
   Type,
-  Sparkles,
+  HelpCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { MentiQuestionType } from "~/lib/menti";
 
@@ -15,9 +16,15 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSelectType: (type: MentiQuestionType) => void;
+  onOpenPptxImport?: () => void;
 }
 
-export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
+export function NewSlidePickerModal({
+  isOpen,
+  onClose,
+  onSelectType,
+  onOpenPptxImport,
+}: Props) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape or click outside
@@ -52,154 +59,153 @@ export function NewSlidePickerModal({ isOpen, onClose, onSelectType }: Props) {
   return (
     <>
       {/* Invisible backdrop overlay to capture outside clicks */}
-      <div className="fixed inset-0 z-40 bg-black/5" />
+      <div className="fixed inset-0 z-40 bg-black/10" />
 
       {/* Floating Popover Menu anchored at top-left */}
       <div
         ref={menuRef}
-        className="fixed top-14 left-4 sm:left-5 z-50 w-[340px] sm:w-[380px] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised shadow-2xl flex flex-col overflow-hidden select-none animate-in fade-in zoom-in-95 duration-150"
+        className="fixed top-14 left-4 sm:left-5 z-50 w-[300px] sm:w-[320px] bg-white rounded-2xl border border-neutral-200/90 shadow-xl flex flex-col overflow-hidden select-none animate-in fade-in zoom-in-95 duration-150 p-4"
       >
-        <div className="p-4 sm:p-5 space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
-            <span className="cf-eyebrow text-(--cf-ink)">Add slide</span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-              title="Close menu"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+        {/* Top Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-100 mb-3">
+          <span className="text-xs font-bold text-neutral-800">Add slide</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+            title="Close menu"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
 
-          {/* 1. Interactive questions section */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+        <div className="space-y-4">
+          {/* 1. Interactive questions */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 px-1 mb-1">
+              <span className="text-xs font-semibold text-neutral-500">
                 Interactive questions
               </span>
+              <HelpCircle className="size-3 text-neutral-400" />
             </div>
 
-            <div className="grid grid-cols-1 gap-1">
-              {/* Multiple Choice / BAR_GRAPH */}
+            <div className="space-y-0.5">
+              {/* Multiple Choice */}
               <button
                 type="button"
                 onClick={() => handleSelect("BAR_GRAPH")}
-                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div className="size-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-200 group-hover:scale-105 transition-transform">
-                  <BarChart2 className="size-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-neutral-800 group-hover:text-blue-600 transition-colors block">
-                    Multiple Choice
-                  </span>
-                  <span className="text-[11px] text-neutral-400 block">
-                    Polls & bar charts
-                  </span>
-                </div>
+                <BarChart2 className="size-4 text-blue-600" />
+                <span className="text-xs font-semibold text-neutral-800 group-hover:text-blue-600 transition-colors">
+                  Multiple Choice
+                </span>
               </button>
 
-              {/* Word Cloud / WORD_CLOUD */}
+              {/* Word Cloud */}
               <button
                 type="button"
                 onClick={() => handleSelect("WORD_CLOUD")}
-                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div className="size-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 border border-rose-200 group-hover:scale-105 transition-transform">
-                  <Cloud className="size-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-neutral-800 group-hover:text-rose-600 transition-colors block">
-                    Word Cloud
-                  </span>
-                  <span className="text-[11px] text-neutral-400 block">
-                    Live dynamic text clustering
-                  </span>
-                </div>
+                <Cloud className="size-4 text-rose-500" />
+                <span className="text-xs font-semibold text-neutral-800 group-hover:text-rose-600 transition-colors">
+                  Word Cloud
+                </span>
               </button>
 
-              {/* Scales / SCALES */}
+              {/* Scales */}
               <button
                 type="button"
                 onClick={() => handleSelect("SCALES")}
-                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div className="size-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-200 group-hover:scale-105 transition-transform">
-                  <Star className="size-4 fill-amber-500 text-amber-500" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-neutral-800 group-hover:text-amber-600 transition-colors block">
-                    Scales
-                  </span>
-                  <span className="text-[11px] text-neutral-400 block">
-                    1–5 rating statements
-                  </span>
-                </div>
+                <Star className="size-4 text-indigo-500 fill-indigo-500" />
+                <span className="text-xs font-semibold text-neutral-800 group-hover:text-indigo-600 transition-colors">
+                  Scales
+                </span>
               </button>
             </div>
           </div>
 
-          {/* 2. Quiz competitions section */}
-          <div className="pt-2 border-t border-neutral-100 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+          {/* 2. Quiz competitions */}
+          <div className="pt-3 border-t border-neutral-100 space-y-1">
+            <div className="flex items-center gap-1 px-1 mb-1">
+              <span className="text-xs font-semibold text-neutral-500">
                 Quiz competitions
               </span>
+              <HelpCircle className="size-3 text-neutral-400" />
             </div>
 
-            <div className="grid grid-cols-1 gap-1">
-              {/* Select Answer / QUIZ */}
+            <div className="space-y-0.5">
+              {/* Select Answer */}
               <button
                 type="button"
                 onClick={() => handleSelect("QUIZ")}
-                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div className="size-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 group-hover:scale-105 transition-transform">
-                  <Sparkles className="size-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-neutral-800 group-hover:text-indigo-600 transition-colors block">
-                    Select Answer (Quiz)
-                  </span>
-                  <span className="text-[11px] text-neutral-400 block">
-                    Timed quiz with points & auto leaderboard
-                  </span>
-                </div>
+                <BarChart2 className="size-4 text-indigo-600" />
+                <span className="text-xs font-semibold text-neutral-800 group-hover:text-indigo-600 transition-colors">
+                  Select Answer
+                </span>
               </button>
             </div>
           </div>
 
-          {/* 3. Content slides section */}
-          <div className="pt-2 border-t border-neutral-100 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+          {/* 3. Content slides */}
+          <div className="pt-3 border-t border-neutral-100 space-y-1">
+            <div className="flex items-center gap-1 px-1 mb-1">
+              <span className="text-xs font-semibold text-neutral-500">
                 Content slides
               </span>
+              <HelpCircle className="size-3 text-neutral-400" />
             </div>
 
-            <div className="grid grid-cols-1 gap-1">
-              {/* Text / CONTENT */}
+            <div className="space-y-0.5">
+              {/* Text */}
               <button
                 type="button"
                 onClick={() => handleSelect("CONTENT")}
-                className="flex items-center gap-3 p-2.5 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
+                className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-neutral-100 transition-colors group"
               >
-                <div className="size-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 group-hover:scale-105 transition-transform">
-                  <Type className="size-4 stroke-[2.5]" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-neutral-800 group-hover:text-emerald-600 transition-colors block">
-                    Heading / Text
-                  </span>
-                  <span className="text-[11px] text-neutral-400 block">
-                    Section dividers & key points
-                  </span>
-                </div>
+                <Type className="size-4 text-blue-600 stroke-[2.5]" />
+                <span className="text-xs font-semibold text-neutral-800 group-hover:text-blue-600 transition-colors">
+                  Text
+                </span>
               </button>
             </div>
           </div>
+
+          {/* 4. Import */}
+          {onOpenPptxImport && (
+            <div className="pt-3 border-t border-neutral-100 space-y-1">
+              <div className="flex items-center gap-1 px-1 mb-1">
+                <span className="text-xs font-semibold text-neutral-500">
+                  Import slides
+                </span>
+                <HelpCircle className="size-3 text-neutral-400" />
+              </div>
+
+              <div className="space-y-0.5">
+                {/* PowerPoint */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenPptxImport();
+                  }}
+                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left hover:bg-orange-50/80 transition-colors group"
+                >
+                  <FileSpreadsheet className="size-4 text-(--cf-orange) stroke-[2.5]" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-neutral-800 group-hover:text-(--cf-orange) transition-colors">
+                      PowerPoint (.pptx)
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

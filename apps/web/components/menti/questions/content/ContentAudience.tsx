@@ -20,12 +20,32 @@ const ICON_MAP = {
 };
 
 export function ContentAudience({ slide }: Props) {
+  const contentImageUrl = slide.designSettings?.contentImageUrl;
   const title = slide.question || "";
   const description = slide.description || "";
   const eyebrow = slide.designSettings?.eyebrow;
   const textAlign = slide.designSettings?.textAlign || "center";
   const iconKey = slide.designSettings?.icon;
   const accentColor = slide.designSettings?.accentColor || "#e4a23e";
+
+  if (contentImageUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center py-4 w-full select-none">
+        <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden border border-(--cf-line-strong) bg-neutral-900/5 shadow-xs">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={contentImageUrl}
+            alt={title || "PowerPoint Slide"}
+            className="w-full h-full object-contain"
+            loading="eager"
+          />
+        </div>
+        {title && title !== `Slide ${slide.position + 1}` && (
+          <p className="mt-3 text-xs sm:text-sm font-bold text-(--cf-ink) text-center">{title}</p>
+        )}
+      </div>
+    );
+  }
 
   const IconComponent = iconKey && iconKey !== "none" ? ICON_MAP[iconKey as keyof typeof ICON_MAP] : null;
 

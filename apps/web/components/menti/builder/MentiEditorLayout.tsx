@@ -8,10 +8,11 @@ import { SlideThumbnailSidebar } from "./SlideThumbnailSidebar";
 import { SlideCanvasStage } from "./SlideCanvasStage";
 import { SlideInspectorPanel } from "./SlideInspectorPanel";
 import { NewSlidePickerModal } from "./NewSlidePickerModal";
+import { PptxImportModal } from "./PptxImportModal";
 import { MentiResultsView } from "../results/MentiResultsView";
 
 interface Props {
-  initialPresentation?: MentiPresentation;
+  initialPresentation: MentiPresentation;
 }
 
 export function MentiEditorLayout({ initialPresentation }: Props) {
@@ -25,13 +26,18 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
     setActiveTab,
     isNewSlideModalOpen,
     setIsNewSlideModalOpen,
+    isPptxModalOpen,
+    setIsPptxModalOpen,
     updateTitle,
     updateSlide,
     addSlide,
     toggleQuizLeaderboard,
     deleteSlide,
     reorderSlides,
+    refreshPresentation,
   } = useMentiEditor(initialPresentation);
+
+  const activeSlideIndex = presentation.slides.findIndex((s) => s.id === activeSlideId);
 
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-(--cf-cream)">
@@ -52,7 +58,6 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
             activeSlideId={activeSlideId}
             onSelectSlide={setActiveSlideId}
             onOpenNewSlideModal={() => setIsNewSlideModalOpen((prev) => !prev)}
-            isNewSlideMenuOpen={isNewSlideModalOpen}
             onDeleteSlide={deleteSlide}
             onReorderSlide={reorderSlides}
           />
@@ -87,6 +92,19 @@ export function MentiEditorLayout({ initialPresentation }: Props) {
         isOpen={isNewSlideModalOpen}
         onClose={() => setIsNewSlideModalOpen(false)}
         onSelectType={addSlide}
+        onOpenPptxImport={() => setIsPptxModalOpen(true)}
+      />
+
+      {/* 4. PowerPoint (.pptx) Import Modal */}
+      <PptxImportModal
+        isOpen={isPptxModalOpen}
+        onClose={() => setIsPptxModalOpen(false)}
+        presentationId={presentation.id}
+        slidesCount={presentation.slides.length}
+        activeSlideIndex={activeSlideIndex >= 0 ? activeSlideIndex : presentation.slides.length - 1}
+        onImportCompleted={(targetPos) => {
+          refreshPresentation(targetPos);
+        }}
       />
     </div>
   );

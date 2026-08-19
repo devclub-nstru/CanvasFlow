@@ -12,11 +12,10 @@ import {
   Palette,
   X,
   Sliders,
-  HelpCircle,
   Trophy,
   Cloud,
   Star,
-  Sparkles,
+  Type,
 } from "lucide-react";
 
 interface Props {
@@ -29,21 +28,21 @@ interface Props {
 }
 
 const QUESTION_TYPE_LABELS: Record<MentiQuestionType, string> = {
-  QUIZ: "Quiz (Select Answer)",
-  LEADERBOARD: "Quiz Leaderboard",
-  BAR_GRAPH: "Multiple Choice / Bar Graph",
-  WORD_CLOUD: "Word Cloud (Text)",
-  SCALES: "Scales / Rating",
-  CONTENT: "Blank / Text Slide",
+  QUIZ: "Select Answer",
+  LEADERBOARD: "Leaderboard",
+  BAR_GRAPH: "Multiple Choice",
+  WORD_CLOUD: "Word Cloud",
+  SCALES: "Scales",
+  CONTENT: "Text",
 };
 
 const QUESTION_TYPE_ICONS: Record<MentiQuestionType, React.ReactNode> = {
-  QUIZ: <HelpCircle className="w-4 h-4 text-emerald-600" />,
+  QUIZ: <BarChart2 className="w-4 h-4 text-indigo-600" />,
   LEADERBOARD: <Trophy className="w-4 h-4 text-amber-500" />,
-  BAR_GRAPH: <BarChart2 className="w-4 h-4 text-(--cf-orange)" />,
-  WORD_CLOUD: <Cloud className="w-4 h-4 text-rose-600" />,
-  SCALES: <Star className="w-4 h-4 text-amber-500 fill-amber-500" />,
-  CONTENT: <Sparkles className="w-4 h-4 text-indigo-600" />,
+  BAR_GRAPH: <BarChart2 className="w-4 h-4 text-blue-600" />,
+  WORD_CLOUD: <Cloud className="w-4 h-4 text-rose-500" />,
+  SCALES: <Star className="w-4 h-4 text-indigo-500 fill-indigo-500" />,
+  CONTENT: <Type className="w-4 h-4 text-blue-600 stroke-[2.5]" />,
 };
 
 export function SlideInspectorPanel({

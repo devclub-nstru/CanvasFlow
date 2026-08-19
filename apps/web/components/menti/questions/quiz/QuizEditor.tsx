@@ -133,7 +133,18 @@ export function QuizEditor({
   };
 
   const updateSettings = (patch: Partial<MentiSlide["responseSettings"]>) => {
-    onChange({ responseSettings: { ...slide.responseSettings, ...patch } });
+    const updatedResponseSettings = { ...slide.responseSettings, ...patch };
+    const updatedQuizSettings = {
+      timeLimitSeconds: updatedResponseSettings.timeToRespondSeconds || 30,
+      maxPoints: 1000,
+      gradingScheme: (updatedResponseSettings.scoreAllocation === "fixed"
+        ? "answer_based"
+        : "time_based") as "answer_based" | "time_based",
+    };
+    onChange({
+      responseSettings: updatedResponseSettings,
+      quizSettings: updatedQuizSettings,
+    });
   };
 
   const selectedIndex = options.findIndex((option) => option.id === selectedId);

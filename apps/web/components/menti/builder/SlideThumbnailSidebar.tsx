@@ -3,15 +3,14 @@
 import React, { useState, useRef } from "react";
 import {
   Plus,
-  X,
   Trash2,
   BarChart2,
   Cloud,
   Star,
-  Sparkles,
-  HelpCircle,
+  Type,
   Trophy,
   GripVertical,
+  FileSpreadsheet,
 } from "lucide-react";
 import { MentiSlide, MentiQuestionType } from "~/lib/menti";
 
@@ -20,18 +19,17 @@ interface Props {
   activeSlideId: string;
   onSelectSlide: (id: string) => void;
   onOpenNewSlideModal: () => void;
-  isNewSlideMenuOpen?: boolean;
   onDeleteSlide: (id: string) => void;
   onReorderSlide?: (fromIdx: number, toIdx: number) => void;
 }
 
 const QUESTION_ICONS: Record<MentiQuestionType, React.ReactNode> = {
-  QUIZ: <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />,
+  QUIZ: <BarChart2 className="w-3.5 h-3.5 text-indigo-600" />,
   LEADERBOARD: <Trophy className="w-3.5 h-3.5 text-amber-500" />,
-  BAR_GRAPH: <BarChart2 className="w-3.5 h-3.5 text-(--cf-orange)" />,
-  WORD_CLOUD: <Cloud className="w-3.5 h-3.5 text-rose-600" />,
-  SCALES: <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />,
-  CONTENT: <Sparkles className="w-3.5 h-3.5 text-indigo-600" />,
+  BAR_GRAPH: <BarChart2 className="w-3.5 h-3.5 text-blue-600" />,
+  WORD_CLOUD: <Cloud className="w-3.5 h-3.5 text-rose-500" />,
+  SCALES: <Star className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500" />,
+  CONTENT: <Type className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />,
 };
 
 export function SlideThumbnailSidebar({
@@ -39,7 +37,6 @@ export function SlideThumbnailSidebar({
   activeSlideId,
   onSelectSlide,
   onOpenNewSlideModal,
-  isNewSlideMenuOpen = false,
   onDeleteSlide,
   onReorderSlide,
 }: Props) {
@@ -88,28 +85,15 @@ export function SlideThumbnailSidebar({
 
   return (
     <aside className="flex flex-col w-48 h-full bg-(--cf-cream-2) border-r border-(--cf-line-strong) select-none shrink-0">
-      {/* Top CTA: + New slide / ✕ New slide */}
+      {/* Top CTA: + New slide */}
       <div className="p-3">
         <button
           type="button"
           onClick={onOpenNewSlideModal}
-          className={`w-full py-2 px-3 text-xs font-bold justify-center rounded-full transition-all flex items-center shadow-xs ${
-            isNewSlideMenuOpen
-              ? "bg-neutral-900 text-white hover:bg-neutral-800"
-              : "cf-btn cf-raised cf-press"
-          }`}
+          className="cf-btn cf-raised cf-press w-full py-2 px-3 text-xs font-bold justify-center rounded-full"
         >
-          {isNewSlideMenuOpen ? (
-            <>
-              <X className="w-3.5 h-3.5 mr-1.5 stroke-[2.5]" />
-              New slide
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4 mr-1 stroke-[3]" />
-              New slide
-            </>
-          )}
+          <Plus className="w-4 h-4 mr-1 stroke-[3]" />
+          New slide
         </button>
       </div>
 
@@ -124,6 +108,8 @@ export function SlideThumbnailSidebar({
           const isBeingDragged = draggedIndex === index;
           const showTopDropIndicator =
             dropSlotIndex === index && draggedIndex !== null && draggedIndex !== index && draggedIndex !== index - 1;
+          const hasSlideImage = Boolean(slide.designSettings?.contentImageUrl);
+          const isPptxImport = slide.metadata?.source === "pptx_import" || hasSlideImage;
 
           return (
             <React.Fragment key={slide.id}>
@@ -160,16 +146,41 @@ export function SlideThumbnailSidebar({
                 {/* Thumbnail Container */}
                 <div
                   onClick={() => onSelectSlide(slide.id)}
-                  className={`relative flex flex-col justify-between flex-1 aspect-[16/10] p-2.5 bg-white rounded-xl cursor-pointer transition-all ${
+                  className={`relative flex flex-col justify-between flex-1 aspect-[16/10] p-2 bg-white rounded-xl cursor-pointer overflow-hidden transition-all ${
                     isActive
                       ? "border-2 border-(--cf-ink) cf-raised ring-1 ring-(--cf-ink)"
                       : "border border-(--cf-line-strong) hover:border-(--cf-ink) hover:shadow-xs"
                   }`}
                 >
-                  {/* Top Question Type Tag & Delete Button */}
-                  <div className="flex items-center justify-between">
-                    <div className="p-1 bg-(--cf-cream) border border-(--cf-line) rounded-md">
-                      {QUESTION_ICONS[slide.type] || <BarChart2 className="w-3.5 h-3.5" />}
+                  {/* Background Image Preview for PPTX Slides */}
+                  {hasSlideImage && (
+                    <div className="absolute inset-0 z-0 bg-neutral-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={slide.designSettings!.contentImageUrl!}
+                        alt={slide.question || "Slide"}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+                    </div>
+                  )}
+
+                  {/* Top Type Tag & Delete Button */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div
+                      className={`p-1 rounded-md border text-[10px] font-bold flex items-center gap-1 ${
+                        hasSlideImage
+                          ? "bg-black/60 border-white/20 text-white backdrop-blur-xs"
+                          : "bg-(--cf-cream) border-(--cf-line)"
+                      }`}
+                    >
+                      {isPptxImport ? (
+                        <FileSpreadsheet className="w-3 h-3 text-orange-400" />
+                      ) : (
+                        QUESTION_ICONS[slide.type] || <BarChart2 className="w-3.5 h-3.5" />
+                      )}
+                      {isPptxImport && <span className="text-[9px] uppercase">PPT</span>}
                     </div>
 
                     {slides.length > 1 && (
@@ -179,7 +190,11 @@ export function SlideThumbnailSidebar({
                           e.stopPropagation();
                           onDeleteSlide(slide.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-(--cf-ink-soft) hover:text-(--cf-danger) transition-opacity rounded"
+                        className={`opacity-0 group-hover:opacity-100 p-0.5 transition-opacity rounded ${
+                          hasSlideImage
+                            ? "bg-black/50 text-white hover:text-red-400"
+                            : "text-(--cf-ink-soft) hover:text-(--cf-danger)"
+                        }`}
                         title="Delete slide"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -188,8 +203,12 @@ export function SlideThumbnailSidebar({
                   </div>
 
                   {/* Question Preview text */}
-                  <p className="text-[10px] font-bold line-clamp-2 text-(--cf-ink) leading-snug mt-1">
-                    {slide.question || "Untitled question"}
+                  <p
+                    className={`relative z-10 text-[10px] font-bold line-clamp-2 leading-snug mt-1 ${
+                      hasSlideImage ? "text-white drop-shadow-xs" : "text-(--cf-ink)"
+                    }`}
+                  >
+                    {slide.question || (isPptxImport ? `Slide ${index + 1}` : "Untitled question")}
                   </p>
                 </div>
               </div>

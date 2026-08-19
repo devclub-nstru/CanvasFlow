@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { MentiSlide } from "~/lib/menti";
+import { MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
+import type { QuizResponseResult, QuizSessionState } from "~/hooks/useMentiRealtime";
 
 import { BarGraphViewer } from "./bar-graph/BarGraphViewer";
 import { BarGraphEditor } from "./bar-graph/BarGraphEditor";
@@ -31,6 +32,8 @@ import { LeaderboardAudience } from "./leaderboard/LeaderboardAudience";
 export function SlideQuestionViewer({
   slide,
   analytics,
+  leaderboard,
+  quizState,
   isPreview,
   hideResults,
   showAsPercentage,
@@ -39,6 +42,8 @@ export function SlideQuestionViewer({
 }: {
   slide: MentiSlide;
   analytics?: any;
+  leaderboard?: MentiLeaderboardSnapshot | null;
+  quizState?: QuizSessionState | null;
   isPreview?: boolean;
   hideResults?: boolean;
   showAsPercentage?: boolean;
@@ -67,6 +72,7 @@ export function SlideQuestionViewer({
         <QuizViewer
           slide={slide}
           analytics={analytics}
+          quizState={quizState}
           isPreview={isPreview}
           hideResults={hideResults}
           showAsPercentage={showAsPercentage}
@@ -75,7 +81,14 @@ export function SlideQuestionViewer({
         />
       );
     case "LEADERBOARD":
-      return <LeaderboardViewer slide={slide} analytics={analytics} isPreview={isPreview} />;
+      return (
+        <LeaderboardViewer
+          slide={slide}
+          analytics={analytics}
+          leaderboard={leaderboard}
+          isPreview={isPreview}
+        />
+      );
     default:
       return <div className="p-8 text-neutral-400">Unknown Question Type</div>;
   }
@@ -147,10 +160,18 @@ export function SlideAudienceInput({
   slide,
   onSubmit,
   hasSubmitted,
+  quizState,
+  lastResponseResult,
+  leaderboard,
+  participantName,
 }: {
   slide: MentiSlide;
   onSubmit: (val: any) => void;
   hasSubmitted?: boolean;
+  quizState?: QuizSessionState | null;
+  lastResponseResult?: QuizResponseResult | null;
+  leaderboard?: MentiLeaderboardSnapshot | null;
+  participantName?: string;
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
@@ -162,9 +183,28 @@ export function SlideAudienceInput({
     case "CONTENT":
       return <ContentAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
     case "QUIZ":
-      return <QuizAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return (
+        <QuizAudience
+          key={slide.id}
+          slide={slide}
+          onSubmit={onSubmit}
+          hasSubmitted={hasSubmitted}
+          quizState={quizState}
+          lastResponseResult={lastResponseResult}
+        />
+      );
     case "LEADERBOARD":
-      return <LeaderboardAudience key={slide.id} slide={slide} onSubmit={onSubmit} hasSubmitted={hasSubmitted} />;
+      return (
+        <LeaderboardAudience
+          key={slide.id}
+          slide={slide}
+          onSubmit={onSubmit}
+          hasSubmitted={hasSubmitted}
+          leaderboard={leaderboard}
+          lastResponseResult={lastResponseResult}
+          participantName={participantName}
+        />
+      );
     default:
       return <div className="p-4 text-neutral-500">Waiting for next question...</div>;
   }

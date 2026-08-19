@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { MentiPresentation, MentiSlide } from "~/lib/menti";
+import { MentiPresentation, MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
+import type { QuizResponseResult, QuizSessionState } from "~/hooks/useMentiRealtime";
 import { SlideAudienceInput } from "../questions/registry";
 import { AudienceLobbyView } from "./AudienceLobbyView";
 import { ThumbsUp, XCircle } from "lucide-react";
@@ -16,6 +17,10 @@ interface Props {
   sessionStatus?: "waiting" | "live" | "paused" | "finished" | "cancelled";
   participantCount?: number;
   submittedSlideIds?: string[];
+  quizState?: QuizSessionState | null;
+  lastResponseResult?: QuizResponseResult | null;
+  leaderboard?: MentiLeaderboardSnapshot | null;
+  participantName?: string;
   onSubmitAnswer?: (answer: any, slideId?: string) => Promise<any> | void;
 }
 
@@ -35,6 +40,10 @@ export function AudienceLayout({
   sessionStatus = "live",
   participantCount = 1,
   submittedSlideIds = [],
+  quizState,
+  lastResponseResult,
+  leaderboard,
+  participantName,
   onSubmitAnswer,
 }: Props) {
   const [localSubmittedSlideIds, setLocalSubmittedSlideIds] = useState<string[]>([]);
@@ -222,6 +231,10 @@ export function AudienceLayout({
               slide={currentSlide}
               onSubmit={handleVoteSubmit}
               hasSubmitted={isCurrentSlideSubmitted}
+              quizState={quizState}
+              lastResponseResult={lastResponseResult}
+              leaderboard={leaderboard}
+              participantName={participantName}
             />
           ) : (
             <div className="text-center p-6 sm:p-8 text-(--cf-ink-soft) text-xs sm:text-sm font-medium">
