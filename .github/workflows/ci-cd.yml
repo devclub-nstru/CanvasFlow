@@ -71,7 +71,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          key: ${{ secrets.SSH_KEY }}
           envs: ENV_FILE_CONTENT
           command_timeout: 25m
           script: |
