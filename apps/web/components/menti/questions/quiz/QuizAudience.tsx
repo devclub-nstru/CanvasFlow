@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Check, Clock, Lock, Sparkles, Zap, Trophy, X } from "lucide-react";
+import { Check, Clock, Send, Trophy, X, CheckCircle2 } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
 import type { QuizResponseResult, QuizSessionState } from "~/hooks/useMentiRealtime";
 
@@ -13,7 +13,6 @@ interface Props {
   lastResponseResult?: QuizResponseResult | null;
 }
 
-const colors = ["#2d5cf6", "#ff7378", "#9189eb", "#43b7a6", "#e4a23e", "#313c8e"];
 const optionLetters = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 export function QuizAudience({
@@ -26,29 +25,35 @@ export function QuizAudience({
   const options = slide.options || [];
   const timeLimit =
     slide.quizSettings?.timeLimitSeconds ||
-    slide.responseSettings.timeToRespondSeconds ||
+    slide.responseSettings?.timeToRespondSeconds ||
     30;
-  const isTimeBased =
-    slide.quizSettings?.gradingScheme === "time_based" ||
-    (slide.responseSettings.scoreAllocation !== "fixed" &&
-      slide.responseSettings.scoreAllocation !== "none");
 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     lastResponseResult?.selectedOptionId || null
   );
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(hasSubmitted);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const startTimeRef = useRef<number>(Date.now());
 
+  // Reset when slide changes
+  useEffect(() => {
+    setSelectedOptionId(null);
+    setIsSubmitted(false);
+  }, [slide.id]);
+
   // Countdown timer synced with server endsAt
   useEffect(() => {
-    startTimeRef.current = Date.now();
+    const mountTime = Date.now();
+    startTimeRef.current = mountTime;
+    const fallbackEndsAt = mountTime + timeLimit * 1000;
 
     const computeTimeLeft = () => {
       if (quizState?.endsAt) {
         const diff = Math.ceil((new Date(quizState.endsAt).getTime() - Date.now()) / 1000);
         return Math.max(0, diff);
       }
-      return timeLimit;
+      const localDiff = Math.ceil((fallbackEndsAt - Date.now()) / 1000);
+      return Math.max(0, localDiff);
     };
 
     const initial = computeTimeLeft();
@@ -60,76 +65,67 @@ export function QuizAudience({
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 1000);
+    }, 250);
 
     return () => clearInterval(interval);
   }, [slide.id, timeLimit, quizState?.endsAt]);
 
-  const handleSelect = (optionId: string) => {
-    if (hasSubmitted || selectedOptionId || timeLeft === 0 || quizState?.isLocked) return;
+  const isTimerEnded = timeLeft === 0 || Boolean(quizState?.isLocked);
+  const isLocked = isSubmitted || hasSubmitted || isTimerEnded;
+  const hasResult = lastResponseResult !== null && lastResponseResult !== undefined;
 
+  const handleSelectOption = (optionId: string) => {
+    if (isLocked) return;
     setSelectedOptionId(optionId);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOptionId || isLocked) return;
+
+    setIsSubmitted(true);
     const timeTakenMs = Date.now() - startTimeRef.current;
 
     onSubmit({
-      optionId,
+      optionId: selectedOptionId,
       timeTakenMs,
       timestamp: new Date().toISOString(),
     });
   };
 
-  const isLocked =
-    hasSubmitted ||
-    Boolean(selectedOptionId) ||
-    timeLeft === 0 ||
-    Boolean(quizState?.isLocked);
-
-  const isTimerEnded = timeLeft === 0 || Boolean(quizState?.isLocked);
-  const hasResult = lastResponseResult !== null && lastResponseResult !== undefined;
-
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col gap-4 select-none animate-in fade-in duration-200">
-      {/* 1. Header with Question and Countdown Status */}
-      <div className="cf-panel cf-raised p-5 bg-white rounded-2xl border-2 border-(--cf-line-strong) text-center space-y-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col w-full space-y-4 sm:space-y-5 select-none animate-in fade-in duration-200"
+    >
+      {/* 1. Header with Question & Timer */}
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <span className="cf-meta text-(--cf-orange)">Quiz Question</span>
           <div
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-mono font-bold ${
-              timeLeft <= 5
-                ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
-                : "bg-(--cf-cream) border-(--cf-line) text-(--cf-ink)"
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-mono font-bold ${
+              timeLeft <= 5 && timeLeft > 0
+                ? "bg-rose-50 border-rose-400 text-rose-700 animate-pulse"
+                : "bg-white border-(--cf-line-strong) text-(--cf-ink)"
             }`}
           >
-            <Clock className="size-3" />
-            <span>{timeLeft}s</span>
+            <Clock className="w-3 h-3 text-(--cf-orange)" />
+            <span className="tabular-nums">{timeLeft}s</span>
           </div>
         </div>
 
-        <h2 className="text-lg sm:text-xl font-bold leading-snug text-neutral-900 pt-1">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug text-(--cf-ink)">
           {slide.question || "Select the correct answer"}
         </h2>
-
-        {/* Speed / Points Bonus Note */}
-        <div className="pt-2 border-t border-(--cf-line) flex items-center justify-center gap-1.5 text-xs font-mono text-(--cf-ink-soft)">
-          {isTimeBased ? (
-            <>
-              <Zap className="size-3.5 text-amber-500 fill-amber-500" />
-              <span>Answer fast for up to 1,000 points!</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="size-3.5 text-(--cf-orange)" />
-              <span>Correct answer earns 1,000 points!</span>
-            </>
-          )}
-        </div>
+        <p className="cf-meta text-[11px] text-(--cf-ink-soft)">
+          {isLocked ? "Response locked in" : "Select one option and submit"}
+        </p>
       </div>
 
       {/* 2. Options Choice Cards */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-2.5 max-h-[46vh] sm:max-h-[50vh] overflow-y-auto pr-1">
         {options.map((option, index) => {
           const isSelected = selectedOptionId === option.id;
-          const color = option.color || colors[index % colors.length];
           const letter = optionLetters[index] || String(index + 1);
 
           return (
@@ -137,83 +133,86 @@ export function QuizAudience({
               key={option.id}
               type="button"
               disabled={isLocked}
-              onClick={() => handleSelect(option.id)}
-              className={`w-full cf-raised p-4 rounded-xl border-2 transition-all flex items-center gap-3.5 text-left relative overflow-hidden group ${
+              onClick={() => handleSelectOption(option.id)}
+              className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all min-h-[52px] ${
                 isSelected
-                  ? "border-(--cf-orange) bg-blue-50 ring-2 ring-(--cf-orange) translate-x-1 translate-y-1 shadow-none"
+                  ? "bg-white border-2 border-(--cf-ink) cf-raised ring-1 ring-(--cf-ink)"
                   : isLocked
-                  ? "border-neutral-200 bg-neutral-100 opacity-60 cursor-not-allowed"
-                  : "border-(--cf-line-strong) bg-white hover:bg-neutral-50 active:translate-x-1 active:translate-y-1 cursor-pointer"
+                  ? "bg-neutral-100 border-neutral-200 opacity-60 cursor-not-allowed"
+                  : "bg-white border-(--cf-line-strong) hover:border-(--cf-ink) hover:bg-(--cf-cream) active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
               }`}
             >
-              {/* Option Letter Badge */}
-              <div
-                className="size-9 rounded-lg flex items-center justify-center font-mono font-bold text-white text-sm shrink-0 shadow-xs"
-                style={{ backgroundColor: color }}
-              >
-                {letter}
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className={`size-6 sm:size-7 shrink-0 rounded-lg flex items-center justify-center font-mono font-bold text-xs transition-colors ${
+                    isSelected
+                      ? "bg-(--cf-ink) text-white"
+                      : "bg-(--cf-cream) text-(--cf-ink) border border-(--cf-line)"
+                  }`}
+                >
+                  {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : letter}
+                </span>
+                <span className="text-xs sm:text-sm font-semibold text-(--cf-ink) break-words line-clamp-3">
+                  {option.label || `Option ${index + 1}`}
+                </span>
               </div>
-
-              {/* Option Label */}
-              <span className="flex-1 font-semibold text-sm sm:text-base text-neutral-900 leading-tight">
-                {option.label}
-              </span>
-
-              {/* Selected Lock Badge */}
-              {isSelected && (
-                <div className="size-6 rounded-full bg-(--cf-orange) text-white flex items-center justify-center shrink-0 animate-in zoom-in-90">
-                  <Check className="size-3.5 stroke-[3]" />
-                </div>
-              )}
             </button>
           );
         })}
       </div>
 
-      {/* 3. Post-submission / Post-timer Status Card */}
+      {/* 3. Submit Button (When not yet submitted and timer active) */}
+      {!isLocked && (
+        <div className="pt-1">
+          <button
+            type="submit"
+            disabled={!selectedOptionId}
+            className="cf-btn cf-raised cf-press w-full py-3.5 sm:py-4 px-4 text-sm sm:text-base font-bold justify-center rounded-(--hex-radius) disabled:opacity-40 disabled:cursor-not-allowed shadow-md min-h-[48px]"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Submit Answer
+          </button>
+        </div>
+      )}
+
+      {/* 4. Post-submission Feedback (Before Timer Ends) */}
       {isLocked && !isTimerEnded && (
-        <div className="cf-panel p-4 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-center space-y-1 animate-in fade-in slide-in-from-bottom-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase font-mono tracking-wider">
-            <Lock className="size-3.5" />
-            <span>Answer locked in</span>
-          </div>
-          <p className="text-xs text-emerald-700">
-            Waiting for timer ({timeLeft}s) to reveal the results...
+        <div className="p-3.5 bg-white border border-(--cf-line-strong) cf-raised rounded-xl text-center space-y-0.5 animate-in fade-in">
+          <p className="text-xs font-bold text-(--cf-ink) font-mono">Answer locked in</p>
+          <p className="text-[11px] text-(--cf-ink-soft)">
+            Waiting for timer ({timeLeft}s) to reveal results...
           </p>
         </div>
       )}
 
-      {/* 4. Revealed Score Breakdown (When timer has ended) */}
+      {/* 4. Score Result Reveal (When Timer Ends) */}
       {isTimerEnded && hasResult && (
-        <div
-          className={`cf-panel p-4 border-2 rounded-xl text-center space-y-2 animate-in fade-in zoom-in-95 ${
-            lastResponseResult?.isCorrect
-              ? "bg-emerald-50 border-emerald-500 text-emerald-900"
-              : "bg-rose-50 border-rose-400 text-rose-900"
-          }`}
-        >
+        <div className="p-4 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-xl text-center space-y-2 animate-in fade-in">
           <div className="flex items-center justify-center gap-2">
             {lastResponseResult?.isCorrect ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-full text-xs font-mono font-bold uppercase tracking-wider">
-                <Check className="size-3.5 stroke-[3]" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-500 text-emerald-800 rounded-full text-xs font-mono font-bold">
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Correct! +{lastResponseResult.pointsAwarded ?? 0} pts</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 border border-rose-300 text-rose-800 rounded-full text-xs font-mono font-bold uppercase tracking-wider">
-                <X className="size-3.5 stroke-[3]" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-400 text-rose-800 rounded-full text-xs font-mono font-bold">
+                <X className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Incorrect (0 pts)</span>
               </span>
             )}
           </div>
 
           {typeof lastResponseResult?.totalScore === "number" && (
-            <div className="pt-2 border-t border-black/10 flex items-center justify-center gap-2 text-xs font-mono">
-              <Trophy className="size-3.5 text-amber-600" />
-              <span>Your total score: <strong>{lastResponseResult.totalScore.toLocaleString()} pts</strong></span>
+            <div className="pt-2 border-t border-(--cf-line) flex items-center justify-center gap-1.5 text-xs font-mono text-(--cf-ink)">
+              <Trophy className="w-3.5 h-3.5 text-amber-600" />
+              <span>
+                Total Score: <strong>{lastResponseResult.totalScore.toLocaleString()} pts</strong>
+              </span>
             </div>
           )}
         </div>
       )}
-    </div>
+    </form>
   );
 }
+

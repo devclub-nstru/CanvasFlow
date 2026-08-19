@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import { MentiSlide, MentiLeaderboardSnapshot, MentiLeaderboardParticipant } from "~/lib/menti";
-import { Crown, Trophy, Award } from "lucide-react";
+import { Trophy, Award } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface Props {
@@ -13,14 +13,12 @@ interface Props {
 }
 
 const AVATAR_COLORS = [
-  "#2d5cf6",
+  "#5268e8",
   "#ff7378",
-  "#43b7a6",
-  "#9189eb",
-  "#e4a23e",
   "#313c8e",
-  "#10b981",
-  "#f59e0b",
+  "#9189eb",
+  "#43b7a6",
+  "#e4a23e",
 ];
 
 const PREVIEW_SAMPLE_LEADERBOARD: MentiLeaderboardParticipant[] = [
@@ -56,7 +54,6 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
 
   const heading = slide.question || slide.designSettings?.leaderboardTitle || "Quiz leaderboard";
   const textColor = slide.designSettings?.textColor || "#17171c";
-
   const hasData = participants.length > 0;
 
   return (
@@ -66,8 +63,8 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
     >
       {/* 1. Heading Title */}
       <div className="w-full flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-300 text-amber-800 rounded-full text-xs font-mono font-bold uppercase tracking-wider mb-2">
-          <Trophy className="size-3.5 text-amber-600" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-xs font-mono font-bold uppercase tracking-wider mb-2">
+          <Trophy className="w-3.5 h-3.5 text-(--cf-orange)" />
           <span>Live Standings</span>
         </div>
         <h2
@@ -84,19 +81,19 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
       {/* 2. Content Area: Empty State vs Live Ranked Board */}
       {!hasData ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md mx-auto my-auto py-8">
-          <div className="size-16 rounded-2xl bg-(--cf-cream) border-2 border-(--cf-line-strong) flex items-center justify-center mb-4 shadow-xs">
-            <Award className="size-8 text-(--cf-ink-soft)" />
+          <div className="size-14 rounded-2xl bg-white border-2 border-(--cf-line-strong) cf-raised flex items-center justify-center mb-4">
+            <Award className="size-7 text-(--cf-ink-soft)" />
           </div>
-          <h3 className="cf-display text-2xl sm:text-3xl uppercase tracking-tight text-neutral-900">
+          <h3 className="cf-display text-xl sm:text-2xl uppercase tracking-tight text-(--cf-ink)">
             No results yet
           </h3>
-          <p className="mt-2 text-sm sm:text-base text-(--cf-ink-soft) leading-relaxed">
-            Top Quiz participants will be displayed here once answers are submitted!
+          <p className="mt-1 text-xs sm:text-sm text-(--cf-ink-soft) leading-relaxed">
+            Quiz participants and scores will appear here in real-time.
           </p>
         </div>
       ) : (
-        <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col justify-center gap-2.5 py-4 overflow-hidden">
-          <AnimatePresence>
+        <div className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center gap-2 py-4 overflow-hidden">
+                  <AnimatePresence mode="popLayout">
             {participants.map((player, index) => {
               const rank = player.rank || index + 1;
               const isFirst = rank === 1;
@@ -107,23 +104,21 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
               return (
                 <motion.div
                   key={player.participantId || `player-${index}`}
-                  layout
+                  layout="position"
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{
-                    type: "spring",
-                    stiffness: 80,
-                    damping: 14,
-                    delay: index * 0.04,
+                    layout: { type: "spring", stiffness: 260, damping: 24 },
+                    opacity: { duration: 0.2 },
                   }}
-                  className={`w-full cf-panel cf-raised px-4 py-3 sm:py-3.5 rounded-xl border-2 flex items-center justify-between gap-4 transition-colors ${
+                  className={`w-full cf-raised px-4 py-2.5 sm:py-3 rounded-xl border-2 flex items-center justify-between gap-4 transition-colors ${
                     isFirst
-                      ? "bg-amber-50/90 border-amber-500 shadow-md ring-1 ring-amber-400"
+                      ? "bg-amber-50/90 border-amber-500 ring-1 ring-amber-400"
                       : isSecond
                       ? "bg-slate-50 border-slate-400"
                       : isThird
-                      ? "bg-amber-50/40 border-amber-700/60"
+                      ? "bg-amber-50/30 border-amber-700/50"
                       : "bg-white border-(--cf-line-strong)"
                   }`}
                 >
@@ -131,7 +126,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                   <div className="flex items-center gap-3 min-w-0">
                     {/* Rank Badge */}
                     <div
-                      className={`size-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm shrink-0 shadow-xs ${
+                      className={`size-7 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
                         isFirst
                           ? "bg-amber-500 text-white"
                           : isSecond
@@ -141,35 +136,27 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                           : "bg-(--cf-cream) border border-(--cf-line-strong) text-(--cf-ink)"
                       }`}
                     >
-                      {isFirst ? (
-                        <Crown className="size-4.5 fill-current" />
-                      ) : (
-                        `#${rank}`
-                      )}
+                      #{rank}
                     </div>
 
                     {/* Avatar Circle */}
                     <div
-                      className="size-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 uppercase shadow-xs"
+                      className="size-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] shrink-0 uppercase"
                       style={{ backgroundColor: color }}
                     >
                       {player.nickname.slice(0, 2)}
                     </div>
 
                     {/* Participant Name */}
-                    <span className="font-bold text-sm sm:text-base text-neutral-900 truncate">
+                    <span className="font-semibold text-sm sm:text-base text-(--cf-ink) truncate">
                       {player.nickname}
                     </span>
                   </div>
 
                   {/* Right: Total Score */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right font-mono font-bold text-base sm:text-lg text-neutral-900 tabular-nums">
-                      {(player.score || 0).toLocaleString()}{" "}
-                      <span className="text-xs font-normal text-(--cf-ink-soft)">
-                        pts
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1.5 shrink-0 font-mono font-bold text-sm sm:text-base text-(--cf-ink) tabular-nums">
+                    {(player.score || 0).toLocaleString()}{" "}
+                    <span className="text-xs font-normal text-(--cf-ink-soft)">pts</span>
                   </div>
                 </motion.div>
               );
@@ -177,13 +164,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
           </AnimatePresence>
         </div>
       )}
-
-      {/* 3. Footer Branding / Subtitle */}
-      <div className="w-full flex items-center justify-center pt-2">
-        <span className="cf-meta text-(--cf-ink-soft) text-[10px]">
-          CanvasFlow Real-time Quiz Engine
-        </span>
-      </div>
     </section>
   );
 }
+

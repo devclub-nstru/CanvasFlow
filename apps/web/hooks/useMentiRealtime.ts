@@ -103,13 +103,16 @@ export function useMentiRealtime({
     const options: any = {
       withCredentials: true,
       query: {},
+      auth: {},
     };
 
     if (token) {
       options.query.token = token;
+      options.auth.token = token;
     }
-    if (isHost) {
+    if (isHost || sessionId) {
       options.query.sessionId = sessionId;
+      options.auth.sessionId = sessionId;
     }
 
     const socketInstance = io(baseUrl, options);

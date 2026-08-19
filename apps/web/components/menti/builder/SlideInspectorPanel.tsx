@@ -90,7 +90,7 @@ export function SlideInspectorPanel({
       ];
       defaults.quizSettings = {
         timeLimitSeconds: 30,
-        maxPoints: 1000,
+        maxPoints: 100,
         gradingScheme: "time_based",
       };
     } else if (newType === "LEADERBOARD") {

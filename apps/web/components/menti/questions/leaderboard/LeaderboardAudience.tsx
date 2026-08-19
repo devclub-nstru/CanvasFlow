@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Crown, Trophy, TrendingUp, Award } from "lucide-react";
+import { Trophy, TrendingUp, Award } from "lucide-react";
 import { MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
 import type { QuizResponseResult } from "~/hooks/useMentiRealtime";
 
@@ -42,33 +42,33 @@ export function LeaderboardAudience({
   const hasData = topPlayers.length > 0;
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col gap-4 select-none animate-in fade-in duration-200">
+    <div className="flex flex-col w-full space-y-4 sm:space-y-5 select-none animate-in fade-in duration-200">
       {/* 1. Personal Score Highlight Card */}
-      <div className="cf-panel cf-raised p-5 bg-amber-50/80 border-2 border-amber-500 rounded-2xl text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-mono font-bold uppercase">
-          <Trophy className="size-3.5 text-amber-600" />
+      <div className="p-4 sm:p-5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-2xl text-center space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-(--cf-cream) border border-(--cf-line) text-(--cf-ink) text-xs font-mono font-bold uppercase">
+          <Trophy className="w-3.5 h-3.5 text-(--cf-orange)" />
           <span>{heading}</span>
         </div>
 
         <div className="pt-1">
-          <h2 className="text-3xl font-black text-neutral-900 font-mono tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-(--cf-ink) font-mono tracking-tight">
             {myRank ? `#${myRank} Place` : `${myNickname || "You"}`}
           </h2>
-          <p className="text-sm font-bold text-neutral-700 mt-0.5">
+          <p className="text-xs sm:text-sm font-semibold text-(--cf-ink-soft) mt-0.5">
             {myScore.toLocaleString()} total points
           </p>
         </div>
 
         {Boolean(myPointsGained && myPointsGained > 0) && (
-          <div className="pt-2 border-t border-amber-200/80 flex items-center justify-center gap-2 text-xs font-mono text-emerald-800 font-bold">
-            <TrendingUp className="size-3.5 text-emerald-600" />
+          <div className="pt-2 border-t border-(--cf-line) flex items-center justify-center gap-1.5 text-xs font-mono text-emerald-700 font-bold">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
             <span>+{myPointsGained} pts gained this round!</span>
           </div>
         )}
       </div>
 
       {/* 2. Top Performers List */}
-      <div className="cf-panel cf-raised p-4 bg-white rounded-2xl border-2 border-(--cf-line-strong) space-y-3">
+      <div className="p-4 bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-(--cf-line)">
           <span className="cf-eyebrow text-(--cf-ink)">Top Leaderboard</span>
           <span className="text-[11px] font-mono text-(--cf-ink-soft)">
@@ -77,8 +77,8 @@ export function LeaderboardAudience({
         </div>
 
         {!hasData ? (
-          <div className="py-6 flex flex-col items-center justify-center text-center text-(--cf-ink-soft) space-y-2">
-            <Award className="size-7 opacity-40" />
+          <div className="py-6 flex flex-col items-center justify-center text-center text-(--cf-ink-soft) space-y-1.5">
+            <Award className="size-6 opacity-40" />
             <p className="text-xs">Scores will appear here as quiz responses are submitted.</p>
           </div>
         ) : (
@@ -94,8 +94,8 @@ export function LeaderboardAudience({
                   key={player.participantId || `p-${index}`}
                   className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
                     isMe
-                      ? "bg-amber-50 border-amber-400 ring-1 ring-amber-400"
-                      : "bg-neutral-50 border-neutral-200"
+                      ? "bg-amber-50/80 border-amber-500 ring-1 ring-amber-400"
+                      : "bg-(--cf-cream) border-(--cf-line)"
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -107,21 +107,21 @@ export function LeaderboardAudience({
                           ? "bg-slate-400 text-white"
                           : rank === 3
                           ? "bg-amber-700 text-white"
-                          : "bg-neutral-200 text-neutral-700"
+                          : "bg-white text-(--cf-ink) border border-(--cf-line)"
                       }`}
                     >
-                      {rank === 1 ? <Crown className="size-3.5 fill-current" /> : `#${rank}`}
+                      #{rank}
                     </span>
                     <span
-                      className={`text-xs sm:text-sm font-bold truncate max-w-[150px] ${
-                        isMe ? "text-amber-900" : "text-neutral-800"
+                      className={`text-xs sm:text-sm font-semibold truncate max-w-[160px] ${
+                        isMe ? "text-amber-900 font-bold" : "text-(--cf-ink)"
                       }`}
                     >
                       {player.nickname} {isMe && "(You)"}
                     </span>
                   </div>
 
-                  <span className="font-mono font-bold text-xs sm:text-sm text-neutral-900 tabular-nums shrink-0">
+                  <span className="font-mono font-bold text-xs sm:text-sm text-(--cf-ink) tabular-nums shrink-0">
                     {(player.score || 0).toLocaleString()} pts
                   </span>
                 </div>
@@ -133,3 +133,4 @@ export function LeaderboardAudience({
     </div>
   );
 }
+

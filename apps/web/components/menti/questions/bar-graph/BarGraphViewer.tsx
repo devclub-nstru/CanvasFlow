@@ -46,7 +46,7 @@ export function BarGraphViewer({
 
   const getVoteCount = (optionId: string, fallback: number = 0) => {
     if (analytics?.results && Array.isArray(analytics.results)) {
-      const match = analytics.results.find((r: any) => r.id === optionId);
+      const match = analytics.results.find((r: any) => String(r.id) === String(optionId));
       if (match && typeof match.count === "number") return match.count;
     }
     return fallback;
