@@ -20,6 +20,7 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   const querySessionId = searchParams.get("sessionId") || "";
   const queryToken = searchParams.get("token") || "";
   const queryName = searchParams.get("name") || "";
+  const queryParticipantId = searchParams.get("participantId") || "";
 
   const [sessionId, setSessionId] = useState<string>(
     querySessionId || (typeof window !== "undefined" ? sessionStorage.getItem("cf_session_id") || "" : "")
@@ -29,6 +30,9 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   );
   const [participantName, setParticipantName] = useState<string>(
     queryName || (typeof window !== "undefined" ? sessionStorage.getItem("menti_participant_name") || sessionStorage.getItem("cf_voter_nickname") || "Participant" : "Participant")
+  );
+  const [participantId, setParticipantId] = useState<string>(
+    queryParticipantId || (typeof window !== "undefined" ? sessionStorage.getItem("cf_participant_id") || "" : "")
   );
 
   const [presentation, setPresentation] = useState<MentiPresentation | null>(null);
@@ -69,14 +73,19 @@ export default function MentiLiveAudiencePage({ params }: Props) {
             const joinData = await joinRes.json();
             const newToken = joinData.participantToken;
             const newSessionId = joinData.session?.id || joinData.session?._id;
+            const newParticipantId = joinData.participantId ? String(joinData.participantId) : "";
+            const initialStatus = joinData.session?.status;
 
             if (newToken && newSessionId) {
               setToken(newToken);
               setSessionId(newSessionId);
+              if (newParticipantId) setParticipantId(newParticipantId);
               if (typeof window !== "undefined") {
                 sessionStorage.setItem("cf_participant_token", newToken);
                 sessionStorage.setItem("cf_session_id", newSessionId);
                 sessionStorage.setItem("menti_participant_name", name);
+                if (newParticipantId) sessionStorage.setItem("cf_participant_id", newParticipantId);
+                if (initialStatus) sessionStorage.setItem("cf_initial_session_status", initialStatus);
               }
             }
           }
@@ -93,14 +102,27 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   }, [presentationId, token, sessionId, participantName]);
 
   // Realtime Participant Store
-  const { sessionState, submitResponse, submittedSlideIds, leaderboard, lastResponseResult } = useMentiRealtime({
+  const { sessionState, connectionStatus, submitResponse, submittedSlideIds, leaderboard, lastResponseResult } = useMentiRealtime({
     sessionId,
     token,
     isHost: false,
     disabled: !sessionId || !token,
   });
 
-  if (loading) {
+  // Sync participantId from socket if not already set
+  useEffect(() => {
+    if (sessionState?.currentParticipantId && !participantId) {
+      setParticipantId(sessionState.currentParticipantId);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("cf_participant_id", sessionState.currentParticipantId);
+      }
+    }
+  }, [sessionState?.currentParticipantId, participantId]);
+
+  // Prevent flash: wait until initial session state arrives or socket errors out
+  const isInitialLoading = loading || (!sessionState && !error && connectionStatus !== "error");
+
+  if (isInitialLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-(--cf-cream) text-(--cf-ink)">
         <Noise />
@@ -131,9 +153,21 @@ export default function MentiLiveAudiencePage({ params }: Props) {
     );
   }
 
-  // Active slide from realtime socket or fallback to first slide
-  const activeSlide = sessionState?.currentSlide || presentation.slides[0];
-  const activeSlideIndex = presentation.slides.findIndex((s) => s.id === activeSlide?.id) ?? 0;
+  const rawStatus =
+    sessionState?.session?.status ||
+    (typeof window !== "undefined" ? (sessionStorage.getItem("cf_initial_session_status") as any) : null) ||
+    "waiting";
+  const sessionStatus = rawStatus;
+
+  // Active slide from realtime socket: if in lobby/waiting, activeSlide is null
+  const activeSlide =
+    sessionStatus === "waiting"
+      ? null
+      : sessionState?.currentSlide || presentation.slides[0];
+  const activeSlideIndex =
+    activeSlide && presentation.slides.length > 0
+      ? Math.max(0, presentation.slides.findIndex((s) => s.id === activeSlide?.id))
+      : 0;
 
   const formattedJoinCode = sessionState?.session?.code
     ? sessionState.session.code.replace(/(.{3})/g, "$1 ").trim()
@@ -145,15 +179,16 @@ export default function MentiLiveAudiencePage({ params }: Props) {
         ...presentation,
         joinCode: formattedJoinCode,
       }}
-      currentSlide={sessionState?.currentSlide || presentation.slides[0]}
-      activeSlideIndex={activeSlideIndex >= 0 ? activeSlideIndex : 0}
-      sessionStatus={sessionState?.session?.status || "live"}
+      currentSlide={activeSlide}
+      activeSlideIndex={activeSlideIndex}
+      sessionStatus={sessionStatus}
       participantCount={sessionState?.participantCount ?? presentation.participantCount ?? 1}
       submittedSlideIds={submittedSlideIds}
       quizState={sessionState?.session?.quizState}
       lastResponseResult={lastResponseResult}
       leaderboard={leaderboard || sessionState?.leaderboard}
       participantName={participantName}
+      participantId={participantId}
       onSubmitAnswer={submitResponse}
     />
   );

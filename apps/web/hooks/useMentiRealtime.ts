@@ -24,6 +24,7 @@ export interface RealtimeSessionState {
     isVotingLocked: boolean;
     quizState?: QuizSessionState | null;
   };
+  currentParticipantId?: string | null;
   participantCount: number;
   currentSlide: MentiSlide | null;
   submittedSlideIds?: string[];
@@ -176,6 +177,7 @@ export function useMentiRealtime({
           id: state.session.id || state.session._id,
           quizState: state.session.quizState || null,
         },
+        currentParticipantId: state.currentParticipantId || null,
         participantCount: state.participantCount,
         currentSlide: mappedSlide,
         submittedSlideIds: state.submittedSlideIds || [],

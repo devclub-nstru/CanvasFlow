@@ -31,23 +31,30 @@ function MentiJoinContent() {
       }
 
       const joinData = await res.json();
-      const { participantToken, session } = joinData;
+      const { participantToken, participantId, session } = joinData;
 
       const targetSessionId = session?.id || session?._id;
+      const targetParticipantId = participantId ? String(participantId) : "";
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("menti_participant_name", participantName);
         sessionStorage.setItem("cf_voter_nickname", participantName);
         sessionStorage.setItem("cf_voter_joined_code", code);
         if (participantToken) sessionStorage.setItem("cf_participant_token", participantToken);
+        if (targetParticipantId) sessionStorage.setItem("cf_participant_id", targetParticipantId);
         if (targetSessionId) sessionStorage.setItem("cf_session_id", targetSessionId);
         if (session?.presentationId) sessionStorage.setItem("cf_presentation_id", session.presentationId);
+        if (session?.status) sessionStorage.setItem("cf_initial_session_status", session.status);
       }
 
       if (session?.presentationId && targetSessionId) {
-        router.push(
-          `/menti/${session.presentationId}/live?sessionId=${targetSessionId}&token=${participantToken || ""}&name=${encodeURIComponent(participantName)}`
-        );
+        const queryParams = new URLSearchParams({
+          sessionId: targetSessionId,
+          token: participantToken || "",
+          name: participantName,
+          ...(targetParticipantId ? { participantId: targetParticipantId } : {}),
+        });
+        router.push(`/menti/${session.presentationId}/live?${queryParams.toString()}`);
       } else {
         setJoinError("Session details missing. Please try joining again.");
       }

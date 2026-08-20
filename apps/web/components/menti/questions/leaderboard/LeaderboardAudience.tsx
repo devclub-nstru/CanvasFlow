@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import { Trophy, TrendingUp, Award } from "lucide-react";
 import { MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
 import type { QuizResponseResult } from "~/hooks/useMentiRealtime";
+import { motion } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
@@ -12,6 +13,7 @@ interface Props {
   leaderboard?: MentiLeaderboardSnapshot | null;
   lastResponseResult?: QuizResponseResult | null;
   participantName?: string;
+  participantId?: string;
 }
 
 export function LeaderboardAudience({
@@ -19,6 +21,7 @@ export function LeaderboardAudience({
   leaderboard,
   lastResponseResult,
   participantName,
+  participantId,
 }: Props) {
   const heading = slide.question || slide.designSettings?.leaderboardTitle || "Quiz leaderboard";
 
@@ -28,18 +31,33 @@ export function LeaderboardAudience({
       .slice(0, 10);
   }, [leaderboard?.topParticipants]);
 
+  const myParticipantId =
+    participantId ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("cf_participant_id") || ""
+      : "");
+
   const myNickname =
     participantName ||
     (typeof window !== "undefined"
       ? sessionStorage.getItem("menti_participant_name") || sessionStorage.getItem("cf_voter_nickname") || ""
       : "");
 
-  // Find user's position in the top leaderboard
-  const myEntryIndex = topPlayers.findIndex(
-    (p) => p.nickname?.trim().toLowerCase() === myNickname.trim().toLowerCase()
-  );
-  const myEntry = myEntryIndex >= 0 ? topPlayers[myEntryIndex] : null;
+  // Find user's position in the top leaderboard using unique participantId first
+  const myEntryIndex = useMemo(() => {
+    if (myParticipantId) {
+      const idx = topPlayers.findIndex((p) => String(p.participantId) === String(myParticipantId));
+      if (idx !== -1) return idx;
+    }
+    if (myNickname) {
+      return topPlayers.findIndex(
+        (p) => p.nickname?.trim().toLowerCase() === myNickname.trim().toLowerCase()
+      );
+    }
+    return -1;
+  }, [topPlayers, myParticipantId, myNickname]);
 
+  const myEntry = myEntryIndex >= 0 ? topPlayers[myEntryIndex] : null;
   const myRank = myEntry?.rank ?? (myEntryIndex >= 0 ? myEntryIndex + 1 : null);
   const myScore = myEntry?.score ?? lastResponseResult?.totalScore ?? 0;
   const myPointsGained = lastResponseResult?.pointsAwarded;
@@ -92,25 +110,37 @@ export function LeaderboardAudience({
             {topPlayers.map((player, index) => {
               const rank = player.rank || index + 1;
               const isMe =
-                myNickname &&
-                player.nickname?.trim().toLowerCase() === myNickname.trim().toLowerCase();
+                Boolean(myParticipantId && player.participantId && String(player.participantId) === String(myParticipantId)) ||
+                Boolean(!myParticipantId && myNickname && player.nickname?.trim().toLowerCase() === myNickname.trim().toLowerCase());
               const barFill = maxScore > 0 ? Math.max(6, ((player.score || 0) / maxScore) * 100) : 0;
 
               return (
-                <div
+                <motion.div
                   key={player.participantId || `p-${index}`}
+                  layout
+                  transition={{
+                    layout: { type: "spring", stiffness: 120, damping: 20 },
+                    opacity: { duration: 0.2 },
+                  }}
                   className={`relative overflow-hidden flex items-center justify-between p-2.5 rounded-xl border-2 transition-colors ${
                     isMe
                       ? "bg-amber-50/90 border-amber-500 ring-2 ring-amber-400/50"
                       : "bg-white border-(--cf-line-strong)"
                   }`}
                 >
-                  {/* Horizontal Bar Fill */}
-                  <div
-                    className={`absolute inset-y-0 left-0 opacity-20 ${
-                      isMe ? "bg-amber-400 opacity-35" : "bg-(--cf-orange)"
+                  {/* Horizontal Bar Fill with Smooth Spring Motion */}
+                  <motion.div
+                    initial={false}
+                    animate={{ width: `${barFill}%` }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 75,
+                      damping: 15,
+                      mass: 0.85,
+                    }}
+                    className={`absolute inset-y-0 left-0 rounded-l-lg opacity-25 ${
+                      isMe ? "bg-amber-400 opacity-40" : "bg-(--cf-orange)"
                     }`}
-                    style={{ width: `${barFill}%` }}
                   />
 
                   <div className="relative z-10 flex items-center gap-2.5 min-w-0">
@@ -139,7 +169,7 @@ export function LeaderboardAudience({
                   <span className="relative z-10 font-mono font-bold text-xs sm:text-sm text-(--cf-ink) tabular-nums shrink-0">
                     {(player.score || 0).toLocaleString()} pts
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>

@@ -30,35 +30,54 @@ const PREVIEW_SAMPLE_LEADERBOARD: MentiLeaderboardParticipant[] = [
   { participantId: "p-6", nickname: "Priya Patel", score: 1620, rank: 6 },
 ];
 
-/** Smoothly counts up from previous score to target score */
-function AnimatedScoreNumber({ target, initial }: { target: number; initial: number }) {
-  const [value, setValue] = useState(initial);
+/** Stable deterministic color generator per participant identity */
+function getParticipantColor(participantId?: string, nickname?: string) {
+  const str = participantId || nickname || "participant";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
+/** Smoothly counts up from previous score to target score without resetting */
+function AnimatedScoreNumber({ value }: { value: number }) {
+  const [displayed, setDisplayed] = useState(value);
+  const prevRef = useRef(value);
 
   useEffect(() => {
-    if (initial === target) {
-      setValue(target);
+    const from = prevRef.current;
+    const to = value;
+    prevRef.current = value;
+
+    if (from === to) {
+      setDisplayed(to);
       return;
     }
-    const startTime = performance.now();
-    const duration = 800; // ms
 
+    const startTime = performance.now();
+    const duration = 750; // ms
+
+    let animId: number;
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(1, elapsed / duration);
       // easeOutCubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(initial + (target - initial) * eased));
+      setDisplayed(Math.round(from + (to - from) * eased));
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        animId = requestAnimationFrame(animate);
       }
     };
 
-    const handle = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(handle);
-  }, [target, initial]);
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, [value]);
 
-  return <span>{value.toLocaleString()}</span>;
+  return <span>{displayed.toLocaleString()}</span>;
 }
 
 export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = false }: Props) {
@@ -82,71 +101,20 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
     return rawList;
   }, [leaderboard, analytics, isPreview]);
 
-  // Stage 0: Initial mount with previous scores
-  // Stage 1: Horizontal bar growth & score count-up (at 500ms)
-  // Stage 2: Smooth reordering into new ranks (at 1400ms)
-  const [animationPhase, setAnimationPhase] = useState<"initial" | "grow" | "reorder">("initial");
-
-  // Read previous scores from sessionStorage or ref to know previous baseline
+  // Keep a map of previous scores to calculate round points gained
   const prevScoresMapRef = useRef<Record<string, number>>({});
 
-  useEffect(() => {
-    // 1. Read stored previous scores from session storage
-    if (typeof window !== "undefined" && !isPreview) {
-      try {
-        const stored = sessionStorage.getItem("cf_menti_leaderboard_prev_scores");
-        if (stored) {
-          prevScoresMapRef.current = JSON.parse(stored);
-        }
-      } catch (e) {
-        console.error("Failed to read prev leaderboard scores", e);
-      }
-    }
-
-    // Reset phase on slide mount
-    setAnimationPhase("initial");
-
-    // Timer 1: Grow horizontal bars and count up numbers
-    const timer1 = setTimeout(() => {
-      setAnimationPhase("grow");
-    }, 500);
-
-    // Timer 2: Reorder cards by new rank
-    const timer2 = setTimeout(() => {
-      setAnimationPhase("reorder");
-
-      // Save current scores as new previous baseline for next round
-      if (typeof window !== "undefined" && !isPreview && rawParticipants.length > 0) {
-        try {
-          const newMap: Record<string, number> = {};
-          rawParticipants.forEach((p) => {
-            if (p.participantId) newMap[p.participantId] = p.score || 0;
-          });
-          sessionStorage.setItem("cf_menti_leaderboard_prev_scores", JSON.stringify(newMap));
-          prevScoresMapRef.current = newMap;
-        } catch (e) {
-          console.error("Failed to save prev leaderboard scores", e);
-        }
-      }
-    }, 1400);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, [slide.id, rawParticipants, isPreview]);
-
-  // Compute displayed list based on animation phase
+  // Compute displayed list sorted by current score
   const displayedParticipants = useMemo(() => {
     if (rawParticipants.length === 0) return [];
 
     const prevMap = prevScoresMapRef.current;
 
-    // Map participants with previous score and points gained
     const mapped = rawParticipants.map((p) => {
-      const prevScore = prevMap[p.participantId] ?? 0;
+      const id = p.participantId || p.nickname;
+      const prevScore = prevMap[id] ?? 0;
       const currentScore = p.score || 0;
-      const pointsGained = Math.max(0, currentScore - prevScore);
+      const pointsGained = prevScore > 0 ? Math.max(0, currentScore - prevScore) : 0;
 
       return {
         ...p,
@@ -156,20 +124,27 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
       };
     });
 
-    // If initial or grow phase: sort by previous score (or current if all prev scores were 0)
-    const hasPriorHistory = mapped.some((m) => m.prevScore > 0);
-    if (animationPhase !== "reorder" && hasPriorHistory) {
-      mapped.sort((a, b) => b.prevScore - a.prevScore);
-    } else {
-      mapped.sort((a, b) => b.currentScore - a.currentScore);
-    }
+    // Always sort descending by current score and strictly cap to top 10
+    return mapped
+      .sort((a, b) => b.currentScore - a.currentScore)
+      .slice(0, 10)
+      .map((p, idx) => ({
+        ...p,
+        rank: idx + 1,
+      }));
+  }, [rawParticipants]);
 
-    // Always strictly cap to top 10
-    return mapped.slice(0, 10).map((p, idx) => ({
-      ...p,
-      rank: idx + 1,
-    }));
-  }, [rawParticipants, animationPhase]);
+  // Update previous scores ref when data stabilizes
+  useEffect(() => {
+    if (rawParticipants.length > 0) {
+      const newMap: Record<string, number> = {};
+      rawParticipants.forEach((p) => {
+        const id = p.participantId || p.nickname;
+        newMap[id] = p.score || 0;
+      });
+      prevScoresMapRef.current = newMap;
+    }
+  }, [rawParticipants]);
 
   // Calculate highest score to scale horizontal bar widths proportionally (0% to 100%)
   const maxScore = useMemo(() => {
@@ -222,34 +197,26 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
       ) : (
         <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col justify-center gap-2 sm:gap-2.5 py-2 max-h-[66vh] overflow-y-auto overflow-x-hidden pr-0.5">
           <AnimatePresence mode="popLayout">
-            {displayedParticipants.map((player, index) => {
-              const rank = player.rank || index + 1;
+            {displayedParticipants.map((player) => {
+              const rank = player.rank;
               const isFirst = rank === 1;
               const isSecond = rank === 2;
               const isThird = rank === 3;
-              const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
-
-              // Target score and fill calculation based on animation phase
-              const activeScore =
-                animationPhase === "initial"
-                  ? player.prevScore
-                  : player.currentScore;
+              const color = getParticipantColor(player.participantId, player.nickname);
 
               const barFillPercent =
-                maxScore > 0
-                  ? Math.max(6, (activeScore / maxScore) * 100)
-                  : 0;
+                maxScore > 0 ? Math.max(6, (player.currentScore / maxScore) * 100) : 0;
 
               return (
                 <motion.div
-                  key={player.participantId || `player-${index}`}
-                  layout="position"
-                  initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                  key={player.participantId || `player-${player.nickname}`}
+                  layout
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.92 }}
+                  exit={{ opacity: 0, scale: 0.94 }}
                   transition={{
-                    layout: { type: "spring", stiffness: 240, damping: 24 },
-                    opacity: { duration: 0.2 },
+                    layout: { type: "spring", stiffness: 120, damping: 20 },
+                    opacity: { duration: 0.25 },
                   }}
                   className={`w-full relative overflow-hidden rounded-xl border-2 cf-raised flex items-center justify-between px-3 sm:px-4 ${
                     isCompact ? "h-11 sm:h-12" : "h-12 sm:h-14"
@@ -263,7 +230,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                       : "bg-white border-(--cf-line-strong)"
                   }`}
                 >
-                  {/* Dynamic Animated Horizontal Bar Fill */}
+                  {/* Dynamic Animated Horizontal Bar Fill with Smooth Spring Physics matching BarGraph */}
                   <motion.div
                     initial={false}
                     animate={{
@@ -271,7 +238,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                     }}
                     transition={{
                       type: "spring",
-                      stiffness: 65,
+                      stiffness: 75,
                       damping: 15,
                       mass: 0.85,
                     }}
@@ -300,7 +267,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                       #{rank}
                     </div>
 
-                    {/* Avatar Circle */}
+                    {/* Avatar Circle with Stable Color */}
                     <div
                       className={`${
                         isCompact ? "size-6 text-[10px]" : "size-7 text-[11px]"
@@ -322,8 +289,8 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
 
                   {/* Right Layer: Score Counter + Gained Points Pill */}
                   <div className="relative z-10 flex items-center gap-2 shrink-0 pointer-events-none">
-                    {/* Points Gained Pill (animates in when points were gained) */}
-                    {animationPhase !== "initial" && player.pointsGained > 0 && (
+                    {/* Points Gained Pill */}
+                    {player.pointsGained > 0 && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8, x: 8 }}
                         animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -335,20 +302,13 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                       </motion.div>
                     )}
 
-                    {/* Score Number with Counting Animation */}
+                    {/* Score Number with Smooth Counter */}
                     <div
                       className={`font-mono font-bold ${
                         isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"
                       } text-(--cf-ink) tabular-nums`}
                     >
-                      {animationPhase === "initial" ? (
-                        <span>{(player.prevScore || 0).toLocaleString()}</span>
-                      ) : (
-                        <AnimatedScoreNumber
-                          target={player.currentScore}
-                          initial={player.prevScore}
-                        />
-                      )}{" "}
+                      <AnimatedScoreNumber value={player.currentScore} />{" "}
                       <span className="text-[10px] sm:text-xs font-normal text-(--cf-ink-soft)">pts</span>
                     </div>
                   </div>

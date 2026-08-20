@@ -164,6 +164,7 @@ export function SlideAudienceInput({
   lastResponseResult,
   leaderboard,
   participantName,
+  participantId,
 }: {
   slide: MentiSlide;
   onSubmit: (val: any) => void;
@@ -172,6 +173,7 @@ export function SlideAudienceInput({
   lastResponseResult?: QuizResponseResult | null;
   leaderboard?: MentiLeaderboardSnapshot | null;
   participantName?: string;
+  participantId?: string;
 }) {
   switch (slide.type) {
     case "BAR_GRAPH":
@@ -203,6 +205,7 @@ export function SlideAudienceInput({
           leaderboard={leaderboard}
           lastResponseResult={lastResponseResult}
           participantName={participantName}
+          participantId={participantId}
         />
       );
     default:

@@ -21,6 +21,7 @@ interface Props {
   lastResponseResult?: QuizResponseResult | null;
   leaderboard?: MentiLeaderboardSnapshot | null;
   participantName?: string;
+  participantId?: string;
   onSubmitAnswer?: (answer: any, slideId?: string) => Promise<any> | void;
 }
 
@@ -44,6 +45,7 @@ export function AudienceLayout({
   lastResponseResult,
   leaderboard,
   participantName,
+  participantId,
   onSubmitAnswer,
 }: Props) {
   const [localSubmittedSlideIds, setLocalSubmittedSlideIds] = useState<string[]>([]);
@@ -60,7 +62,9 @@ export function AudienceLayout({
     ? 0
     : Math.min(100, Math.max(0, (currentSlideNum / totalSlides) * 100));
 
-  const rawSlide = customCurrentSlide || presentation.slides[activeSlideIndex] || presentation.slides[0];
+  const rawSlide = isLobby || isEnded
+    ? null
+    : (customCurrentSlide || (presentation.slides.length > 0 ? presentation.slides[activeSlideIndex] : null));
   const currentSlide = rawSlide
     ? {
         ...rawSlide,
@@ -235,6 +239,7 @@ export function AudienceLayout({
               lastResponseResult={lastResponseResult}
               leaderboard={leaderboard}
               participantName={participantName}
+              participantId={participantId}
             />
           ) : (
             <div className="text-center p-6 sm:p-8 text-(--cf-ink-soft) text-xs sm:text-sm font-medium">
