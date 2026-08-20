@@ -259,11 +259,11 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
       {/* 2. Center Presentation Stage (16:9 Canvas Stage, Maximized with Comfortable Top Clearance) */}
       <main className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-12 pt-16 sm:pt-20 pb-14 w-full max-w-[94vw] 2xl:max-w-[1550px] mx-auto z-10">
         <div className="w-full aspect-[16/9] max-h-[80vh] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden relative flex items-center justify-center">
-          {/* Top-Left Devclub Stage Watermark (Appears on all slides & intro) */}
-          <div className="absolute top-3.5 left-4 sm:top-5 sm:left-6 z-30 pointer-events-none select-none">
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/95 backdrop-blur-xs border-2 border-(--cf-line-strong) cf-raised rounded-full shadow-xs">
-              <DevclubIcon className="size-3.5 sm:size-4 text-(--cf-ink)" />
-              <span className="font-black text-[11px] sm:text-xs tracking-[-0.03em] text-(--cf-ink) font-sans">
+          {/* Top-Left Devclub Stage Watermark (Appears on all slides & intro - Unboxed & Bold) */}
+          <div className="absolute top-4 left-5 sm:top-6 sm:left-7 z-30 pointer-events-none select-none">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <DevclubIcon className="size-6 sm:size-7 md:size-8 text-(--cf-ink)" />
+              <span className="font-black text-lg sm:text-xl md:text-2xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
                 Devclub<span className="text-(--cf-orange)">.</span>
               </span>
             </div>
