@@ -172,55 +172,16 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
-      {/* 1. Top Controls & Branding Bar */}
+      {/* 1. Top Branding Bar */}
       <div className="absolute top-3.5 sm:top-4.5 left-8 sm:left-11 2xl:left-14 right-6 2xl:right-10 z-20 flex items-center justify-between pointer-events-none">
-        {/* Top-Left: Standalone Devclub Logo (Matching Center Join Bar Size) + Hover Controls */}
-        <div className="flex items-center gap-3.5 pointer-events-auto">
-          {/* Devclub Logo */}
-          <div className="flex items-center gap-2.5 sm:gap-3 py-1 select-none">
+        {/* Top-Left: Standalone Devclub Logo (Matching Center Join Bar Size) */}
+        <div className="pointer-events-auto select-none">
+          <div className="flex items-center gap-2.5 sm:gap-3 py-1">
             <DevclubIcon className="size-6 sm:size-7 md:size-8 text-(--cf-ink)" />
             <span className="font-black text-lg sm:text-xl md:text-2xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
               Devclub<span className="text-(--cf-orange)">.</span>
             </span>
           </div>
-
-          {/* Quick Exit & Fullscreen buttons (Reveal on Hover) */}
-          <div className="flex items-center gap-1.5 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pl-1">
-            <button
-              type="button"
-              onClick={() => setShowConfirmEndModal(true)}
-              className="size-8 sm:size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-rose-600 hover:text-white border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
-              title="Exit presentation"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="size-8 sm:size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
-              title="Toggle Fullscreen (F)"
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Top-Right Cluster: Branding + Slide Grid View Toggle */}
-        <div className="flex items-center gap-2.5 pointer-events-auto opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-          <div className="px-3 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-(--hex-radius) flex items-center gap-2">
-            <div className="size-3.5 bg-(--cf-orange) rounded-xs" />
-            <span className="cf-meta text-[11px] font-bold text-(--cf-ink)">CanvasFlow Menti</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {}}
-            className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
-            title="Slide overview grid"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -330,6 +291,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         showAsPercentage={showAsPercentage}
         isQuizSlide={currentSlide?.type === "QUIZ"}
         isRevealed={quizRevealed}
+        isFullscreen={isFullscreen}
         onNext={nextStep}
         onPrev={prevStep}
         onEndPresentation={handleEndPresentation}
@@ -338,12 +300,17 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         onToggleHideResults={() => setHideResults((prev) => !prev)}
         onTogglePercentage={() => setShowAsPercentage((prev) => !prev)}
         onToggleReveal={() => setQuizRevealed((prev) => !prev)}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       {/* 4. Bottom-Right Live Participant Count Badge */}
-      <div className="absolute bottom-4 sm:bottom-5 right-5 sm:right-6 z-30 pointer-events-auto">
+      <div
+        className={`absolute bottom-4 sm:bottom-5 right-5 sm:right-6 z-30 pointer-events-auto transition-opacity duration-200 ${
+          isFullscreen ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
+        }`}
+      >
         <div
-          className="px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-full flex items-center gap-2 shadow-md"
+          className="px-3.5 py-1.5 bg-white border-2 border-(--cf-line-strong) cf-raised rounded-full flex items-center gap-2 shadow-md select-none"
           title="Live connected participants"
         >
           <Users className="w-4 h-4 text-(--cf-orange)" />

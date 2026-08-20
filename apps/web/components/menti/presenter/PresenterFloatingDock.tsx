@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import {
   ChevronLeft,
@@ -12,6 +10,9 @@ import {
   Percent,
   Hash,
   CheckCircle2,
+  Maximize2,
+  Minimize2,
+  X,
 } from "lucide-react";
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
   showAsPercentage: boolean;
   isQuizSlide?: boolean;
   isRevealed?: boolean;
+  isFullscreen?: boolean;
   onNext: () => void;
   onPrev: () => void;
   onEndPresentation: () => void;
@@ -34,6 +36,7 @@ interface Props {
   onToggleHideResults: () => void;
   onTogglePercentage: () => void;
   onToggleReveal?: () => void;
+  onToggleFullscreen?: () => void;
 }
 
 export function PresenterFloatingDock({
@@ -48,6 +51,7 @@ export function PresenterFloatingDock({
   showAsPercentage,
   isQuizSlide,
   isRevealed,
+  isFullscreen = false,
   onNext,
   onPrev,
   onEndPresentation,
@@ -56,13 +60,18 @@ export function PresenterFloatingDock({
   onToggleHideResults,
   onTogglePercentage,
   onToggleReveal,
+  onToggleFullscreen,
 }: Props) {
   const isLastStep = currentStep >= totalSteps - 1;
 
   return (
     <>
       {/* 1. Bottom Left Segment: Prev Slide & Next/End Slide */}
-      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2 select-none">
+      <div
+        className={`fixed bottom-6 left-6 z-30 flex items-center gap-2 select-none transition-opacity duration-200 ${
+          isFullscreen ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
+        }`}
+      >
         {/* Previous Slide Button */}
         <button
           type="button"
@@ -96,8 +105,12 @@ export function PresenterFloatingDock({
         )}
       </div>
 
-      {/* 2. Bottom Center Segment: Presentation Controls Bar (Reveals on Hover) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 select-none">
+      {/* 2. Bottom Center Segment: Presentation Controls Bar */}
+      <div
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-30 transition-opacity duration-200 select-none ${
+          isFullscreen ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
+        }`}
+      >
         <div className="flex items-center gap-2 p-1.5 bg-white rounded-(--hex-radius) border-2 border-(--cf-line-strong) cf-raised shadow-xl">
           {/* Slide Counter Badge */}
           <span className="cf-meta text-xs font-bold text-(--cf-ink) px-2 font-mono tabular-nums">
@@ -184,6 +197,30 @@ export function PresenterFloatingDock({
               {isVotingLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
             </button>
           )}
+
+          <div className="w-px h-5 bg-(--cf-line-strong) mx-0.5" />
+
+          {/* Fullscreen Toggle */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="size-7 flex items-center justify-center rounded-(--hex-radius) text-(--cf-ink-soft) hover:text-(--cf-ink) hover:bg-(--cf-cream) transition-colors"
+              title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          )}
+
+          {/* End Presentation Button */}
+          <button
+            type="button"
+            onClick={onEndPresentation}
+            className="size-7 flex items-center justify-center rounded-(--hex-radius) text-rose-600 hover:text-white hover:bg-rose-600 transition-colors"
+            title="End presentation"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </>

@@ -19,14 +19,12 @@ export function DevclubIcon({ className = "size-6", size, ...props }: DevclubIco
       role="img"
       {...props}
     >
-      {/* 1. Top-Left Quadrant (Flat left wall, rounded top-left corner, concave sparkle cutout) */}
-      <path d="M 12 47 L 12 32 A 20 20 0 0 1 32 12 L 47 12 L 47 24 A 23 23 0 0 0 24 47 Z" />
-
-      {/* 2. Bottom-Left Quadrant (Flat left wall, rounded bottom-left corner, concave sparkle cutout) */}
-      <path d="M 12 53 L 24 53 A 23 23 0 0 0 47 76 L 47 88 L 32 88 A 20 20 0 0 1 12 68 Z" />
-
-      {/* 3. Right 'D' Arch (Smooth outer D loop with center sparkle notch) */}
-      <path d="M 53 12 L 62 12 C 80 12 90 28 90 50 C 90 72 80 88 62 88 L 53 88 L 53 76 A 26 26 0 0 0 76 50 A 26 26 0 0 0 53 24 Z" />
+      {/* Exact Devclub 'D' with 4-point star negative space and left horizontal slit */}
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M 10 46 L 10 26 A 16 16 0 0 1 26 10 L 54 10 C 76 10 90 26 90 50 C 90 74 76 90 54 90 L 26 90 A 16 16 0 0 1 10 74 L 10 54 L 30 54 C 38 54 44 60 44 70 C 44 60 50 50 66 50 C 50 50 44 40 44 30 C 44 40 38 46 30 46 L 10 46 Z"
+      />
     </svg>
   );
 }
