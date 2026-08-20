@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { QrCode, Users, ArrowRight, Copy, Check } from "lucide-react";
+import { DevclubIcon } from "~/components/DevclubLogo";
 
 interface Props {
   title: string;
@@ -30,8 +31,7 @@ export function PresenterIntroStage({ title, joinCode, participantCount = 0, onS
   return (
     <div className="flex flex-col items-center justify-between h-full w-full max-w-5xl mx-auto px-6 py-6 sm:py-8 select-none text-center">
       {/* 1. Presentation Title */}
-      <div className="space-y-1.5 max-w-3xl">
-        <span className="cf-eyebrow text-(--cf-orange)">CanvasFlow Interactive</span>
+      <div className="space-y-1.5 max-w-3xl pt-2 sm:pt-3">
         <h1 className="cf-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-(--cf-ink) tracking-tight leading-tight">
           {title || "Untitled Presentation"}
         </h1>
@@ -60,8 +60,8 @@ export function PresenterIntroStage({ title, joinCode, participantCount = 0, onS
             <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
           )}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="size-9 bg-(--cf-ink) rounded-md flex items-center justify-center font-black text-xs text-(--cf-cream) shadow-md border-2 border-white">
-              CF
+            <div className="size-9 bg-(--cf-ink) rounded-md flex items-center justify-center text-white shadow-md border-2 border-white">
+              <DevclubIcon className="size-5 text-white" />
             </div>
           </div>
         </div>
