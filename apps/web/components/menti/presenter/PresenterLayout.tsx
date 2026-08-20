@@ -172,27 +172,38 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
-      {/* 1. Top Controls Bar */}
-      <div className="absolute top-5 left-6 right-6 z-20 flex items-center justify-between pointer-events-none">
-        {/* Top-Left Cluster: Exit + Fullscreen (Reveals on Hover) */}
-        <div className="flex items-center gap-2 pointer-events-auto opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-          <button
-            type="button"
-            onClick={() => setShowConfirmEndModal(true)}
-            className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-rose-600 hover:text-white border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
-            title="Exit presentation"
-          >
-            <X className="w-4 h-4" />
-          </button>
+      {/* 1. Top Controls & Branding Bar */}
+      <div className="absolute top-3.5 sm:top-4.5 left-8 sm:left-11 2xl:left-14 right-6 2xl:right-10 z-20 flex items-center justify-between pointer-events-none">
+        {/* Top-Left: Standalone Devclub Logo (Matching Center Join Bar Size) + Hover Controls */}
+        <div className="flex items-center gap-3.5 pointer-events-auto">
+          {/* Devclub Logo */}
+          <div className="flex items-center gap-2.5 sm:gap-3 py-1 select-none">
+            <DevclubIcon className="size-6 sm:size-7 md:size-8 text-(--cf-ink)" />
+            <span className="font-black text-lg sm:text-xl md:text-2xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+              Devclub<span className="text-(--cf-orange)">.</span>
+            </span>
+          </div>
 
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
-            title="Toggle Fullscreen (F)"
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+          {/* Quick Exit & Fullscreen buttons (Reveal on Hover) */}
+          <div className="flex items-center gap-1.5 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 pl-1">
+            <button
+              type="button"
+              onClick={() => setShowConfirmEndModal(true)}
+              className="size-8 sm:size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-rose-600 hover:text-white border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
+              title="Exit presentation"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="size-8 sm:size-9 flex items-center justify-center p-0 rounded-(--hex-radius) bg-white text-(--cf-ink) hover:bg-(--cf-ink) hover:text-(--cf-cream) border-2 border-(--cf-line-strong) cf-raised cf-press transition-colors"
+              title="Toggle Fullscreen (F)"
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         {/* Top-Right Cluster: Branding + Slide Grid View Toggle */}
@@ -215,7 +226,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
 
       {/* 2. Top-Middle: Absolutely Centered & Clickable Join Code */}
       {!isIntro && (
-        <div className="absolute top-4 sm:top-5 left-0 right-0 z-20 pointer-events-none flex items-center justify-center">
+        <div className="absolute top-3.5 sm:top-4.5 left-0 right-0 z-20 pointer-events-none flex items-center justify-center">
           <AnimatePresence>
             {showJoinCode && (
               <motion.div
@@ -256,19 +267,9 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
         </div>
       )}
 
-      {/* 2. Center Presentation Stage (16:9 Canvas Stage, Maximized with Comfortable Top Clearance) */}
+      {/* 3. Center Presentation Stage (16:9 Canvas Stage, Maximized with Comfortable Top Clearance) */}
       <main className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-12 pt-16 sm:pt-20 pb-14 w-full max-w-[94vw] 2xl:max-w-[1550px] mx-auto z-10">
         <div className="w-full aspect-[16/9] max-h-[80vh] bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised overflow-hidden relative flex items-center justify-center">
-          {/* Top-Left Devclub Stage Watermark (Appears on all slides & intro - Unboxed & Bold) */}
-          <div className="absolute top-4 left-5 sm:top-6 sm:left-7 z-30 pointer-events-none select-none">
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              <DevclubIcon className="size-6 sm:size-7 md:size-8 text-(--cf-ink)" />
-              <span className="font-black text-lg sm:text-xl md:text-2xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
-                Devclub<span className="text-(--cf-orange)">.</span>
-              </span>
-            </div>
-          </div>
-
           <AnimatePresence mode="wait">
             {isIntro ? (
               <motion.div
