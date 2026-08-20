@@ -247,10 +247,10 @@ export function WordCloudViewer({
       {showQuestion && (
         <div className="w-full flex flex-col items-center text-center">
           <h2
-            className={`shrink-0 font-medium leading-[1.1] tracking-[-0.04em] ${
+            className={`shrink-0 font-medium leading-snug tracking-[-0.035em] break-words ${
               isPreview
-                ? "mb-2 text-xl sm:text-2xl max-w-xl mx-auto"
-                : "mb-3 sm:mb-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl mx-auto"
+                ? "mb-1.5 text-base sm:text-lg max-w-lg mx-auto"
+                : "mb-2 sm:mb-3 text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] max-w-4xl mx-auto"
             }`}
           >
             {slide.question || "What word comes to mind?"}

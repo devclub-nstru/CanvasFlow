@@ -140,21 +140,21 @@ export function QuizViewer({
 
   return (
     <section
-      className="flex flex-col justify-between items-center h-full w-full max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 select-none relative"
+      className="flex flex-col justify-between items-center h-full w-full select-none relative px-4 sm:px-8 py-3 sm:py-4"
       style={{ color: textColor }}
     >
       {/* 1. Top-Right Corner Pinned Badges (Countdown Timer & Visibility) */}
-      <div className="absolute top-3 right-4 sm:top-4 sm:right-6 z-20 flex items-center gap-2">
+      <div className="absolute top-3 right-4 sm:top-4 sm:right-6 z-30 flex items-center gap-2">
         {/* Live Monospace Countdown Badge - Prominent & Clearly Visible */}
         {!isPreview && (
           <div
-            className={`inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-1.5 sm:py-2 bg-white border-2 rounded-2xl font-mono font-bold tracking-tight shadow-md select-none transition-all ${
+            className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 bg-white border-2 rounded-2xl font-mono font-bold tracking-tight shadow-md select-none transition-all ${
               timeLeft <= 5 && timeLeft > 0
-                ? "bg-rose-50 border-rose-500 text-rose-700 ring-2 ring-rose-300 animate-pulse text-lg sm:text-2xl"
-                : "border-(--cf-line-strong) cf-raised text-(--cf-ink) text-base sm:text-xl"
+                ? "bg-rose-50 border-rose-500 text-rose-700 ring-2 ring-rose-300 animate-pulse text-sm sm:text-base"
+                : "border-(--cf-line-strong) cf-raised text-(--cf-ink) text-xs sm:text-sm"
             }`}
           >
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-(--cf-orange) stroke-[2.5]" />
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-(--cf-orange) stroke-[2.5]" />
             <span className="tabular-nums">{timeLeft}s</span>
           </div>
         )}
@@ -177,14 +177,14 @@ export function QuizViewer({
       </div>
 
       {/* 2. Question Heading */}
-      <div className="w-full flex flex-col items-center text-center pt-1 sm:pt-2">
+      <div className="w-full flex flex-col items-center text-center pt-1 sm:pt-2 px-14 sm:px-20 max-w-5xl mx-auto">
         <h2
-          className={`font-medium leading-[1.1] tracking-[-0.04em] ${
+          className={`font-medium leading-snug tracking-[-0.035em] break-words w-full max-w-5xl ${
             isPreview
-              ? "text-xl sm:text-2xl max-w-xl"
+              ? "text-base sm:text-lg max-w-lg"
               : isMultiRow
-              ? "text-2xl sm:text-3xl md:text-4xl max-w-3xl"
-              : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl"
+              ? "text-xl sm:text-2xl md:text-3xl max-w-3xl"
+              : "text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] max-w-4xl"
           }`}
         >
           {slide.question || "Select the correct answer"}

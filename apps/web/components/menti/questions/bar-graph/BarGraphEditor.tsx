@@ -96,7 +96,7 @@ export function BarGraphEditor({ slide, onChange, variant = "panel" }: Props) {
             onChange={(event) => onChange({ question: event.target.value })}
             placeholder="Which of these..."
             rows={qLength > 35 ? 2 : 1}
-            className={`w-full max-w-3xl resize-none overflow-hidden text-center rounded-2xl border-2 border-transparent bg-transparent px-3 py-1 font-medium leading-[1.15] tracking-[-0.04em] text-neutral-800 outline-none transition hover:border-(--cf-orange)/30 focus:border-(--cf-orange) ${
+            className={`w-full max-w-5xl resize-none overflow-hidden text-center rounded-2xl border-2 border-transparent bg-transparent px-3 py-1 font-medium leading-[1.15] tracking-[-0.04em] break-words text-neutral-800 outline-none transition hover:border-(--cf-orange)/30 focus:border-(--cf-orange) ${
               isMultiRow ? "text-2xl sm:text-3xl md:text-4xl" : fontSizeClass
             }`}
           />

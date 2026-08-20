@@ -169,12 +169,10 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
           <span>Top 10 Standings</span>
         </div>
         <h2
-          className={`font-medium leading-[1.1] tracking-[-0.04em] ${
+          className={`font-medium leading-snug tracking-[-0.035em] break-words w-full max-w-5xl ${
             isPreview
-              ? "text-2xl sm:text-3xl max-w-xl"
-              : isCompact
-              ? "text-2xl sm:text-3xl md:text-4xl max-w-3xl"
-              : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-3xl"
+              ? "text-lg sm:text-xl max-w-lg"
+              : "text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] max-w-3xl"
           }`}
         >
           {heading}

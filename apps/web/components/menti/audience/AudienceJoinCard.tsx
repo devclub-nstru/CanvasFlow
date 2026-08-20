@@ -5,6 +5,8 @@ import { ArrowRight, QrCode } from "lucide-react";
 import { VerticalScale } from "~/components/Scale";
 import Noise from "~/components/Noise";
 
+import { DevclubIcon } from "~/components/DevclubLogo";
+
 interface Props {
   onJoin: (code: string, name: string) => void;
   defaultCode?: string;
@@ -113,7 +115,23 @@ export function AudienceJoinCard({ onJoin, defaultCode = "" }: Props) {
         <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
+      {/* Desktop Top-Left Corner Branding (Matching Presenter Layout) */}
+      <div className="hidden md:flex items-center absolute top-4 sm:top-5 left-8 sm:left-11 2xl:left-14 z-20 pointer-events-auto select-none">
+        <div className="flex items-center gap-3 sm:gap-3.5 py-1">
+          <DevclubIcon className="size-8 sm:size-9 md:size-10 lg:size-11 text-(--cf-ink)" />
+          <span className="font-black text-xl sm:text-2xl md:text-3xl lg:text-[2rem] tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+            Devclub<span className="text-(--cf-orange)">.</span>
+          </span>
+        </div>
+      </div>
 
+      {/* Mobile Top Devclub Branding */}
+      <div className="md:hidden relative z-20 w-full pt-6 pb-2 px-4 flex items-center justify-center gap-3.5 sm:gap-4 select-none pt-[max(1.5rem,env(safe-area-inset-top))]">
+        <DevclubIcon className="size-11 sm:size-12 text-(--cf-ink)" />
+        <span className="font-black text-4xl sm:text-5xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+          Devclub<span className="text-(--cf-orange)">.</span>
+        </span>
+      </div>
 
       {/* 2. Main Hero Join Card */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-6 w-full max-w-lg mx-auto">

@@ -99,10 +99,10 @@ export function ScalesViewer({
       {showQuestion && (
         <div className="w-full flex flex-col items-center text-center">
           <h2
-            className={`font-medium leading-[1.1] tracking-[-0.04em] ${
+            className={`font-medium leading-snug tracking-[-0.035em] break-words w-full max-w-5xl ${
               isPreview
-                ? "text-xl sm:text-2xl max-w-xl"
-                : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl"
+                ? "text-base sm:text-lg max-w-lg"
+                : "text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] max-w-4xl"
             }`}
           >
             {slide.question || `Rate on a scale from ${min} to ${max}`}

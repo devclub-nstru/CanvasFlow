@@ -174,11 +174,11 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
 
       {/* 1. Top Branding Bar */}
       <div className="absolute top-3.5 sm:top-4.5 left-8 sm:left-11 2xl:left-14 right-6 2xl:right-10 z-20 flex items-center justify-between pointer-events-none">
-        {/* Top-Left: Standalone Devclub Logo (Matching Center Join Bar Size) */}
+        {/* Top-Left: Standalone Devclub Logo */}
         <div className="pointer-events-auto select-none">
-          <div className="flex items-center gap-2.5 sm:gap-3 py-1">
-            <DevclubIcon className="size-6 sm:size-7 md:size-8 text-(--cf-ink)" />
-            <span className="font-black text-lg sm:text-xl md:text-2xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+          <div className="flex items-center gap-3 sm:gap-3.5 py-1">
+            <DevclubIcon className="size-9 sm:size-10 md:size-11 lg:size-13 text-(--cf-ink)" />
+            <span className="font-black text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
               Devclub<span className="text-(--cf-orange)">.</span>
             </span>
           </div>

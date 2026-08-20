@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { VerticalScale } from "~/components/Scale";
 import Noise from "~/components/Noise";
 
+import { DevclubIcon } from "~/components/DevclubLogo";
+
 interface Props {
   presentation: MentiPresentation;
   currentSlide?: MentiSlide | null;
@@ -133,6 +135,16 @@ export function AudienceLayout({
         <VerticalScale className="absolute inset-y-0 right-0 w-8 2xl:w-10 opacity-70" />
       </div>
 
+      {/* Desktop Corner Branding: Below the title bar in the corner */}
+      <div className="hidden md:flex items-center absolute top-16 sm:top-18 md:top-20 left-8 sm:left-11 2xl:left-14 z-20 pointer-events-auto select-none">
+        <div className="flex items-center gap-3 sm:gap-3.5 py-1">
+          <DevclubIcon className="size-8 sm:size-9 md:size-10 lg:size-11 text-(--cf-ink)" />
+          <span className="font-black text-xl sm:text-2xl md:text-3xl lg:text-[2rem] tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+            Devclub<span className="text-(--cf-orange)">.</span>
+          </span>
+        </div>
+      </div>
+
       {/* Floating Animated Thumbs Up Particle */}
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         <AnimatePresence>
@@ -171,7 +183,7 @@ export function AudienceLayout({
         </AnimatePresence>
       </div>
 
-      {/* 1. Minimal Top Header */}
+      {/* 1. Top Header */}
       <header className="relative z-20 flex flex-col w-full border-b border-(--cf-line-strong) bg-(--cf-cream-2) pt-[env(safe-area-inset-top)]">
         <div className="flex items-center justify-between h-12 sm:h-13 px-3.5 sm:px-6 w-full max-w-5xl mx-auto">
           {/* Left: Indicator + Form/Presentation Title */}
@@ -203,6 +215,14 @@ export function AudienceLayout({
           />
         </div>
       </header>
+
+      {/* Mobile Devclub Branding: Large & prominently covering phone width below title bar */}
+      <div className="md:hidden w-full pt-4 pb-2 px-4 flex items-center justify-center gap-3.5 sm:gap-4 select-none shrink-0 z-10">
+        <DevclubIcon className="size-11 sm:size-12 text-(--cf-ink)" />
+        <span className="font-black text-4xl sm:text-5xl tracking-[-0.04em] text-(--cf-ink) font-sans leading-none">
+          Devclub<span className="text-(--cf-orange)">.</span>
+        </span>
+      </div>
 
       {/* 2. Main Question Card / Lobby Container */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-3 sm:px-6 py-3 sm:py-6 w-full max-w-lg mx-auto my-auto min-h-0">

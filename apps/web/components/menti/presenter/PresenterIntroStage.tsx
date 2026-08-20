@@ -60,8 +60,8 @@ export function PresenterIntroStage({ title, joinCode, participantCount = 0, onS
             <QrCode className="w-full h-full text-(--cf-ink) stroke-[1.5]" />
           )}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="size-9 bg-(--cf-ink) rounded-md flex items-center justify-center text-white shadow-md border-2 border-white">
-              <DevclubIcon className="size-5 text-white" />
+            <div className="size-10 bg-(--cf-ink) rounded-lg flex items-center justify-center text-white shadow-md border-2 border-white">
+              <DevclubIcon className="size-6 text-white" />
             </div>
           </div>
         </div>
