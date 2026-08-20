@@ -5,7 +5,7 @@ export default function MentiRouteLayout({ children }: { children: React.ReactNo
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-(--cf-cream) text-(--cf-ink) font-sans antialiased">
       <Noise />
-      {children} //comment
+      {children}
     </div>
   );
 }
