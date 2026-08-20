@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Trophy, TrendingUp, Award } from "lucide-react";
 import { MentiSlide, MentiLeaderboardSnapshot } from "~/lib/menti";
 import type { QuizResponseResult } from "~/hooks/useMentiRealtime";
@@ -22,7 +22,12 @@ export function LeaderboardAudience({
 }: Props) {
   const heading = slide.question || slide.designSettings?.leaderboardTitle || "Quiz leaderboard";
 
-  const topPlayers = leaderboard?.topParticipants || [];
+  const topPlayers = useMemo(() => {
+    return [...(leaderboard?.topParticipants || [])]
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 10);
+  }, [leaderboard?.topParticipants]);
+
   const myNickname =
     participantName ||
     (typeof window !== "undefined"
@@ -40,6 +45,7 @@ export function LeaderboardAudience({
   const myPointsGained = lastResponseResult?.pointsAwarded;
 
   const hasData = topPlayers.length > 0;
+  const maxScore = Math.max(1, ...topPlayers.map((p) => p.score || 0));
 
   return (
     <div className="flex flex-col w-full space-y-4 sm:space-y-5 select-none animate-in fade-in duration-200">
@@ -70,7 +76,7 @@ export function LeaderboardAudience({
       {/* 2. Top Performers List */}
       <div className="p-4 bg-white rounded-2xl border-2 border-(--cf-line-strong) cf-raised space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-(--cf-line)">
-          <span className="cf-eyebrow text-(--cf-ink)">Top Leaderboard</span>
+          <span className="cf-eyebrow text-(--cf-ink)">Top 10 Leaderboard</span>
           <span className="text-[11px] font-mono text-(--cf-ink-soft)">
             {hasData ? `Top ${topPlayers.length}` : "Standings"}
           </span>
@@ -88,17 +94,26 @@ export function LeaderboardAudience({
               const isMe =
                 myNickname &&
                 player.nickname?.trim().toLowerCase() === myNickname.trim().toLowerCase();
+              const barFill = maxScore > 0 ? Math.max(6, ((player.score || 0) / maxScore) * 100) : 0;
 
               return (
                 <div
                   key={player.participantId || `p-${index}`}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+                  className={`relative overflow-hidden flex items-center justify-between p-2.5 rounded-xl border-2 transition-colors ${
                     isMe
-                      ? "bg-amber-50/80 border-amber-500 ring-1 ring-amber-400"
-                      : "bg-(--cf-cream) border-(--cf-line)"
+                      ? "bg-amber-50/90 border-amber-500 ring-2 ring-amber-400/50"
+                      : "bg-white border-(--cf-line-strong)"
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Horizontal Bar Fill */}
+                  <div
+                    className={`absolute inset-y-0 left-0 opacity-20 ${
+                      isMe ? "bg-amber-400 opacity-35" : "bg-(--cf-orange)"
+                    }`}
+                    style={{ width: `${barFill}%` }}
+                  />
+
+                  <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                     <span
                       className={`size-6 rounded-md flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
                         rank === 1
@@ -107,21 +122,21 @@ export function LeaderboardAudience({
                           ? "bg-slate-400 text-white"
                           : rank === 3
                           ? "bg-amber-700 text-white"
-                          : "bg-white text-(--cf-ink) border border-(--cf-line)"
+                          : "bg-(--cf-cream) text-(--cf-ink) border border-(--cf-line)"
                       }`}
                     >
                       #{rank}
                     </span>
                     <span
                       className={`text-xs sm:text-sm font-semibold truncate max-w-[160px] ${
-                        isMe ? "text-amber-900 font-bold" : "text-(--cf-ink)"
+                        isMe ? "text-amber-950 font-bold" : "text-(--cf-ink)"
                       }`}
                     >
                       {player.nickname} {isMe && "(You)"}
                     </span>
                   </div>
 
-                  <span className="font-mono font-bold text-xs sm:text-sm text-(--cf-ink) tabular-nums shrink-0">
+                  <span className="relative z-10 font-mono font-bold text-xs sm:text-sm text-(--cf-ink) tabular-nums shrink-0">
                     {(player.score || 0).toLocaleString()} pts
                   </span>
                 </div>

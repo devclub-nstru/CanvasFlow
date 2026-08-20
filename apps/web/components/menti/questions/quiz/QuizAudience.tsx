@@ -103,13 +103,13 @@ export function QuizAudience({
         <div className="flex items-center justify-between">
           <span className="cf-meta text-(--cf-orange)">Quiz Question</span>
           <div
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-mono font-bold ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border-2 font-mono font-bold ${
               timeLeft <= 5 && timeLeft > 0
-                ? "bg-rose-50 border-rose-400 text-rose-700 animate-pulse"
-                : "bg-white border-(--cf-line-strong) text-(--cf-ink)"
+                ? "bg-rose-50 border-rose-500 text-rose-700 animate-pulse text-sm"
+                : "bg-white border-(--cf-line-strong) cf-raised text-(--cf-ink) text-xs sm:text-sm"
             }`}
           >
-            <Clock className="w-3 h-3 text-(--cf-orange)" />
+            <Clock className="w-3.5 h-3.5 text-(--cf-orange) stroke-[2.5]" />
             <span className="tabular-nums">{timeLeft}s</span>
           </div>
         </div>

@@ -134,10 +134,10 @@ export function BarGraphViewer({
                   <div
                     className={`w-full flex flex-col justify-end items-center relative ${
                       isPreview
-                        ? isMultiRow ? "h-24 sm:h-28" : "h-36 sm:h-44"
+                        ? isMultiRow ? "h-24 sm:h-28" : "h-32 sm:h-40"
                         : isMultiRow
-                        ? "h-28 sm:h-36 md:h-42"
-                        : "h-56 sm:h-64 md:h-76 lg:h-84"
+                        ? "h-28 sm:h-34 md:h-40"
+                        : "h-44 sm:h-52 md:h-60 lg:h-68"
                     }`}
                   >
                     {/* Dynamic Rising Bar Pill with Floating Attached Value */}

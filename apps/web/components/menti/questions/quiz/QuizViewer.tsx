@@ -143,8 +143,41 @@ export function QuizViewer({
       className="flex flex-col justify-between items-center h-full w-full max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 select-none relative"
       style={{ color: textColor }}
     >
-      {/* 1. Question Heading & Status / Countdown */}
-      <div className="w-full flex flex-col items-center text-center">
+      {/* 1. Top-Right Corner Pinned Badges (Countdown Timer & Visibility) */}
+      <div className="absolute top-3 right-4 sm:top-4 sm:right-6 z-20 flex items-center gap-2">
+        {/* Live Monospace Countdown Badge - Prominent & Clearly Visible */}
+        {!isPreview && (
+          <div
+            className={`inline-flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-1.5 sm:py-2 bg-white border-2 rounded-2xl font-mono font-bold tracking-tight shadow-md select-none transition-all ${
+              timeLeft <= 5 && timeLeft > 0
+                ? "bg-rose-50 border-rose-500 text-rose-700 ring-2 ring-rose-300 animate-pulse text-lg sm:text-2xl"
+                : "border-(--cf-line-strong) cf-raised text-(--cf-ink) text-base sm:text-xl"
+            }`}
+          >
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-(--cf-orange) stroke-[2.5]" />
+            <span className="tabular-nums">{timeLeft}s</span>
+          </div>
+        )}
+
+        {/* Responses Hidden Badge */}
+        <AnimatePresence>
+          {isHidden && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-(--cf-line-strong) cf-raised rounded-full text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink) shadow-sm"
+            >
+              <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
+              <span>Responses hidden</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 2. Question Heading */}
+      <div className="w-full flex flex-col items-center text-center pt-1 sm:pt-2">
         <h2
           className={`font-medium leading-[1.1] tracking-[-0.04em] ${
             isPreview
@@ -156,42 +189,9 @@ export function QuizViewer({
         >
           {slide.question || "Select the correct answer"}
         </h2>
-
-        {/* Fixed height reservation for status badge & countdown */}
-        <div className="h-6 flex items-center justify-center gap-2 mt-1">
-          {/* Live Monospace Countdown Badge */}
-          {!isPreview && (
-            <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-(--hex-radius) border text-[10px] font-mono font-bold tracking-wider uppercase ${
-                timeLeft <= 5 && timeLeft > 0
-                  ? "bg-rose-50 border-rose-400 text-rose-700 animate-pulse"
-                  : "bg-(--cf-cream-2) border-(--cf-line-strong) text-(--cf-ink)"
-              }`}
-            >
-              <Clock className="w-3 h-3 text-(--cf-orange)" />
-              <span className="tabular-nums">{timeLeft}s</span>
-            </div>
-          )}
-
-          {/* Responses Hidden Badge */}
-          <AnimatePresence>
-            {isHidden && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.15 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-(--cf-cream-2) border border-(--cf-line-strong) rounded-(--hex-radius) text-[10px] font-mono font-bold tracking-wider uppercase text-(--cf-ink)"
-              >
-                <EyeOff className="w-3 h-3 text-(--cf-ink-soft)" />
-                <span>Responses hidden</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
 
-      {/* 2. Options Grid with Clean Spring Animation */}
+      {/* 3. Options Grid with Clean Spring Animation */}
       <div
         className={`flex flex-col items-center justify-end w-full max-w-5xl mx-auto ${
           isMultiRow ? "gap-4 sm:gap-6 pb-1" : "pb-2"
@@ -219,16 +219,16 @@ export function QuizViewer({
                     isMultiRow ? "max-w-[190px]" : "max-w-[240px]"
                   }`}
                 >
-                  {/* Rising Bar Track */}
+                  {/* Rising Bar Track with Proportional Height Clearance */}
                   <div
                     className={`w-full flex flex-col justify-end items-center relative ${
                       isPreview
                         ? isMultiRow
                           ? "h-24 sm:h-28"
-                          : "h-36 sm:h-44"
+                          : "h-32 sm:h-40"
                         : isMultiRow
-                        ? "h-28 sm:h-36 md:h-42"
-                        : "h-56 sm:h-64 md:h-76 lg:h-84"
+                        ? "h-28 sm:h-34 md:h-40"
+                        : "h-44 sm:h-52 md:h-60 lg:h-68"
                     }`}
                   >
                     {/* Dynamic Bar */}
