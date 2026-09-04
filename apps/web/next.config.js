@@ -28,8 +28,43 @@ function resolveApiOrigins() {
   return Array.from(new Set([primary, ...extras]));
 }
 
+/**
+ * The Menti service is reached over both HTTP and a websocket, and CSP treats
+ * those as different origins: listing `https://menti.example` in connect-src
+ * does NOT authorise `wss://menti.example`. Without the ws/wss entry the
+ * browser blocks the socket, Socket.IO silently falls back to HTTP long-polling,
+ * and a 1000-participant room turns into a request storm. So derive the
+ * websocket origin from the HTTP one and list both.
+ *
+ * @param {string | null} origin
+ */
+function websocketOrigin(origin) {
+  if (!origin) return null;
+  if (origin.startsWith("https://")) return origin.replace(/^https:/, "wss:");
+  if (origin.startsWith("http://")) return origin.replace(/^http:/, "ws:");
+  return null;
+}
+
+/** @returns {string[]} */
+function resolveRealtimeOrigins() {
+  const menti = safeOrigin(process.env.NEXT_PUBLIC_MENTI_API_URL);
+  if (!menti) return [];
+
+  const ws = websocketOrigin(menti);
+  return ws ? [menti, ws] : [menti];
+}
+
 const API_ORIGINS = resolveApiOrigins();
-const CONNECT_SRC_API_ORIGINS = API_ORIGINS.join(" ");
+const REALTIME_ORIGINS = resolveRealtimeOrigins();
+
+/* Every API origin may also be spoken to over a websocket. */
+const CONNECT_SRC_ORIGINS = Array.from(
+  new Set([
+    ...API_ORIGINS,
+    ...API_ORIGINS.map(websocketOrigin).filter((value) => typeof value === "string"),
+    ...REALTIME_ORIGINS,
+  ]),
+).join(" ");
 const IMAGEKIT = "https://ik.imagekit.io"; // landing artwork
 const QR_SERVICE = "https://api.qrserver.com"; // share-dialog QR, both <img> and fetch()
 
@@ -41,9 +76,9 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE} https://*.r2.dev`,
+  `img-src 'self' data: blob: ${IMAGEKIT} ${QR_SERVICE} https://*.r2.dev ${REALTIME_ORIGINS.filter((origin) => !origin.startsWith("ws")).join(" ")}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${CONNECT_SRC_API_ORIGINS} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
+  `connect-src 'self' ${CONNECT_SRC_ORIGINS} ${QR_SERVICE}${isProd ? "" : " ws: wss:"}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   ...(isProd ? ["upgrade-insecure-requests"] : []),

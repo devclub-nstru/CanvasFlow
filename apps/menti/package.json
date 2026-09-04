@@ -1,0 +1,35 @@
+{
+  "name": "@repo/menti",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- nodemon index.js",
+    "start": "node index.js",
+    "worker": "node src/workers/pptxWorker.js",
+    "worker:dev": "dotenv -e ../../.env -- nodemon src/workers/pptxWorker.js",
+    "simulate": "dotenv -e ../../.env -- node tools/simulate-audience.js",
+    "stress": "dotenv -e ../../.env -- node tools/stress-test.js",
+    "provision": "dotenv -e ../../.env -- node tools/provision-session.js",
+    "drive": "dotenv -e ../../.env -- node tools/drive-session.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1113.0",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "ioredis": "^6.0.0",
+    "mongoose": "^9.9.2",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "socket.io": "^4.8.3",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0",
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.3"
+  }
+}

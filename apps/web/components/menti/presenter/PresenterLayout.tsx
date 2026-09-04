@@ -54,7 +54,6 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
   // Connect Host to WebSocket store
   const {
     sessionState,
-    slideAnalytics,
     slideAnalyticsMap,
     leaderboard,
     changeSlide,
@@ -262,7 +261,13 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
                 {currentSlide && (
                   <SlideQuestionViewer
                     slide={currentSlide}
-                    analytics={slideAnalyticsMap[currentSlide.id] || slideAnalytics}
+                    /* Keyed strictly by slide id, with no fallback to the most
+                     * recent analytics frame. The fallback meant that advancing
+                     * to a slide with no tallies yet rendered the PREVIOUS
+                     * slide's results for a moment, until the first vote on the
+                     * new one arrived. Undefined is correct here — the viewers
+                     * render their own empty state for it. */
+                    analytics={slideAnalyticsMap[currentSlide.id]}
                     leaderboard={leaderboard || sessionState?.leaderboard}
                     quizState={sessionState?.session?.quizState}
                     isPreview={false}
