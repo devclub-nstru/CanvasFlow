@@ -75,8 +75,27 @@ services:
 
     restart: unless-stopped
 
+    # Both processes drain for up to 25s on SIGTERM; Docker's default 10s
+    # would SIGKILL them mid-flight on every deploy.
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     env_file:
       - .env
+
+    # The API only parks uploads here; the worker is what ships them to
+    # Cloudinary. Both containers must see the same directory or the worker
+    # reads a path that does not exist inside its own filesystem.
+    environment:
+      UPLOAD_TMP_DIR: /var/tmp/canvasflow-uploads
+
+    volumes:
+      - upload_tmp_prod:/var/tmp/canvasflow-uploads
 
     depends_on:
       postgres:
@@ -107,8 +126,22 @@ services:
 
     restart: unless-stopped
 
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     env_file:
       - .env
+
+    environment:
+      UPLOAD_TMP_DIR: /var/tmp/canvasflow-uploads
+
+    volumes:
+      - upload_tmp_prod:/var/tmp/canvasflow-uploads
 
     depends_on:
       postgres:
@@ -122,6 +155,12 @@ services:
       target: web
 
     restart: unless-stopped
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
     env_file:
       - .env
@@ -153,3 +192,4 @@ services:
 volumes:
   pg_data_prod:
   redis_data_prod:
+  upload_tmp_prod:

@@ -4,6 +4,71 @@ import crypto from "crypto";
 import db from "@repo/database";
 import { eq, and, usersTable, accountsTable, SelectUser } from "@repo/database";
 
+/* ── Signing secret ────────────────────────────────────────────────────────
+ *
+ * Every token this module mints or verifies is signed with this one value.
+ * It used to fall back to a hardcoded literal, which meant a deployment that
+ * forgot to set the variable would happily accept tokens forged by anyone who
+ * had read the source. There is no safe default for a signing key, so in
+ * production a missing secret is a startup error rather than a silent
+ * downgrade.
+ *
+ * Resolution is lazy and cached: `apps/web` pulls the router type through this
+ * module, and a throw at import time would break the build rather than the
+ * misconfigured deployment.
+ */
+
+const DEV_ONLY_SECRET = "canvasflow-development-only-insecure-secret";
+const MIN_RECOMMENDED_LENGTH = 32;
+
+let cachedSecret: string | null = null;
+let warnedAboutDevSecret = false;
+let warnedAboutShortSecret = false;
+
+export function authSecret(): string {
+  if (cachedSecret) return cachedSecret;
+
+  const configured = (process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "").trim();
+
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "JWT_SECRET (or BETTER_AUTH_SECRET) is not set. Sessions are signed with this " +
+          "value, so there is no safe default — generate one with `openssl rand -base64 32` " +
+          "and add it to the environment before starting the API.",
+      );
+    }
+
+    if (!warnedAboutDevSecret) {
+      warnedAboutDevSecret = true;
+      console.warn(
+        "[auth] JWT_SECRET is not set — falling back to a well-known development secret. " +
+          "Tokens signed with it are forgeable by anyone. Never run this outside local dev.",
+      );
+    }
+
+    cachedSecret = DEV_ONLY_SECRET;
+    return cachedSecret;
+  }
+
+  if (configured.length < MIN_RECOMMENDED_LENGTH && !warnedAboutShortSecret) {
+    warnedAboutShortSecret = true;
+    console.warn(
+      `[auth] the configured signing secret is ${configured.length} characters; ` +
+        `${MIN_RECOMMENDED_LENGTH} or more is recommended (\`openssl rand -base64 32\`).`,
+    );
+  }
+
+  cachedSecret = configured;
+  return cachedSecret;
+}
+
+/* Called from the API's boot path so a production process with no secret dies
+ * on startup instead of on the first sign-in attempt. */
+export function assertAuthSecret(): void {
+  authSecret();
+}
+
 // Cookie parser utility for server side
 function parseCookies(cookieString: string): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -160,7 +225,7 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
       password: hashedPassword,
     });
 
-    const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+    const secret = authSecret();
     const token = jwt.sign(
       { id: userId, email, name: userName || "" },
       secret,
@@ -214,7 +279,7 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+    const secret = authSecret();
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name },
       secret,
@@ -269,7 +334,7 @@ authRouter.get("/get-session", (req, res) => {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+    const secret = authSecret();
     const decoded = jwt.verify(token, secret) as any;
     res.json({
       session: {
@@ -405,7 +470,7 @@ authRouter.get("/callback/google", async (req, res) => {
       providerAccountId: googleUser.sub,
     });
 
-    const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+    const secret = authSecret();
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name },
       secret,
@@ -496,7 +561,7 @@ authRouter.get("/callback/github", async (req, res) => {
       providerAccountId: githubUser.id.toString(),
     });
 
-    const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+    const secret = authSecret();
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name },
       secret,
@@ -528,7 +593,7 @@ export const auth = {
       if (!token) return null;
 
       try {
-        const secret = process.env.JWT_SECRET || process.env.BETTER_AUTH_SECRET || "default-secret-key-123456";
+        const secret = authSecret();
         const decoded = jwt.verify(token, secret) as any;
         if (!decoded || !decoded.id) return null;
 
