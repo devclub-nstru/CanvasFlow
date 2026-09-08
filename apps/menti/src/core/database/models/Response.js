@@ -107,29 +107,56 @@ const ResponseSchema = new Schema(
       type: String,
       required: true,
     },
+
+    /* What "one submission" means for this response, so a single unique index
+     * can serve both slide kinds.
+     *
+     * "single" for every slide that accepts one answer per participant: the
+     * index below then makes a second attempt a duplicate-key error, enforced
+     * by the database rather than by a read-then-write race in the handler.
+     *
+     * For a word cloud configured to accept unlimited entries, the handler
+     * puts the per-submission commandId here instead. Each insert is therefore
+     * distinct and the index admits it, without the index having to know
+     * anything about slide settings. */
+    submissionSlot: {
+      type: String,
+      required: true,
+      default: "single",
+    },
   },
   {
     timestamps: true,
   },
 );
 
+/* One submission per participant per slide — unless the slide says otherwise.
+ *
+ * This replaces two earlier indexes, both of which were wrong.
+ *
+ * The first was unique on (sessionId, slideId, participantId), which made the
+ * handler's own "unlimited word cloud" path impossible: that branch
+ * deliberately skips the duplicate check and inserts, so the second entry
+ * always violated the index and the participant got a raw duplicate-key error.
+ * The feature was unreachable as shipped.
+ *
+ * The second was unique on those three plus commandId. Since commandId is a
+ * fresh randomUUID generated server-side inside the handler, it can never
+ * collide, so that index enforced nothing at all while still costing a write.
+ *
+ * Keying on submissionSlot instead gets both behaviours from one index: it
+ * holds the constant "single" for slides that accept one answer, and the
+ * per-submission commandId for slides that accept many.
+ *
+ * NOTE: Mongoose creates new indexes but never drops removed ones. The two
+ * old indexes must be dropped explicitly — see tools/migrate-response-indexes.js.
+ */
 ResponseSchema.index(
   {
     sessionId: 1,
     slideId: 1,
     participantId: 1,
-  },
-  {
-    unique: true,
-  },
-);
-
-ResponseSchema.index(
-  {
-    sessionId: 1,
-    slideId: 1,
-    participantId: 1,
-    commandId: 1,
+    submissionSlot: 1,
   },
   {
     unique: true,

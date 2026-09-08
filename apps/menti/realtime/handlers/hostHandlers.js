@@ -5,18 +5,35 @@ import { invalidateCachedSession, invalidateCachedSlide } from "../cache.js";
 import { quizTimerManager } from "../../src/modules/quiz/quizTimerManager.js";
 import { clearPresence } from "../presence.js";
 
+/* Gate for every action in this file.
+ *
+ * This used to check only that the socket carried a session id and that the
+ * session existed — which every participant satisfies, because
+ * handleConnection assigns socket.sessionId to participants too. Since these
+ * handlers are registered on every connection, not just host ones, any
+ * attendee could emit change_slide or change_session_status and drive the
+ * deck. Two things are now required: the socket must have authenticated into
+ * the host role, and the authenticated identity must be the session's own
+ * presenter — so holding a session id for someone else's session is not
+ * enough either.
+ */
 const verifyHost = async (socket) => {
   const sessionId = socket.sessionId || socket.data?.sessionId;
-  if (!sessionId) {
+  const role = socket.data?.role;
+  const userId = socket.data?.userId;
+
+  if (role !== "host" || !userId || !sessionId) {
     throw new Error("Unauthorized: Only the host can perform this action");
   }
 
   const session = await Session.findById(sessionId).lean();
 
   if (!session) {
-    throw new Error(
-      "Unauthorized: Session not found",
-    );
+    throw new Error("Unauthorized: Session not found");
+  }
+
+  if (!session.presenterId || session.presenterId.toString() !== userId.toString()) {
+    throw new Error("Unauthorized: Only the host can perform this action");
   }
 
   return session;

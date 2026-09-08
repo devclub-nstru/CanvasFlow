@@ -7,6 +7,28 @@ interface RateLimiterOptions {
   max: number; // Bucket capacity (max burst size)
   windowMs: number; // Time window in milliseconds (leak duration)
   message?: string | object;
+  /* How a caller is bucketed.
+   *
+   * "client" is the default: session token, else visitor cookie, else peer
+   * address. Right for ordinary app traffic, where the cookie is a more stable
+   * identity than an address shared by everyone behind one NAT.
+   *
+   * "ip" ignores caller-supplied identifiers entirely. Required for
+   * credential endpoints: an attacker chooses their own cookie and bearer
+   * token, so a bucket keyed on either is one a brute-force can reset at will
+   * simply by rotating the value.
+   *
+   * A function keys the bucket on something request-specific — the submitted
+   * email address, say — so the limit follows the account being attacked
+   * rather than the machine attacking it. Returning null skips the limiter. */
+  identify?: "client" | "ip" | ((req: Request) => string | null);
+  /* Capacity multiplier for the IP floor that "client" mode always applies
+   * alongside the per-client bucket. The floor has to be looser than the
+   * per-client limit or a shared NAT — a lecture hall on one WiFi, which is
+   * exactly this product's audience — would throttle legitimate users. Loose
+   * but finite is the point: it bounds a cookie-rotating script without
+   * punishing co-located people. */
+  ipFloorFactor?: number;
 }
 
 const gcraScript = `
@@ -56,6 +78,11 @@ const localTat = new Map<string, number>();
  * Entries are cheap (a key and a float) so this is generous; the sweep below
  * keeps it from ever being reached under normal churn. */
 const MAX_LOCAL_KEYS = 100_000;
+
+/* Default looseness of the always-on IP floor relative to the per-client
+ * limit. Five means a single address may spend five clients' worth of budget
+ * before it is throttled. */
+const DEFAULT_IP_FLOOR_FACTOR = 5;
 const SWEEP_EVERY = 5_000;
 let opsSinceSweep = 0;
 
@@ -138,8 +165,53 @@ function identifyClient(req: Request, res: Response): string {
   return `ip:${req.ip ?? "unknown"}`;
 }
 
+interface Bucket {
+  key: string;
+  capacity: number;
+}
+
 export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
-  const { bucketName, max, windowMs, message } = opts;
+  const {
+    bucketName,
+    max,
+    windowMs,
+    message,
+    identify = "client",
+    ipFloorFactor = DEFAULT_IP_FLOOR_FACTOR,
+  } = opts;
+
+  /* Which buckets a request is charged against.
+   *
+   * "client" mode used to return a single key, preferring the session token,
+   * then the cf_visitor_id cookie, and only falling back to the peer address
+   * when neither was present. Both preferred identifiers are chosen by the
+   * caller, so a script sending a fresh random cookie on every request was
+   * handed a fresh budget on every request and the limit did nothing.
+   *
+   * The address is now always charged as a floor, with the per-client bucket
+   * layered on top as the tighter limit. Rotating a cookie no longer buys
+   * anything: the floor is keyed on something the caller cannot choose. */
+  const resolveBuckets = (req: Request, res: Response): Bucket[] | null => {
+    const ipKey = `ip:${req.ip ?? "unknown"}`;
+
+    if (identify === "ip") return [{ key: ipKey, capacity: max }];
+
+    if (typeof identify === "function") {
+      const key = identify(req);
+      if (key === null) return null;
+      return [{ key: `key:${fingerprint(key)}`, capacity: max }];
+    }
+
+    const clientKey = identifyClient(req, res);
+    const buckets: Bucket[] = [{ key: ipKey, capacity: max * ipFloorFactor }];
+
+    /* identifyClient falls back to the address itself when no cookie came
+     * back, in which case the floor already covers it — charging the same key
+     * twice would just halve the budget. */
+    if (clientKey !== ipKey) buckets.push({ key: clientKey, capacity: max });
+
+    return buckets;
+  };
 
   let warnedAboutFallback = false;
   const noteFallback = (reason: string) => {
@@ -151,35 +223,56 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
     );
   };
 
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const clientKey = identifyClient(req, res);
-    const key = `${redisKey("rl", bucketName)}:${clientKey}`;
-    const now = Date.now();
-
-    let allowed: number;
-    let retryAfterMs: number;
+  const consume = async (
+    bucket: Bucket,
+    now: number,
+  ): Promise<[allowed: number, retryAfterMs: number]> => {
+    const key = `${redisKey("rl", bucketName)}:${bucket.key}`;
 
     try {
       const client = isRedisConfigured() ? await redisReady() : null;
 
       if (client) {
-        const result = (await client.eval(
+        return (await client.eval(
           gcraScript,
           1,
           key,
-          max.toString(),
+          bucket.capacity.toString(),
           windowMs.toString(),
           now.toString(),
         )) as [number, number];
-
-        [allowed, retryAfterMs] = result;
-      } else {
-        noteFallback(isRedisConfigured() ? "Redis is unreachable" : "REDIS_URL is not configured");
-        [allowed, retryAfterMs] = localGcra(key, max, windowMs, now);
       }
+
+      noteFallback(isRedisConfigured() ? "Redis is unreachable" : "REDIS_URL is not configured");
+      return localGcra(key, bucket.capacity, windowMs, now);
     } catch (err) {
       noteFallback(`Redis command failed (${err instanceof Error ? err.message : err})`);
-      [allowed, retryAfterMs] = localGcra(key, max, windowMs, now);
+      return localGcra(key, bucket.capacity, windowMs, now);
+    }
+  };
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const buckets = resolveBuckets(req, res);
+
+    /* Nothing to bucket on — a credential request with no email in the body,
+     * for example. The handler will reject it on its own merits. */
+    if (buckets === null) return next();
+
+    const now = Date.now();
+
+    let allowed = 1;
+    let retryAfterMs = 0;
+
+    /* Every bucket is evaluated, and the request is denied if any of them
+     * denies. A bucket may be charged for a request another bucket then
+     * rejects, so under sustained abuse the effective limit is marginally
+     * stricter than the nominal one — the safe direction to be imprecise in. */
+    for (const bucket of buckets) {
+      const [bucketAllowed, bucketRetry] = await consume(bucket, now);
+      if (bucketAllowed !== 1) {
+        allowed = 0;
+        retryAfterMs = Math.max(retryAfterMs, bucketRetry);
+      }
     }
 
     res.setHeader("X-RateLimit-Limit", max);

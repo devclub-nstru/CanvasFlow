@@ -8,7 +8,8 @@
     "dev": "dotenv -- tsx watch ./src/index.ts",
     "build": "tsup",
     "lint": "eslint src/*",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "tsx tests/auth-hardening.test.mts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

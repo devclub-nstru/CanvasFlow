@@ -34,6 +34,18 @@ const envSchema = z.object({
 
   MENTI_LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).optional(),
 
+  /* Hard ceiling on participants in a single session, enforced server-side at
+   * join time. The rate limiter bounds how fast a script can join; this bounds
+   * how many join at all, which is what actually protects the collection and
+   * the per-session broadcast fan-out. Raise it deliberately — a room this
+   * size is also a room whose every state frame is serialised to that many
+   * sockets. */
+  MENTI_MAX_PARTICIPANTS_PER_SESSION: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(2000),
+
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
@@ -76,5 +88,10 @@ export const isProduction = env.NODE_ENV === "production";
  * instance with the API's cache, rate limiter, and BullMQ queues without any
  * chance of a key collision. */
 export const redisKey = (...parts) => [env.REDIS_PREFIX, "menti", ...parts].join(":");
+
+/* Keys shared with apps/api, which builds them from the bare prefix. Using
+ * redisKey() for these would insert a "menti" segment and the two services
+ * would silently read and write different keys. */
+export const sharedRedisKey = (...parts) => [env.REDIS_PREFIX, ...parts].join(":");
 
 export default env;

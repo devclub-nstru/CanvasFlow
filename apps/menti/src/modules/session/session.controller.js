@@ -33,6 +33,12 @@ class SessionController {
       if (error.message.includes("not active") || error.message.includes("anonymous")) {
         return res.status(403).json({ error: error.message });
       }
+      /* 409, not 500: the request was well-formed and the session exists — it
+       * simply has no room. A 500 would read as a bug the joiner could retry
+       * past. */
+      if (error.code === "SESSION_FULL") {
+        return res.status(409).json({ error: error.message });
+      }
       res.status(500).json({ error: error.message });
     }
   }
@@ -46,6 +52,9 @@ class SessionController {
     } catch (error) {
       if (error.message.includes("No active session")) {
         return res.status(404).json({ error: error.message });
+      }
+      if (error.code === "SESSION_FULL") {
+        return res.status(409).json({ error: error.message });
       }
       res.status(500).json({ error: error.message });
     }

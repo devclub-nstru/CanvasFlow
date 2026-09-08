@@ -9,6 +9,36 @@ import { syncer } from "../syncer.js";
 import { getCachedSession, getCachedSlide } from "../cache.js";
 import { calculateQuizPoints } from "../../src/modules/quiz/quizScorer.js";
 
+const ALREADY_SUBMITTED = "You have already submitted a response for this slide";
+
+/* Single insert path for every slide type.
+ *
+ * The unique index on (sessionId, slideId, participantId, submissionSlot) is
+ * what actually enforces one-answer-per-participant, so every branch inserts
+ * and translates a duplicate-key error into a message the participant can
+ * read. This replaced the per-branch `Response.exists()` pre-checks, which
+ * were both racy — two sockets could pass the check before either inserted —
+ * and an extra round trip in the hottest path in the system.
+ */
+async function insertResponse(doc, duplicateMessage = ALREADY_SUBMITTED) {
+  try {
+    return await Response.create(doc);
+  } catch (err) {
+    if (err.code === 11000) throw new Error(duplicateMessage);
+    throw err;
+  }
+}
+
+/* Decides what one submission means for this slide — see the submissionSlot
+ * field on the Response schema. */
+export function resolveSubmissionSlot(slide, commandId) {
+  const unlimited =
+    slide.responseSettings?.multipleSubmissions === true ||
+    slide.responseSettings?.maxEntriesPerParticipant === 0;
+
+  return unlimited ? commandId : "single";
+}
+
 export const handleSubmitResponse = async (socket, { slideId, answer }) => {
   const participantId = socket.data?.participantId || socket.participant?._id;
   const sessionId = socket.data?.sessionId || socket.sessionId;
@@ -35,6 +65,7 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
   }
 
   const commandId = crypto.randomUUID();
+  const submissionSlot = resolveSubmissionSlot(slide, commandId);
 
   switch (slide.type) {
     case "QUIZ": {
@@ -84,9 +115,9 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
         isCorrect,
       });
 
-      // 5. Atomic MongoDB response insertion & idempotency check (unique index)
-      try {
-        await Response.create({
+      // 5. Insert. The unique index is what makes this one-answer-per-participant.
+      await insertResponse(
+        {
           sessionId,
           presentationId: session.presentationId,
           slideId,
@@ -97,13 +128,10 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
           isCorrect,
           elapsedMs,
           commandId,
-        });
-      } catch (err) {
-        if (err.code === 11000) {
-          throw new Error("You have already submitted an answer for this quiz");
-        }
-        throw err;
-      }
+          submissionSlot,
+        },
+        "You have already submitted an answer for this quiz",
+      );
 
       // 6. Atomic MongoDB score increment
       const updatedParticipant = await Participant.findByIdAndUpdate(
@@ -149,22 +177,16 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
         throw new Error("Answer must be a selected option ID or array of IDs");
       }
 
-      try {
-        await Response.create({
-          sessionId,
-          presentationId: session.presentationId,
-          slideId,
-          participantId,
-          type: "select",
-          answer: { optionIds },
-          commandId,
-        });
-      } catch (err) {
-        if (err.code === 11000) {
-          throw new Error("You have already submitted a response for this slide");
-        }
-        throw err;
-      }
+      await insertResponse({
+        sessionId,
+        presentationId: session.presentationId,
+        slideId,
+        participantId,
+        type: "select",
+        answer: { optionIds },
+        commandId,
+        submissionSlot,
+      });
 
       // Update voteCount on slide options in DB
       if (optionIds.length > 0) {
@@ -194,19 +216,11 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
         throw new Error("Answer must contain at least one non-empty word");
       }
 
-      const isUnlimited = Boolean(
-        slide.responseSettings?.multipleSubmissions === true ||
-        slide.responseSettings?.maxEntriesPerParticipant === 0
-      );
-
-      if (!isUnlimited) {
-        const exists = await Response.exists({ sessionId, slideId, participantId });
-        if (exists) {
-          throw new Error("You have already submitted a response for this slide");
-        }
-      }
-
-      await Response.create({
+      /* No unlimited/limited branch here any more. submissionSlot already
+       * encodes the difference — "single" for a one-entry cloud, the unique
+       * commandId for an unlimited one — so a single insert is correct for
+       * both, and the index enforces whichever applies. */
+      await insertResponse({
         sessionId,
         presentationId: session.presentationId,
         slideId,
@@ -217,48 +231,30 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
           raw: words,
         },
         commandId,
+        submissionSlot,
       });
       break;
     }
 
     case "SCALES":
     case "rating": {
-      const exists = await Response.exists({ sessionId, slideId, participantId });
-      if (exists) {
-        throw new Error("You have already submitted a response for this slide");
-      }
+      const base = {
+        sessionId,
+        presentationId: session.presentationId,
+        slideId,
+        participantId,
+        type: "rating",
+        commandId,
+        submissionSlot,
+      };
 
       if (typeof answer === "number") {
-        await Response.create({
-          sessionId,
-          presentationId: session.presentationId,
-          slideId,
-          participantId,
-          type: "rating",
-          answer: { rating: answer, raw: answer },
-          commandId,
-        });
+        await insertResponse({ ...base, answer: { rating: answer, raw: answer } });
       } else if (typeof answer === "object" && answer !== null) {
-        await Response.create({
-          sessionId,
-          presentationId: session.presentationId,
-          slideId,
-          participantId,
-          type: "rating",
-          answer: { raw: answer },
-          commandId,
-        });
+        await insertResponse({ ...base, answer: { raw: answer } });
       } else if (typeof answer === "string" && !isNaN(Number(answer))) {
         const num = Number(answer);
-        await Response.create({
-          sessionId,
-          presentationId: session.presentationId,
-          slideId,
-          participantId,
-          type: "rating",
-          answer: { rating: num, raw: num },
-          commandId,
-        });
+        await insertResponse({ ...base, answer: { rating: num, raw: num } });
       } else {
         throw new Error("Answer must be a valid rating number or object");
       }

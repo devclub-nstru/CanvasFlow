@@ -27,9 +27,10 @@ import { useMentiRealtime } from "~/hooks/useMentiRealtime";
 interface Props {
   presentation: MentiPresentation;
   sessionId?: string;
+  displayToken?: string;
 }
 
-export function PresenterLayout({ presentation, sessionId = "" }: Props) {
+export function PresenterLayout({ presentation, sessionId = "", displayToken }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -60,6 +61,7 @@ export function PresenterLayout({ presentation, sessionId = "" }: Props) {
     changeSessionStatus,
   } = useMentiRealtime({
     sessionId,
+    displayToken,
     isHost: true,
     disabled: !sessionId,
   });

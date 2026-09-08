@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import env from "../../core/env/env.js";
 import { sessionRepository } from "./session.repository.js";
 import { presentationRepository } from "../presentation/presentation.repository.js";
 import { Session, Slide, Response, Participant } from "../../core/database/models/index.js";
@@ -38,6 +39,64 @@ export async function wipePresentationSessionData(presentationId) {
   }
 }
 
+/* ── Presenter-display token ───────────────────────────────────────────────
+ *
+ * Authorises a screen that can drive the session but carries no cookie: a
+ * projector, or the stage view opened on a second device. Only the presenter
+ * who created the session ever receives the raw value; the database keeps the
+ * hash, so a leaked dump does not hand out host control.
+ *
+ * Rotated on every createSession call. Starting the stage is exactly the moment
+ * an old projector link should stop working, and it means the presenter always
+ * gets a usable token back even for a session that predates this field.
+ */
+export function issueDisplayToken() {
+  const raw = crypto.randomBytes(32).toString("hex");
+  return { raw, hash: hashDisplayToken(raw) };
+}
+
+export function hashDisplayToken(raw) {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+/* Enforced at join time on both public join routes.
+ *
+ * The rate limiter in session.routes.js bounds how fast participants can be
+ * created; this bounds how many exist at all. Both are needed: a slow script
+ * left running overnight defeats a rate limit but not a cap.
+ *
+ * countDocuments on an indexed sessionId is cheap, and the check is
+ * deliberately not transactional — two joins racing at exactly the ceiling may
+ * both succeed, which is a far better failure than serialising every join in a
+ * thousand-person room behind a transaction.
+ */
+async function assertSessionHasRoom(sessionId) {
+  const limit = env.MENTI_MAX_PARTICIPANTS_PER_SESSION;
+  const current = await Participant.countDocuments({ sessionId });
+
+  if (current >= limit) {
+    const error = new Error("This session is full and cannot accept more participants");
+    error.code = "SESSION_FULL";
+    throw error;
+  }
+}
+
+/* One place that mints a participant token, so the two join paths cannot drift
+ * apart on how the token is generated or stored. */
+async function createParticipantWithToken(sessionId, nickname) {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+  const participant = await sessionRepository.createParticipant({
+    sessionId,
+    nickname,
+    tokenHash,
+    status: "active",
+  });
+
+  return { rawToken, participant };
+}
+
 const generateSessionCode = async () => {
   const chars = "0123456789";
   let code = "";
@@ -74,6 +133,10 @@ class SessionService {
     const firstSlide = slides && slides[0];
     const firstSlideId = firstSlide ? firstSlide._id : null;
 
+    /* Minted here, not inside the branch below, so resuming an existing session
+     * also rotates it — see issueDisplayToken. */
+    const displayToken = issueDisplayToken();
+
     if (!session) {
       const code = await generateSessionCode();
 
@@ -83,20 +146,35 @@ class SessionService {
         code,
         status: "waiting",
         currentSlideId: firstSlideId,
+        displayTokenHash: displayToken.hash,
       });
       await wipePresentationSessionData(presentationId);
     } else {
+      const updates = { displayTokenHash: displayToken.hash };
+
       if (!session.currentSlideId && firstSlideId) {
-        await Session.findByIdAndUpdate(session._id, { $set: { currentSlideId: firstSlideId } });
+        updates.currentSlideId = firstSlideId;
         session.currentSlideId = firstSlideId;
       }
+
+      await Session.findByIdAndUpdate(session._id, { $set: updates });
+
       if (session.status === "waiting") {
         await wipePresentationSessionData(presentationId);
       }
     }
 
+    /* `select: false` keeps the hash out of *queries*, but Session.create
+     * resolves to a document that still carries the field it was given. Strip
+     * it explicitly so the hash never reaches the response body. */
+    const plain = typeof session?.toObject === "function" ? session.toObject() : { ...session };
+    delete plain.displayTokenHash;
+
     return {
-      session,
+      session: plain,
+      /* Returned to the authenticated presenter only. The socket layer accepts
+       * it in place of a cookie; nothing else should ever see it. */
+      displayToken: displayToken.raw,
     };
   }
 
@@ -112,19 +190,9 @@ class SessionService {
       throw new Error("Session is not active");
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex");
+    await assertSessionHasRoom(session._id);
 
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex");
-
-    const participant = await sessionRepository.createParticipant({
-      sessionId: session._id,
-      nickname,
-      tokenHash,
-      status: "active",
-    });
+    const { rawToken, participant } = await createParticipantWithToken(session._id, nickname);
 
     return {
       participantToken: rawToken,
@@ -147,15 +215,9 @@ class SessionService {
       throw new Error("No active session found for this presentation");
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    await assertSessionHasRoom(session._id);
 
-    const participant = await sessionRepository.createParticipant({
-      sessionId: session._id,
-      nickname,
-      tokenHash,
-      status: "active",
-    });
+    const { rawToken, participant } = await createParticipantWithToken(session._id, nickname);
 
     return {
       participantToken: rawToken,

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Participant, Session, User } from "../src/core/database/models/index.js";
-import { extractToken, verifyHS256JWT } from "../src/core/auth/jwt.js";
+import { extractToken, verifyHS256JWT, isSessionRevoked } from "../src/core/auth/jwt.js";
 import { resolveLocalUser } from "../src/core/middleware/auth.js";
 import { logger } from "../src/core/logger/logger.js";
 
@@ -14,6 +14,11 @@ import { logger } from "../src/core/logger/logger.js";
 const participantTokenCache = new Map();
 const PARTICIPANT_CACHE_TTL_MS = 60_000;
 const PARTICIPANT_CACHE_MAX = 20_000;
+
+/* Checked before a session id reaches a query so a malformed one is a clean
+ * "no credentials" rejection rather than a Mongoose CastError surfacing as
+ * "Internal server error". */
+const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
 
 function sweep(cache, ttlMs, max) {
   if (cache.size <= max) return;
@@ -84,8 +89,31 @@ async function authenticateHost(socket, sessionId) {
   const decoded = verifyHS256JWT(token);
   if (!decoded?.id) return null;
 
+  /* Signed out elsewhere — the signature is still valid but the session is
+   * gone. See isSessionRevoked. */
+  if (await isSessionRevoked(decoded.sid)) return null;
+
   const localUser = await resolveLocalUser(decoded);
   if (!localUser) return null;
+
+  /* A valid cookie proves who the caller is, not what they may drive. The
+   * session id arrives from the handshake, so binding it unchecked would let
+   * any signed-up account claim host on any session it could name. Bind it
+   * only after confirming this user is that session's presenter; a claim on
+   * someone else's session fails the whole branch rather than silently
+   * downgrading to a host socket with no session. */
+  if (sessionId) {
+    if (!OBJECT_ID_RE.test(String(sessionId))) return null;
+
+    const owned = await Session.findOne({
+      _id: sessionId,
+      presenterId: localUser._id,
+    })
+      .select("_id")
+      .lean();
+
+    if (!owned) return null;
+  }
 
   socket.user = localUser;
   socket.data = {
@@ -117,15 +145,32 @@ export const socketAuthMiddleware = async (socket, next) => {
     const user = await authenticateHost(socket, sessionId);
     if (user) return next();
 
-    /* 3. Presenter display fallback: a screen that holds a valid session id but
-     * carries no cookie (a projector, a second device opened from the QR card).
+    /* 3. Presenter display: a screen that can drive the session but carries no
+     * cookie (a projector, or the stage view opened on a second device).
      *
-     * This grants host privileges on knowledge of the session id alone, so it
-     * is restricted to sessions that are actually running — a finished or
-     * cancelled session can no longer be driven this way. */
-    if (sessionId) {
+     * This used to accept the session id on its own. That was a privilege
+     * escalation, not a convenience: POST /:code/join returns the session id to
+     * every participant, and the realtime layer emits it in each
+     * session_state_sync frame, because a participant needs it to open a
+     * socket. Knowledge of it is therefore universal among the audience, and
+     * anyone holding it could promote themselves to host and drive the deck.
+     *
+     * The credential is now an explicit display token, minted for the
+     * authenticated presenter by POST /api/sessions and never broadcast. The
+     * session id is still required alongside it, and the session must still be
+     * running — a finished or cancelled session cannot be driven at all. */
+    const displayToken =
+      socket.handshake.query.displayToken || socket.handshake.auth?.displayToken;
+
+    if (sessionId && displayToken && OBJECT_ID_RE.test(String(sessionId))) {
+      const displayTokenHash = crypto
+        .createHash("sha256")
+        .update(String(displayToken))
+        .digest("hex");
+
       const sessionDoc = await Session.findOne({
         _id: sessionId,
+        displayTokenHash,
         status: { $in: ["waiting", "live", "paused"] },
       })
         .select("_id presenterId")

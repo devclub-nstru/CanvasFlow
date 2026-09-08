@@ -12,7 +12,9 @@
     "simulate": "dotenv -e ../../.env -- node tools/simulate-audience.js",
     "stress": "dotenv -e ../../.env -- node tools/stress-test.js",
     "provision": "dotenv -e ../../.env -- node tools/provision-session.js",
-    "drive": "dotenv -e ../../.env -- node tools/drive-session.js"
+    "drive": "dotenv -e ../../.env -- node tools/drive-session.js",
+    "test": "node tests/socket-auth.test.mjs && node tests/host-guard.test.mjs && node tests/submission-slot.test.mjs",
+    "migrate:response-indexes": "dotenv -e ../../.env -- node tools/migrate-response-indexes.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1113.0",

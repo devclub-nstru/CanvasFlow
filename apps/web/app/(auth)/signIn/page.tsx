@@ -15,7 +15,11 @@ import { safeRedirect } from "~/lib/utils";
 
 const SignInUserWithEmailAndPasswordInputModel = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  /* Deliberately only "not empty". Sign-in must not enforce the signup policy:
+   * accounts created before the 12-character floor still have shorter
+   * passwords, and rejecting them here would lock those users out of their own
+   * accounts client-side. */
+  password: z.string().min(1, "Password is required"),
 });
 
 type SignInValues = z.infer<typeof SignInUserWithEmailAndPasswordInputModel>;
@@ -34,7 +38,12 @@ function SignInForm() {
       if (apiURL.endsWith("/trpc")) {
         apiURL = apiURL.replace(/\/trpc$/, "");
       }
-      fetch(`${apiURL}/api/auth/signout`, { method: "POST" }).finally(() => {
+      fetch(`${apiURL}/api/auth/signout`, {
+        method: "POST",
+        /* Cross-origin, so without this the cookie is not sent and the server
+         * cannot revoke the session being switched away from. */
+        credentials: "include",
+      }).finally(() => {
         document.cookie =
           "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
       });

@@ -147,7 +147,8 @@ export const useSignOut = () => {
   const [isPending, setIsPending] = useState(false);
   const queryClient = useQueryClient();
 
-  const signOutAsync = async () => {
+  /* `allDevices` ends every session for the account, not just this browser. */
+  const signOutAsync = async (options?: { allDevices?: boolean }) => {
     setIsPending(true);
     setError(null);
     try {
@@ -155,8 +156,21 @@ export const useSignOut = () => {
       if (apiURL.endsWith("/trpc")) {
         apiURL = apiURL.replace(/\/trpc$/, "");
       }
-      const res = await fetch(`${apiURL}/api/auth/signout`, {
+
+      const path = options?.allDevices ? "/api/auth/signout-all" : "/api/auth/signout";
+
+      const res = await fetch(`${apiURL}${path}`, {
         method: "POST",
+        /* Required, and previously missing.
+         *
+         * web and api are separate origins, so without credentials the browser
+         * neither sends cf_jwt nor honours the Set-Cookie that clears it. The
+         * server therefore could not see which session to end — which is why
+         * this used to hand-clear cf_session in JS below while the httpOnly
+         * cf_jwt cookie survived in the browser. Now that sign-out actually
+         * revokes the session server-side, the cookie has to reach it. */
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         throw new Error("Failed to sign out");

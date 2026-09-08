@@ -16,7 +16,13 @@ import { safeRedirect } from "~/lib/utils";
 const createUserWithEmailAndPasswordInputModel = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  /* Mirrors the server-side floor in packages/trpc/server/auth.ts. Kept in
+   * step so the form catches a short password before the round trip; the
+   * server remains the authority. */
+  password: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(200, "Password must be at most 200 characters"),
 });
 
 type SignUpValues = z.infer<typeof createUserWithEmailAndPasswordInputModel>;
@@ -35,7 +41,12 @@ function SignUpForm() {
       if (apiURL.endsWith("/trpc")) {
         apiURL = apiURL.replace(/\/trpc$/, "");
       }
-      fetch(`${apiURL}/api/auth/signout`, { method: "POST" }).finally(() => {
+      fetch(`${apiURL}/api/auth/signout`, {
+        method: "POST",
+        /* Cross-origin, so without this the cookie is not sent and the server
+         * cannot revoke the session being switched away from. */
+        credentials: "include",
+      }).finally(() => {
         document.cookie =
           "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
       });

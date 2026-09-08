@@ -1,5 +1,5 @@
 import { User } from "../database/models/index.js";
-import { extractToken, verifyHS256JWT } from "../auth/jwt.js";
+import { extractToken, verifyHS256JWT, isSessionRevoked } from "../auth/jwt.js";
 import { logger } from "../logger/logger.js";
 
 /* Maps an apps/api session (an `externalId`) onto the local Mongo User doc.
@@ -50,6 +50,12 @@ export const requireAuth = async (req, res, next) => {
     const decoded = verifyHS256JWT(token);
     if (!decoded?.id) {
       return res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
+    }
+
+    /* A signature that still verifies does not mean the session still exists —
+     * apps/api may have revoked it. See isSessionRevoked. */
+    if (await isSessionRevoked(decoded.sid)) {
+      return res.status(401).json({ error: "Unauthorized: Session has ended" });
     }
 
     const localUser = await resolveLocalUser(decoded);

@@ -20,6 +20,7 @@ export default function MentiPresentPage({ params }: Props) {
 
   const [presentation, setPresentation] = useState<MentiPresentation | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(querySessionId || null);
+  const [displayToken, setDisplayToken] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +72,10 @@ export default function MentiPresentPage({ params }: Props) {
 
         setPresentation(mappedPresentation);
         setSessionId(activeSessionId);
+        /* Minted fresh by the server on every start, and only ever handed to the
+         * authenticated presenter. Held in component state rather than
+         * localStorage so it does not outlive the stage. */
+        setDisplayToken(sessionData.displayToken);
       } catch (err: any) {
         console.error("Presenter initialization error:", err);
         setError(err?.message || "Failed to start presenter session");
@@ -123,6 +128,7 @@ export default function MentiPresentPage({ params }: Props) {
     <PresenterLayout
       presentation={presentation}
       sessionId={sessionId}
+      displayToken={displayToken}
     />
   );
 }

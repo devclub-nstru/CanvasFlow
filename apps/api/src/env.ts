@@ -16,6 +16,13 @@ const envSchema = z.object({
   RATE_LIMIT_PUBLIC_WRITE_MAX: z.coerce.number().int().min(1).optional().default(60),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).optional().default(300),
   RATE_LIMIT_UPLOAD_MAX: z.coerce.number().int().min(1).optional().default(30),
+
+  /* Credential endpoints get their own, much tighter budgets. Defaults are
+   * deliberately low: a human signs in a handful of times a minute at most,
+   * while an unmetered endpoint is a password-guessing oracle. */
+  RATE_LIMIT_LOGIN_IP_MAX: z.coerce.number().int().min(1).optional().default(12),
+  RATE_LIMIT_LOGIN_ACCOUNT_MAX: z.coerce.number().int().min(1).optional().default(8),
+  RATE_LIMIT_AUTH_ROUTE_MAX: z.coerce.number().int().min(1).optional().default(240),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
