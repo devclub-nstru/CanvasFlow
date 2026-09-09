@@ -15,10 +15,6 @@ import { safeRedirect } from "~/lib/utils";
 
 const SignInUserWithEmailAndPasswordInputModel = z.object({
   email: z.string().email("Please enter a valid email address"),
-  /* Deliberately only "not empty". Sign-in must not enforce the signup policy:
-   * accounts created before the 12-character floor still have shorter
-   * passwords, and rejecting them here would lock those users out of their own
-   * accounts client-side. */
   password: z.string().min(1, "Password is required"),
 });
 
@@ -40,8 +36,6 @@ function SignInForm() {
       }
       fetch(`${apiURL}/api/auth/signout`, {
         method: "POST",
-        /* Cross-origin, so without this the cookie is not sent and the server
-         * cannot revoke the session being switched away from. */
         credentials: "include",
       }).finally(() => {
         document.cookie =
@@ -120,14 +114,26 @@ function SignInForm() {
           autoComplete="email"
         />
 
-        <PasswordField
-          id="password"
-          label="Password"
-          placeholder="••••••••"
-          register={register("password")}
-          error={errors.password?.message}
-          autoComplete="current-password"
-        />
+        <div>
+          <PasswordField
+            id="password"
+            label="Password"
+            placeholder="••••••••"
+            register={register("password")}
+            error={errors.password?.message}
+            autoComplete="current-password"
+          />
+
+          <div className="mt-2 flex justify-end">
+            <Link
+              href="/forgotPassword"
+              className="text-[12px] underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: "var(--hex-ink-soft)" }}
+            >
+              Forgot your password?
+            </Link>
+          </div>
+        </div>
 
         <button
           type="submit"

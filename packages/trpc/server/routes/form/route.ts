@@ -223,8 +223,15 @@ export const formRouter = router({
     })
     .input(getFormInputModel)
     .output(getFormByIdOutputModel)
-    .query(async ({ input }) => {
-      const result = await formService.getFormById(input);
+    .query(async ({ input, ctx }) => {
+      const session = await auth.api.getSession({
+        headers: new Headers(ctx.req.headers as Record<string, string>),
+      });
+
+      const result = await formService.getFormById({
+        ...input,
+        viewerId: session?.user?.id ?? null,
+      });
       return result;
     }),
 

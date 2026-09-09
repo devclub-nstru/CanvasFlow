@@ -9,7 +9,7 @@
     "build": "tsup",
     "lint": "eslint src/*",
     "check-types": "tsc --noEmit",
-    "test": "tsx tests/auth-hardening.test.mts"
+    "test": "tsx tests/auth-hardening.test.mts && tsx tests/form-access.test.mts && tsx tests/mail-templates.test.mts"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

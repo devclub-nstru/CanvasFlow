@@ -147,7 +147,6 @@ export const useSignOut = () => {
   const [isPending, setIsPending] = useState(false);
   const queryClient = useQueryClient();
 
-  /* `allDevices` ends every session for the account, not just this browser. */
   const signOutAsync = async (options?: { allDevices?: boolean }) => {
     setIsPending(true);
     setError(null);
@@ -161,14 +160,6 @@ export const useSignOut = () => {
 
       const res = await fetch(`${apiURL}${path}`, {
         method: "POST",
-        /* Required, and previously missing.
-         *
-         * web and api are separate origins, so without credentials the browser
-         * neither sends cf_jwt nor honours the Set-Cookie that clears it. The
-         * server therefore could not see which session to end — which is why
-         * this used to hand-clear cf_session in JS below while the httpOnly
-         * cf_jwt cookie survived in the browser. Now that sign-out actually
-         * revokes the session server-side, the cookie has to reach it. */
         credentials: "include",
         headers: { "Content-Type": "application/json" },
       });
@@ -192,4 +183,94 @@ export const useSignOut = () => {
     error,
     isPending,
   };
+};
+
+function apiOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return raw.endsWith("/trpc") ? raw.replace(/\/trpc$/, "") : raw;
+}
+
+export const useForgotPassword = () => {
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const requestReset = async (email: string): Promise<string> => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiOrigin()}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send the reset link.");
+
+      return data.message ?? "If an account exists for that address, a reset link is on its way.";
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { requestReset, isPending, error };
+};
+
+export const useResetPassword = () => {
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const resetPassword = async (token: string, password: string): Promise<string> => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiOrigin()}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not reset the password.");
+
+      return data.message ?? "Password updated.";
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { resetPassword, isPending, error };
+};
+
+export const useSendVerificationEmail = () => {
+  const [isPending, setIsPending] = useState(false);
+
+  const sendVerificationEmail = async (): Promise<{ message: string; configured: boolean }> => {
+    setIsPending(true);
+    try {
+      const res = await fetch(`${apiOrigin()}/api/auth/send-verification-email`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send the confirmation email.");
+
+      return {
+        message: data.message ?? "Confirmation email sent.",
+        configured: data.delivery !== "not-configured",
+      };
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { sendVerificationEmail, isPending };
 };

@@ -11,15 +11,6 @@ import { calculateQuizPoints } from "../../src/modules/quiz/quizScorer.js";
 
 const ALREADY_SUBMITTED = "You have already submitted a response for this slide";
 
-/* Single insert path for every slide type.
- *
- * The unique index on (sessionId, slideId, participantId, submissionSlot) is
- * what actually enforces one-answer-per-participant, so every branch inserts
- * and translates a duplicate-key error into a message the participant can
- * read. This replaced the per-branch `Response.exists()` pre-checks, which
- * were both racy — two sockets could pass the check before either inserted —
- * and an extra round trip in the hottest path in the system.
- */
 async function insertResponse(doc, duplicateMessage = ALREADY_SUBMITTED) {
   try {
     return await Response.create(doc);
@@ -29,9 +20,7 @@ async function insertResponse(doc, duplicateMessage = ALREADY_SUBMITTED) {
   }
 }
 
-/* Decides what one submission means for this slide — see the submissionSlot
- * field on the Response schema. */
-export function resolveSubmissionSlot(slide, commandId) {
+function resolveSubmissionSlot(slide, commandId) {
   const unlimited =
     slide.responseSettings?.multipleSubmissions === true ||
     slide.responseSettings?.maxEntriesPerParticipant === 0;
@@ -146,13 +135,6 @@ export const handleSubmitResponse = async (socket, { slideId, answer }) => {
         { $inc: { "options.$[elem].voteCount": 1 } },
         { arrayFilters: [{ "elem.id": selectedOptionId }] }
       );
-
-      /* Deliberately no cache invalidation here. A response changes the
-       * participant's score and the slide's vote tallies — never the session
-       * document — and compileAnalytics reads tallies straight from Mongo. The
-       * two invalidations that used to sit here fired once per answer, so a
-       * 1000-person quiz published 2000 Redis invalidation messages and threw
-       * away the shared state snapshot on every single submission. */
 
       await syncer.broadcastSlideAnalytics(sessionId, slideId, slide.type, false);
       await syncer.broadcastLeaderboard(sessionId, false);

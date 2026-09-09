@@ -189,6 +189,13 @@ app.use(
     },
   }),
 );
+/* Mirrors the EMAIL_SENDING_PATHS mount in server.ts. */
+app.use(
+  ["/api/auth/forgot-password"],
+  express.json({ limit: "16kb" }),
+  leakyBucketRateLimiter({ bucketName: "t-mail-ip", max: 3, windowMs: 60_000, identify: "ip" }),
+);
+
 app.use("/api/auth", authRouter);
 
 /* A "client"-identity limiter, which is the mode findings 07 covers, mounted on
@@ -394,6 +401,83 @@ check(
   restAfterExhaustion.every((m) => m.status === 429),
   true,
 );
+
+// ── Finding 22: reset must not reveal who has an account ───────────────
+console.log("\n#22 Password reset must not leak account existence");
+
+/* Postgres is unreachable in this test, which exercises the path that matters:
+ * the handler is written so that even an internal failure produces the same
+ * acknowledgement. If it ever returns a 500 for one address and a 200 for
+ * another, that difference is the enumeration oracle. */
+const forgotBodies: string[] = [];
+const forgotStatuses: number[] = [];
+for (const email of ["definitely-not-registered@example.com", "someone@example.com"]) {
+  const r = await fetch(`${base}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": "203.0.114.1" },
+    body: JSON.stringify({ email }),
+  });
+  forgotStatuses.push(r.status);
+  forgotBodies.push(await r.text());
+}
+check("forgot-password always answers 200", forgotStatuses.every((s) => s === 200), true);
+check("the response body is byte-identical between addresses", forgotBodies[0], forgotBodies[1]);
+check("the body does not echo the address back", forgotBodies[0]?.includes("example.com"), false);
+
+/* A malformed address must not be distinguishable either — a 400 here would
+ * separate "not an email" from "not registered". */
+const malformedForgot = await fetch(`${base}/api/auth/forgot-password`, {
+  method: "POST",
+  headers: { "content-type": "application/json", "x-forwarded-for": "203.0.114.2" },
+  body: JSON.stringify({ email: "not-an-email" }),
+});
+check("a malformed address answers 200 too", malformedForgot.status, 200);
+check(
+  "and identically",
+  (await malformedForgot.text()) === forgotBodies[0],
+  true,
+);
+
+console.log("\n [the mail-sending path is rate limited]");
+const mailBurst: number[] = [];
+for (let i = 0; i < 7; i++) {
+  const r = await fetch(`${base}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": "203.0.114.9" },
+    body: JSON.stringify({ email: `burst${i}@example.com` }),
+  });
+  mailBurst.push(r.status);
+}
+console.log(`    mailBurst: ${JSON.stringify(mailBurst)}`);
+check("an unmetered forgot-password would be a mail bomb — it is metered", mailBurst.includes(429), true);
+check("the tail is blocked", mailBurst.slice(-2).every((s) => s === 429), true);
+
+console.log("\n [reset-password enforces the password policy before anything else]");
+const weakReset = await fetch(`${base}/api/auth/reset-password`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ token: "whatever", password: "short" }),
+});
+check("a weak new password is rejected", weakReset.status, 400);
+const weakBody = await weakReset.json();
+check("with a policy message, not a token message", String(weakBody.error).includes("12"), true);
+
+console.log("\n [verification resend requires a session]");
+const noSession = await fetch(`${base}/api/auth/send-verification-email`, {
+  method: "POST",
+  headers: { "content-type": "application/json", "x-forwarded-for": "203.0.114.20" },
+});
+check("unauthenticated resend is refused", noSession.status, 401);
+
+const forgedSession = await fetch(`${base}/api/auth/send-verification-email`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    "x-forwarded-for": "203.0.114.21",
+    cookie: "cf_jwt=not.a.real.token",
+  },
+});
+check("a forged session cookie is refused", forgedSession.status, 401);
 
 server.close();
 console.log(`\n${"─".repeat(52)}`);

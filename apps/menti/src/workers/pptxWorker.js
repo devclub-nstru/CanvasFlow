@@ -5,8 +5,16 @@ import path from "node:path";
 import os from "node:os";
 import { connectMongo } from "../core/database/connect.js";
 import env from "../core/env/env.js";
+import { Worker } from "bullmq";
 import { redis } from "../core/database/redis.js";
 import { PPTX_JOB_QUEUE, IMPORT_PROGRESS_CHANNEL } from "../core/keys.js";
+import {
+  PPTX_QUEUE_NAME,
+  PPTX_QUEUE_PREFIX,
+  createQueueConnection,
+  enqueuePptxImport,
+  closePptxQueue,
+} from "../core/queue/pptxQueue.js";
 import { PowerPointImport, Slide, PresentationAsset } from "../core/database/models/index.js";
 import { storageService } from "../core/storage/storage.service.js";
 
@@ -75,6 +83,24 @@ async function checkCancelled(importId) {
   return false;
 }
 
+async function discardSourceFile(pptxImport, reason) {
+  if (!pptxImport?.storageKey) return;
+
+  try {
+    await storageService.deleteFile(pptxImport.storageKey);
+    console.log(
+      `[Worker] Deleted source file ${pptxImport.storageKey} (${reason}).`,
+    );
+  } catch (err) {
+    /* An orphaned source file is untidy, not broken. Never fail an otherwise
+     * successful import over it. */
+    console.error(
+      `[Worker] Failed to delete source file ${pptxImport.storageKey}:`,
+      err.message,
+    );
+  }
+}
+
 // Rollback partial changes (clean up database slides and local uploads)
 async function rollbackImport(pptxImport) {
   console.log(`[Worker] Rolling back partial changes for import job: ${pptxImport._id}`);
@@ -120,8 +146,7 @@ async function rollbackImport(pptxImport) {
   }
 }
 
-// Core processing logic
-async function processImport(importId) {
+async function processImport(importId, { isFinalAttempt = true } = {}) {
   console.log(`[Worker] Starting import job: ${importId}`);
   const pptxImport = await PowerPointImport.findById(importId);
   if (!pptxImport) {
@@ -131,6 +156,12 @@ async function processImport(importId) {
 
   if (pptxImport.status === "CANCELLED") {
     console.log(`[Worker] Job ${importId} was cancelled before processing started.`);
+    await discardSourceFile(pptxImport, "cancelled before processing");
+    return;
+  }
+
+  if (pptxImport.status === "COMPLETED") {
+    console.log(`[Worker] Job ${importId} is already complete; nothing to do.`);
     return;
   }
 
@@ -309,6 +340,7 @@ async function processImport(importId) {
     // Check cancellation
     if (await checkCancelled(importId)) {
       await rollbackImport(pptxImport);
+      await discardSourceFile(pptxImport, "cancelled during processing");
       return;
     }
 
@@ -331,6 +363,7 @@ async function processImport(importId) {
     // Check cancellation
     if (await checkCancelled(importId)) {
       await rollbackImport(pptxImport);
+      await discardSourceFile(pptxImport, "cancelled during processing");
       return;
     }
 
@@ -412,21 +445,39 @@ async function processImport(importId) {
     await publishProgress(pptxImport);
     console.log(`[Worker] PowerPoint import completed successfully for ${importId}`);
 
+    /* The deck has become PNGs; the original is not read again. */
+    await discardSourceFile(pptxImport, "import completed");
+
   } catch (error) {
     console.error(`[Worker] Import job failed for ${importId}:`, error.message);
 
-    // Roll back changes to ensure database and presentation state remains consistent
+    /* Roll the partial work back either way, so a retry starts from a clean
+     * presentation rather than on top of half-inserted slides. */
     try {
       await rollbackImport(pptxImport);
     } catch (rollbackErr) {
       console.error(`[Worker] Rollback failed:`, rollbackErr.message);
     }
 
-    pptxImport.status = "FAILED";
     pptxImport.errorInfo = error.message;
-    pptxImport.completedAt = new Date();
-    await pptxImport.save();
-    await publishProgress(pptxImport);
+
+    if (isFinalAttempt) {
+      pptxImport.status = "FAILED";
+      pptxImport.completedAt = new Date();
+      await pptxImport.save();
+      await publishProgress(pptxImport);
+      await discardSourceFile(pptxImport, "import failed permanently");
+    } else {
+      /* Left PROCESSING: BullMQ is going to try again, and the source file has
+       * to survive for the next attempt to download. */
+      await pptxImport.save();
+      await publishProgress(pptxImport);
+      console.log(`[Worker] Import ${importId} will be retried.`);
+    }
+
+    /* Rethrown so BullMQ records the attempt and schedules the retry. The old
+     * loop swallowed this, which is why a failure was always terminal. */
+    throw error;
   } finally {
     // 9. Clean up temporary files
     if (tempDir) {
@@ -439,7 +490,37 @@ async function processImport(importId) {
   }
 }
 
-// Connect to MongoDB and run loop
+async function drainLegacyQueue() {
+  let moved = 0;
+
+  for (;;) {
+    let importId;
+    try {
+      importId = await redis.rpop(PPTX_JOB_QUEUE);
+    } catch (err) {
+      console.error("[Worker] Could not read the legacy queue:", err.message);
+      return;
+    }
+
+    if (!importId) break;
+
+    try {
+      await enqueuePptxImport(importId);
+      moved += 1;
+    } catch (err) {
+      console.error(`[Worker] Failed to migrate legacy job ${importId}:`, err.message);
+      /* Put it back so the next boot can try again rather than dropping it. */
+      await redis.lpush(PPTX_JOB_QUEUE, importId).catch(() => {});
+      return;
+    }
+  }
+
+  if (moved > 0) {
+    console.log(`[Worker] Migrated ${moved} job(s) from the legacy Redis list to BullMQ.`);
+  }
+}
+
+// Connect to MongoDB and start consuming the queue
 async function startWorker() {
   console.log("[Worker] Connecting to MongoDB...");
   const [connection, error] = await connectMongo(env.MONGO_URI);
@@ -449,40 +530,82 @@ async function startWorker() {
   }
   console.log("[Worker] MongoDB connected.");
 
+  await drainLegacyQueue();
+
+  const worker = new Worker(
+    PPTX_QUEUE_NAME,
+    async (job) => {
+      const importId = job.data?.importId ?? job.id;
+      const maxAttempts = job.opts?.attempts ?? 1;
+      const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
+
+      console.log(
+        `[Worker] Picked up import ${importId} (attempt ${job.attemptsMade + 1}/${maxAttempts}).`,
+      );
+
+      await processImport(importId, { isFinalAttempt });
+    },
+    {
+      connection: createQueueConnection("pptx-worker"),
+      prefix: PPTX_QUEUE_PREFIX,
+      concurrency: 1,
+      lockDuration: 5 * 60_000,
+      stalledInterval: 60_000,
+      maxStalledCount: 2,
+    },
+  );
+
+  worker.on("completed", (job) => {
+    console.log(`[Worker] Job ${job.id} completed.`);
+  });
+
+  worker.on("failed", (job, err) => {
+    const attempt = (job?.attemptsMade ?? 0);
+    const max = job?.opts?.attempts ?? 1;
+    if (attempt >= max) {
+      console.error(`[Worker] Job ${job?.id} failed permanently: ${err?.message}`);
+    } else {
+      console.warn(
+        `[Worker] Job ${job?.id} failed on attempt ${attempt}/${max}, will retry: ${err?.message}`,
+      );
+    }
+  });
+
+  worker.on("stalled", (jobId) => {
+    console.warn(`[Worker] Job ${jobId} stalled and was requeued for another attempt.`);
+  });
+
+  worker.on("error", (err) => {
+    console.error("[Worker] Worker error:", err?.message);
+  });
+
   let isShuttingDown = false;
 
-  // Handle graceful shutdowns
   const shutdown = async () => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log("[Worker] Shutting down worker process...");
+
     try {
+      await worker.close();
+      await closePptxQueue();
       await redis.quit();
-    } catch (err) {}
+    } catch (err) {
+      console.error("[Worker] Error during shutdown:", err?.message);
+    }
+
     process.exit(0);
   };
 
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  console.log("[Worker] PPTX background worker initialized. Polling for jobs...");
-  while (!isShuttingDown) {
-    try {
-      const job = await redis.brpop(PPTX_JOB_QUEUE, 2);
-      if (job) {
-        const importId = job[1];
-        await processImport(importId);
-      }
-    } catch (err) {
-      if (err.message && err.message.includes("Connection is closed")) {
-        console.error("[Worker] Redis connection lost. Retrying in 5 seconds...");
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-      } else {
-        console.error("[Worker] Error in worker loop:", err);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
-  }
+  console.log(
+    `[Worker] PPTX worker ready — consuming "${PPTX_QUEUE_NAME}" (prefix "${PPTX_QUEUE_PREFIX}").`,
+  );
 }
 
-startWorker();
+startWorker().catch((err) => {
+  console.error("[Worker] Fatal error starting worker:", err);
+  process.exit(1);
+});

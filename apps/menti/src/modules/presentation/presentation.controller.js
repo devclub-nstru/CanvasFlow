@@ -8,9 +8,10 @@ import {
 } from "./presentation.schemas.js";
 import { PowerPointImport, Slide } from "../../core/database/models/index.js";
 import { storageService } from "../../core/storage/storage.service.js";
-import { redis } from "../../core/database/redis.js";
-import { PPTX_JOB_QUEUE } from "../../core/keys.js";
+import { enqueuePptxImport } from "../../core/queue/pptxQueue.js";
+import { assertIsPptx, InvalidPptxError } from "./pptxValidation.js";
 import path from "node:path";
+import fsp from "node:fs/promises";
 
 class PresentationController {
   // --- Presentations ---
@@ -128,6 +129,17 @@ class PresentationController {
   }
 
   async importPowerPoint(req, res) {
+    const tempPath = req.file?.path ?? null;
+
+    const discardTempFile = async () => {
+      if (!tempPath) return;
+      try {
+        await fsp.unlink(tempPath);
+      } catch {
+        /* Already consumed by storageService.uploadFile, or never written. */
+      }
+    };
+
     try {
       const presentationId = req.params.id;
       if (!req.file) {
@@ -142,6 +154,18 @@ class PresentationController {
       if (!presentation) {
         console.error(`[API Import Error] Presentation ${presentationId} not found or unauthorized for user ${req.user._id}`);
         return res.status(404).json({ error: "Presentation not found or unauthorized" });
+      }
+
+      try {
+        await assertIsPptx(req.file.path);
+      } catch (validationError) {
+        if (validationError instanceof InvalidPptxError) {
+          console.warn(
+            `[API Import] Rejected "${req.file.originalname}" for presentation ${presentationId}: ${validationError.message}`,
+          );
+          return res.status(400).json({ error: validationError.message });
+        }
+        throw validationError;
       }
 
       // Generate a safe unique storage key for original file
@@ -172,9 +196,10 @@ class PresentationController {
         targetPosition: position,
       });
 
-      console.log(`[API Import] Created PowerPointImport record: ${pptxImport._id}. Enqueuing to Redis queue 'pptx_import_jobs'...`);
-      await redis.lpush(PPTX_JOB_QUEUE, pptxImport._id.toString());
-      console.log(`[API Import] Enqueued import job ${pptxImport._id} to Redis successfully.`);
+      /* Enqueued through BullMQ rather than an LPUSH onto a plain list, so the
+       * job survives a worker that dies mid-conversion — see pptxQueue.js. */
+      await enqueuePptxImport(pptxImport._id.toString());
+      console.log(`[API Import] Enqueued import job ${pptxImport._id}.`);
 
       res.status(202).json({
         importId: pptxImport._id,
@@ -188,6 +213,8 @@ class PresentationController {
         return res.status(404).json({ error: "Presentation not found or unauthorized" });
       }
       res.status(500).json({ error: error.message });
+    } finally {
+      await discardTempFile();
     }
   }
 

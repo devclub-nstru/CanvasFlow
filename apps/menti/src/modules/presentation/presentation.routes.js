@@ -26,15 +26,22 @@ router.delete("/:id/slides/:slideId", presentationController.deleteSlide);
 // --- PowerPoint Import ---
 import multer from "multer";
 import os from "node:os";
+import { ACCEPTED_PPTX_MIME_TYPES } from "./pptxValidation.js";
 
 const upload = multer({
   dest: os.tmpdir(),
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
+    files: 1,
+    fields: 8,
+    parts: 12,
   },
   fileFilter: (req, file, cb) => {
     if (!file.originalname.toLowerCase().endsWith(".pptx")) {
       return cb(new Error("Only PowerPoint (.pptx) files are allowed"), false);
+    }
+    if (!ACCEPTED_PPTX_MIME_TYPES.has((file.mimetype || "").toLowerCase())) {
+      return cb(new Error("That file's type is not a PowerPoint presentation"), false);
     }
     cb(null, true);
   },

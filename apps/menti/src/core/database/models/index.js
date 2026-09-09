@@ -4,6 +4,5 @@ export { Slide } from "./Slide.js";
 export { Session } from "./Session.js";
 export { Participant } from "./Participant.js";
 export { Response } from "./Response.js";
-export { SessionEvent } from "./SessionEvent.js";
 export { PowerPointImport } from "./PowerPointImport.js";
 export { PresentationAsset } from "./PresentationAsset.js";

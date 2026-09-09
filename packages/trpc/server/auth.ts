@@ -2,22 +2,23 @@ import express, { Router } from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import db from "@repo/database";
-import { eq, and, lt, usersTable, accountsTable, sessionsTable, SelectUser } from "@repo/database";
+import {
+  eq,
+  and,
+  lt,
+  usersTable,
+  accountsTable,
+  sessionsTable,
+  verificationsTable,
+  SelectUser,
+} from "@repo/database";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
-
-/* ── Signing secret ────────────────────────────────────────────────────────
- *
- * Every token this module mints or verifies is signed with this one value.
- * It used to fall back to a hardcoded literal, which meant a deployment that
- * forgot to set the variable would happily accept tokens forged by anyone who
- * had read the source. There is no safe default for a signing key, so in
- * production a missing secret is a startup error rather than a silent
- * downgrade.
- *
- * Resolution is lazy and cached: `apps/web` pulls the router type through this
- * module, and a throw at import time would break the build rather than the
- * misconfigured deployment.
- */
+import {
+  sendMail,
+  passwordResetMail,
+  emailVerificationMail,
+  isMailConfigured,
+} from "@repo/services/mail";
 
 const DEV_ONLY_SECRET = "canvasflow-development-only-insecure-secret";
 const MIN_RECOMMENDED_LENGTH = 32;
@@ -84,36 +85,11 @@ function parseCookies(cookieString: string): Record<string, string> {
   return cookies;
 }
 
-/* ── Password hashing ──────────────────────────────────────────────────────
- *
- * Was PBKDF2-SHA512 at 10,000 iterations. That was reasonable a decade ago and
- * is roughly twenty times too weak now — current guidance for PBKDF2-SHA512 is
- * on the order of 210,000 — so a leaked `account` table would be cracked far
- * faster than it should be.
- *
- * New hashes use scrypt, which is memory-hard and therefore much more
- * expensive to attack with GPUs than any iteration count of PBKDF2. It is in
- * Node's own crypto module, so this costs no new dependency.
- *
- * The algorithm and its parameters are stored in the hash string rather than
- * being implied by the code. That is what makes the next change to these
- * numbers a one-line edit instead of another migration: a stored hash always
- * carries the parameters it was produced with.
- *
- *   scrypt$<N>$<r>$<p>$<saltHex>$<keyHex>
- *
- * Legacy PBKDF2 hashes (`<saltHex>:<keyHex>`, no prefix) are still verified,
- * and re-hashed to scrypt on the owner's next successful sign-in, so existing
- * users migrate without being asked to do anything.
- */
-
 const SCRYPT_N = 32768; // 2^15 — CPU/memory cost
 const SCRYPT_R = 8; // block size
 const SCRYPT_P = 1; // parallelisation
 const SCRYPT_KEYLEN = 64;
 
-/* scrypt needs roughly 128 * N * r bytes (~33 MB at these parameters), which
- * exceeds Node's 32 MB default and would otherwise throw. */
 const SCRYPT_MAXMEM = 96 * 1024 * 1024;
 
 const LEGACY_PBKDF2_ITERATIONS = 10000;
@@ -145,9 +121,6 @@ export async function hashPassword(password: string): Promise<string> {
   ].join("$");
 }
 
-/* Fixed-time comparison of two hex digests. Lengths are not secret — they are
- * fixed by the parameters — but a mismatch must not throw out of
- * timingSafeEqual. */
 function digestsMatch(a: string, b: string): boolean {
   const left = Buffer.from(a, "hex");
   const right = Buffer.from(b, "hex");
@@ -157,9 +130,6 @@ function digestsMatch(a: string, b: string): boolean {
 
 interface VerifyResult {
   valid: boolean;
-  /* True when the stored hash used an algorithm or parameters weaker than the
-   * current ones. The caller has the plaintext at that moment and nowhere
-   * else, so this is the only opportunity to upgrade it. */
   needsRehash: boolean;
 }
 
@@ -272,25 +242,17 @@ export function validatePassword(password: unknown, email?: unknown): string | n
 let dummyPasswordHashPromise: Promise<string> | null = null;
 
 function dummyPasswordHash(): Promise<string> {
-  /* Lazy, so importing this module does not spend ~100ms of scrypt on a hash
-   * that a process may never need — the OpenAPI generator and the type-only
-   * consumers among them. Memoised, so the cost is paid at most once. */
   dummyPasswordHashPromise ??= hashPassword(crypto.randomBytes(32).toString("hex"));
   return dummyPasswordHashPromise;
 }
 
 async function burnPasswordVerification(password: string): Promise<void> {
   try {
-    /* Uses the same scrypt parameters as a real verification, so the cost is
-     * genuinely equivalent and not merely similar. */
     await verifyPassword(password, await dummyPasswordHash());
   } catch {
   }
 }
 
-// OAuth helper for Google / GitHub
-/* Raised when a provider asserts an address that already belongs to a
- * CanvasFlow user but has not been verified by that provider. */
 class UnverifiedOAuthEmailError extends Error {
   constructor(provider: string) {
     super(
@@ -302,17 +264,6 @@ class UnverifiedOAuthEmailError extends Error {
   }
 }
 
-/* ── OAuth identity linking ────────────────────────────────────────────────
- *
- * This used to look up an existing user by email and link the new provider
- * account to it with no check that the provider had verified that address.
- * Email is being used here as proof of identity, so an unverified assertion
- * from a provider was enough to take over the matching CanvasFlow account.
- *
- * Linking to an existing user now requires a verified address. An unverified
- * one can still create a *new* account — there is nothing to take over in that
- * case — but it can never attach itself to one that already exists.
- */
 async function findOrCreateOAuthUser(info: {
   email: string;
   name: string;
@@ -386,9 +337,30 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
-/* Where the browser goes when no valid destination survives validation. */
+function apiBaseUrl(): string {
+  return trimTrailingSlash(
+    process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online",
+  );
+}
+
+let warnedAboutWebOrigin = false;
+
 function defaultWebOrigin(): string {
-  return trimTrailingSlash(process.env.WEB_URL || "http://localhost:3000");
+  const configured = process.env.WEB_URL?.trim();
+
+  if (!configured) {
+    if (process.env.NODE_ENV === "production" && !warnedAboutWebOrigin) {
+      warnedAboutWebOrigin = true;
+      console.error(
+        "[auth] WEB_URL is not set. Password-reset and email-confirmation links " +
+          "are being built against http://localhost:3000 and will not work for " +
+          "anyone. Set WEB_URL to the web app's public origin.",
+      );
+    }
+    return "http://localhost:3000";
+  }
+
+  return trimTrailingSlash(configured);
 }
 
 function allowedRedirectOrigins(): Set<string> {
@@ -505,50 +477,14 @@ function oauthFailureRedirect(reason: string): string {
 }
 
 
-/* ── Server-side sessions ──────────────────────────────────────────────────
- *
- * Sessions were stateless 7-day JWTs. `handleSignout` cleared the cookie and
- * nothing else, so the token itself stayed valid for the remainder of its life
- * — there was no "sign out everywhere", and the only response to a stolen
- * token was rotating JWT_SECRET, which signs every user out at once.
- *
- * Each token now carries a `sid` naming a row in `sessions` (a table that
- * already existed in the schema, with the right indexes, and was never used).
- * Verification requires that row to exist and still be current, so deleting it
- * revokes the token immediately.
- *
- * Two costs are worth stating plainly:
- *
- *   1. One indexed primary-key read is added to every authenticated request.
- *      That is the price of revocability without a refresh-token flow.
- *
- *   2. Tokens minted before this change carry no `sid` and are rejected, so
- *      deploying it signs existing users out once. A grace period was
- *      considered and rejected: it would leave a window of exactly the tokens
- *      this change exists to be able to revoke.
- *
- * apps/menti verifies the same tokens and has no Postgres access, so a
- * revocation is also published to a short-lived Redis denylist that it checks.
- * Redis is already a hard requirement for both services.
- */
-
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-/* Deliberately not built with menti's redisKey(), which inserts a "menti"
- * segment. This key is shared between the two services, so both construct it
- * from the bare prefix — see sharedRedisKey in apps/menti/src/core/env/env.js. */
 function revocationKey(sessionId: string): string {
   return redisKey("auth", "revoked", sessionId);
 }
 
-/* Best-effort: the Postgres row is the authority, and this only exists so
- * menti stops honouring the token too. A Redis failure must not prevent a
- * sign-out from succeeding, so it is logged rather than thrown. */
 async function publishRevocation(sessionId: string, expiresAt: Date): Promise<void> {
   if (!isRedisConfigured()) return;
-
-  /* TTL matches the token's own remaining life. Past that the JWT `exp` check
-   * rejects it anyway, so the entry has nothing left to say. */
   const remainingMs = expiresAt.getTime() - Date.now();
   if (remainingMs <= 0) return;
 
@@ -587,19 +523,12 @@ async function issueSession(
   await db.insert(sessionsTable).values({
     id: sessionId,
     userId: user.id,
-    /* The raw token is never stored — a leaked `sessions` table would
-     * otherwise be a set of usable bearer credentials. The hash is enough to
-     * satisfy the column's unique constraint and to look a session up by
-     * token if that is ever needed. */
     token: crypto.createHash("sha256").update(token).digest("hex"),
     expiresAt,
     ipAddress: req.ip ?? null,
     userAgent: req.headers["user-agent"] ?? null,
   });
 
-  /* Opportunistic cleanup of this user's expired rows, so the table does not
-   * grow without bound. Cheap: covered by sessions_user_id_idx, and it runs
-   * only on the comparatively rare sign-in path. */
   db.delete(sessionsTable)
     .where(and(eq(sessionsTable.userId, user.id), lt(sessionsTable.expiresAt, new Date())))
     .catch(() => {
@@ -636,8 +565,6 @@ async function revokeSession(sessionId: string): Promise<void> {
   if (row) await publishRevocation(sessionId, row.expiresAt);
 }
 
-/* Revokes every session belonging to a user — "sign out everywhere", and the
- * response to a compromised account. */
 async function revokeAllSessionsForUser(userId: string): Promise<number> {
   const rows = await db
     .delete(sessionsTable)
@@ -647,6 +574,77 @@ async function revokeAllSessionsForUser(userId: string): Promise<number> {
   await Promise.allSettled(rows.map((row) => publishRevocation(row.id, row.expiresAt)));
 
   return rows.length;
+}
+
+type VerificationPurpose = "password-reset" | "email-verify";
+
+const RESET_TTL_MS = 60 * 60 * 1000;
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+
+function verificationIdentifier(purpose: VerificationPurpose, userId: string): string {
+  return `${purpose}:${userId}`;
+}
+
+function hashVerificationToken(raw: string): string {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+async function issueVerificationToken(
+  purpose: VerificationPurpose,
+  userId: string,
+  ttlMs: number,
+): Promise<string> {
+  const identifier = verificationIdentifier(purpose, userId);
+
+  await db.delete(verificationsTable).where(eq(verificationsTable.identifier, identifier));
+
+  const raw = crypto.randomBytes(32).toString("base64url");
+  const now = new Date();
+
+  await db.insert(verificationsTable).values({
+    id: crypto.randomUUID(),
+    identifier,
+    value: hashVerificationToken(raw),
+    expiresAt: new Date(now.getTime() + ttlMs),
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return raw;
+}
+
+async function consumeVerificationToken(
+  purpose: VerificationPurpose,
+  raw: unknown,
+): Promise<string | null> {
+  if (typeof raw !== "string" || !raw) return null;
+
+  const rows = await db
+    .select({
+      id: verificationsTable.id,
+      identifier: verificationsTable.identifier,
+      expiresAt: verificationsTable.expiresAt,
+    })
+    .from(verificationsTable)
+    .where(eq(verificationsTable.value, hashVerificationToken(raw)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  await db.delete(verificationsTable).where(eq(verificationsTable.id, row.id));
+
+  const prefix = `${purpose}:`;
+  /* A verification token must not be redeemable as a reset token. */
+  if (!row.identifier.startsWith(prefix)) return null;
+  if (row.expiresAt.getTime() <= Date.now()) return null;
+
+  return row.identifier.slice(prefix.length) || null;
+}
+
+function dispatchMail(message: Parameters<typeof sendMail>[0]): void {
+  void sendMail(message).catch(() => {
+  });
 }
 
 export const authRouter = Router();
@@ -665,8 +663,6 @@ const getCookieOptions = () => {
   };
 };
 
-/* One place that knows where a bearer token can arrive from. The same three
- * lines were repeated in /get-session, auth.api.getSession, and now sign-out. */
 function readSessionToken(req: express.Request): string | undefined {
   const cookies = parseCookies(req.headers.cookie || "");
   const authHeader = req.headers.authorization || "";
@@ -676,8 +672,6 @@ function readSessionToken(req: express.Request): string | undefined {
   return undefined;
 }
 
-/* Clearing options must match the setting options exactly or the browser keeps
- * the cookie, so both sign-out paths go through this. */
 function clearSessionCookies(res: express.Response): void {
   const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
@@ -755,6 +749,22 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
       req,
     );
 
+    try {
+      const verifyToken = await issueVerificationToken("email-verify", userId, VERIFY_TTL_MS);
+      dispatchMail(
+        emailVerificationMail(
+          email,
+          `${apiBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`,
+          VERIFY_TTL_MS / 3_600_000,
+        ),
+      );
+    } catch (mailErr) {
+      console.error(
+        `[auth] could not issue a verification email for ${userId}: ` +
+          `${mailErr instanceof Error ? mailErr.message : mailErr}`,
+      );
+    }
+
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
 
@@ -780,8 +790,6 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
     const users = await db.select().from(usersTable).where(eq(usersTable.email, email));
     const user = users[0];
     if (!user) {
-      /* Spend the same time a real verification would — see
-       * burnPasswordVerification. */
       await burnPasswordVerification(password);
       res.status(400).json({ error: "Invalid email or password" });
       return;
@@ -795,9 +803,6 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
     );
     const account = accounts[0];
     if (!account || !account.password) {
-      /* The address exists but signed up through a social provider. Same
-       * message and same cost as an unknown address, so this does not reveal
-       * which accounts exist or how they were created. */
       await burnPasswordVerification(password);
       res.status(400).json({ error: "Invalid email or password" });
       return;
@@ -809,11 +814,6 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    /* Transparent upgrade. This is the only moment the plaintext is available,
-     * so a hash left on the old algorithm here stays on it forever. Awaited
-     * rather than fire-and-forget so a failure is logged rather than lost, but
-     * a failure must not cost the user their sign-in — they authenticated
-     * correctly, and the old hash still works. */
     if (needsRehash) {
       try {
         await db
@@ -845,11 +845,165 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
 authRouter.post("/signin/email", handleSignin);
 authRouter.post("/sign-in/email", handleSignin);
 
+authRouter.post("/forgot-password", async (req, res) => {
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+
+  /* One response for every path below. */
+  const acknowledge = () =>
+    res.json({
+      status: "success",
+      message: "If an account exists for that address, a reset link is on its way.",
+    });
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return acknowledge();
+
+  try {
+    const users = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const user = users[0];
+    if (!user) return acknowledge();
+
+    const accounts = await db
+      .select({ id: accountsTable.id })
+      .from(accountsTable)
+      .where(
+        and(eq(accountsTable.userId, user.id), eq(accountsTable.providerId, "credential")),
+      );
+
+    if (!accounts[0]) return acknowledge();
+
+    const token = await issueVerificationToken("password-reset", user.id, RESET_TTL_MS);
+    const link = `${defaultWebOrigin()}/resetPassword?token=${encodeURIComponent(token)}`;
+
+    dispatchMail(passwordResetMail(user.email, link, RESET_TTL_MS / 60_000));
+
+    return acknowledge();
+  } catch (err) {
+    /* Even a failure answers the same way — a 500 here would itself be a
+     * signal. Logged so the operator sees it. */
+    console.error(`[auth] forgot-password failed: ${err instanceof Error ? err.message : err}`);
+    return acknowledge();
+  }
+});
+
+authRouter.post("/reset-password", async (req, res) => {
+  const { token, password } = req.body ?? {};
+
+  const problem = validatePassword(password);
+  if (problem) {
+    res.status(400).json({ error: problem });
+    return;
+  }
+
+  try {
+    const userId = await consumeVerificationToken("password-reset", token);
+    if (!userId) {
+      res.status(400).json({
+        error: "That reset link is invalid or has expired. Request a new one.",
+      });
+      return;
+    }
+
+    const accounts = await db
+      .select({ id: accountsTable.id })
+      .from(accountsTable)
+      .where(
+        and(eq(accountsTable.userId, userId), eq(accountsTable.providerId, "credential")),
+      );
+
+    const account = accounts[0];
+    if (!account) {
+      res.status(400).json({ error: "That reset link is no longer valid." });
+      return;
+    }
+
+    await db
+      .update(accountsTable)
+      .set({ password: await hashPassword(password), updatedAt: new Date() })
+      .where(eq(accountsTable.id, account.id));
+
+    await revokeAllSessionsForUser(userId);
+
+    res.json({ status: "success", message: "Password updated. Sign in with your new password." });
+  } catch (err) {
+    console.error(`[auth] reset-password failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Could not reset the password. Try requesting a new link." });
+  }
+});
+
+authRouter.get("/verify-email", async (req, res) => {
+  const userId = await consumeVerificationToken("email-verify", req.query.token);
+
+  if (!userId) {
+    res.redirect(`${defaultWebOrigin()}/dashboard?verified=invalid`);
+    return;
+  }
+
+  try {
+    await db
+      .update(usersTable)
+      .set({ emailVerified: true, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+
+    res.redirect(`${defaultWebOrigin()}/dashboard?verified=1`);
+  } catch (err) {
+    console.error(`[auth] verify-email failed: ${err instanceof Error ? err.message : err}`);
+    res.redirect(`${defaultWebOrigin()}/dashboard?verified=error`);
+  }
+});
+
+authRouter.post("/send-verification-email", async (req, res) => {
+  const token = readSessionToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Not signed in" });
+    return;
+  }
+
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, authSecret());
+  } catch {
+    res.status(401).json({ error: "Not signed in" });
+    return;
+  }
+
+  try {
+    if (!decoded?.id || !(await sessionIsActive(decoded.sid))) {
+      res.status(401).json({ error: "Not signed in" });
+      return;
+    }
+
+    const users = await db.select().from(usersTable).where(eq(usersTable.id, decoded.id));
+    const user = users[0];
+    if (!user) {
+      res.status(401).json({ error: "Not signed in" });
+      return;
+    }
+
+    if (user.emailVerified) {
+      res.json({ status: "success", message: "Your address is already confirmed." });
+      return;
+    }
+
+    const raw = await issueVerificationToken("email-verify", user.id, VERIFY_TTL_MS);
+    const link = `${apiBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(raw)}`;
+
+    dispatchMail(emailVerificationMail(user.email, link, VERIFY_TTL_MS / 3_600_000));
+
+    res.json({
+      status: "success",
+      message: "Confirmation email sent.",
+      delivery: isMailConfigured() ? "sent" : "not-configured",
+    });
+  } catch (err) {
+    console.error(
+      `[auth] send-verification-email failed: ${err instanceof Error ? err.message : err}`,
+    );
+    res.status(500).json({ error: "Could not send the confirmation email." });
+  }
+});
+
 // Signout
 const handleSignout = async (req: express.Request, res: express.Response) => {
-  /* Clearing the cookie is not revocation — the bearer token is still valid
-   * until it expires, and anyone holding a copy keeps using it. Delete the
-   * row too, which is what actually ends the session. */
   const token = readSessionToken(req);
 
   if (token) {
@@ -876,9 +1030,6 @@ const handleSignout = async (req: express.Request, res: express.Response) => {
 authRouter.post("/signout", (req, res) => void handleSignout(req, res));
 authRouter.post("/sign-out", (req, res) => void handleSignout(req, res));
 
-/* Explicit "sign out everywhere". Also the remediation path for a token the
- * user believes has been stolen — previously there was none short of rotating
- * JWT_SECRET, which signs out every user of the product at once. */
 const handleSignoutAll = async (req: express.Request, res: express.Response) => {
   const token = readSessionToken(req);
 
@@ -911,9 +1062,6 @@ authRouter.get("/get-session", async (req, res) => {
     const secret = authSecret();
     const decoded = jwt.verify(token, secret) as any;
 
-    /* A valid signature is no longer sufficient — the session behind it must
-     * still exist. This is what makes sign-out and "sign out everywhere"
-     * actually take effect. */
     if (!(await sessionIsActive(decoded.sid))) {
       res.json({ session: null, user: null });
       return;
@@ -942,17 +1090,14 @@ authRouter.get("/providers", (req, res) => {
   const providers = [];
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) providers.push("google");
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) providers.push("github");
-  res.json({ providers, baseURL: process.env.BETTER_AUTH_URL || "not set" });
+  res.json({ providers });
 });
 
 // Social Login Initialization
 const handleSocialLogin = (provider: "google" | "github") => {
   return (req: express.Request, res: express.Response) => {
-    const baseUrl = process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online";
-    const callbackUrl = `${baseUrl}/api/auth/callback/${provider}`;
+    const callbackUrl = `${apiBaseUrl()}/api/auth/callback/${provider}`;
 
-    /* `state` is a nonce, not the destination. The destination is validated
-     * here and stored in a cookie — see beginOAuthFlow. */
     const state = beginOAuthFlow(res, req.query.redirect ?? req.query.callbackURL);
 
     if (provider === "google") {
@@ -984,8 +1129,7 @@ authRouter.get("/login/social", (req, res) => {
   const provider = req.query.provider as string;
 
   if (provider === "google" || provider === "github") {
-    const baseUrl = process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online";
-    const callbackUrl = `${baseUrl}/api/auth/callback/${provider}`;
+    const callbackUrl = `${apiBaseUrl()}/api/auth/callback/${provider}`;
 
     const state = beginOAuthFlow(res, req.query.callbackURL ?? req.query.redirect);
 
@@ -1013,9 +1157,6 @@ authRouter.get("/login/social", (req, res) => {
 authRouter.get("/callback/google", async (req, res) => {
   const code = req.query.code as string;
 
-  /* Ties this callback to the browser that started the flow and yields the
-   * validated destination. Checked before the code is exchanged so a replayed
-   * or forged callback costs nothing. */
   const redirectTo = consumeOAuthFlow(req, res, req.query.state);
   if (!redirectTo) {
     res.redirect(oauthFailureRedirect("oauth_state_mismatch"));
@@ -1028,8 +1169,7 @@ authRouter.get("/callback/google", async (req, res) => {
   }
 
   try {
-    const baseUrl = process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online";
-    const callbackUrl = `${baseUrl}/api/auth/callback/google`;
+    const callbackUrl = `${apiBaseUrl()}/api/auth/callback/google`;
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1070,8 +1210,6 @@ authRouter.get("/callback/google", async (req, res) => {
       image: googleUser.picture,
       provider: "google",
       providerAccountId: googleUser.sub,
-      /* Google reports this on the userinfo endpoint. It was previously
-       * ignored entirely, and every Google signup was recorded as verified. */
       emailVerified: googleUser.email_verified === true,
     });
 
@@ -1111,8 +1249,7 @@ authRouter.get("/callback/github", async (req, res) => {
   }
 
   try {
-    const baseUrl = process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online";
-    const callbackUrl = `${baseUrl}/api/auth/callback/github`;
+    const callbackUrl = `${apiBaseUrl()}/api/auth/callback/github`;
     const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
       headers: {
@@ -1147,11 +1284,6 @@ authRouter.get("/callback/github", async (req, res) => {
 
     const githubUser = await userRes.json() as any;
 
-    /* The address on the public profile carries no verification status, so it
-     * cannot be trusted for identity — the previous code used it directly when
-     * present, and fell back to `emails[0]` regardless of its `verified` flag
-     * when it was not. Always ask /user/emails, and only accept an entry
-     * GitHub itself reports as verified. */
     let email: string | undefined;
     let emailVerified = false;
 
@@ -1238,13 +1370,6 @@ export const auth = {
         const decoded = jwt.verify(token, secret) as any;
         if (!decoded || !decoded.id) return null;
 
-        /* The revocation check for every authenticated tRPC procedure, since
-         * authenticatedProcedure resolves its user through here. A token whose
-         * session row is gone is no longer a session.
-         *
-         * Tokens minted before server-side sessions existed have no `sid` and
-         * fail this check, so deploying signs those users out once — see the
-         * note on the session layer above. */
         if (!(await sessionIsActive(decoded.sid))) return null;
 
         return {

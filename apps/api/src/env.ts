@@ -16,17 +16,23 @@ const envSchema = z.object({
   RATE_LIMIT_PUBLIC_WRITE_MAX: z.coerce.number().int().min(1).optional().default(60),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).optional().default(300),
   RATE_LIMIT_UPLOAD_MAX: z.coerce.number().int().min(1).optional().default(30),
-
-  /* Credential endpoints get their own, much tighter budgets. Defaults are
-   * deliberately low: a human signs in a handful of times a minute at most,
-   * while an unmetered endpoint is a password-guessing oracle. */
   RATE_LIMIT_LOGIN_IP_MAX: z.coerce.number().int().min(1).optional().default(12),
   RATE_LIMIT_LOGIN_ACCOUNT_MAX: z.coerce.number().int().min(1).optional().default(8),
   RATE_LIMIT_AUTH_ROUTE_MAX: z.coerce.number().int().min(1).optional().default(240),
+  RATE_LIMIT_EMAIL_IP_MAX: z.coerce.number().int().min(1).optional().default(5),
+  RATE_LIMIT_EMAIL_ACCOUNT_MAX: z.coerce.number().int().min(1).optional().default(3),
 });
 
+function withoutBlanks(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out = { ...source };
+  for (const [key, value] of Object.entries(out)) {
+    if (typeof value === "string" && value.trim() === "") delete out[key];
+  }
+  return out;
+}
+
 function createEnv(env: NodeJS.ProcessEnv) {
-  const safeParseResult = envSchema.safeParse(env);
+  const safeParseResult = envSchema.safeParse(withoutBlanks(env));
   if (!safeParseResult.success) throw new Error(safeParseResult.error.message);
   return safeParseResult.data;
 }

@@ -1,5 +1,12 @@
 import { presentationRepository } from "./presentation.repository.js";
-import { Session, Slide, Response } from "../../core/database/models/index.js"; // Needed for bulkWrite, results enrichment, and active session lookup
+import {
+  Session,
+  Slide,
+  Response,
+  PresentationAsset,
+  PowerPointImport,
+} from "../../core/database/models/index.js"; // Needed for bulkWrite, results enrichment, active session lookup, and storage cleanup
+import { storageService } from "../../core/storage/storage.service.js";
 
 class PresentationService {
   // --- Presentations ---
@@ -197,6 +204,9 @@ class PresentationService {
 
     // Cascade delete slides
     await presentationRepository.deleteSlidesByPresentation(id);
+
+    await purgePresentationStorage(id);
+
     return deleted;
   }
 
@@ -274,6 +284,40 @@ class PresentationService {
     }
 
     return presentationRepository.findSlidesByPresentation(presentationId);
+  }
+}
+
+async function purgePresentationStorage(presentationId) {
+  const [assets, imports] = await Promise.all([
+    PresentationAsset.find({ presentationId }).select("storageKey").lean(),
+    PowerPointImport.find({ presentationId }).select("storageKey").lean(),
+  ]);
+
+  const keys = [...assets, ...imports]
+    .map((doc) => doc.storageKey)
+    .filter(Boolean);
+
+  /* Sequential on purpose. A large deck is hundreds of PNGs, and firing every
+   * delete at the provider at once is how you get throttled. */
+  let deleted = 0;
+  for (const key of keys) {
+    try {
+      await storageService.deleteFile(key);
+      deleted += 1;
+    } catch (err) {
+      console.error(`[Presentation] Failed to delete ${key}:`, err.message);
+    }
+  }
+
+  await Promise.all([
+    PresentationAsset.deleteMany({ presentationId }),
+    PowerPointImport.deleteMany({ presentationId }),
+  ]);
+
+  if (keys.length > 0) {
+    console.log(
+      `[Presentation] Purged ${deleted}/${keys.length} stored file(s) for presentation ${presentationId}.`,
+    );
   }
 }
 
