@@ -17,6 +17,7 @@ const PANEL_POINTS: [string, string][] = [
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isSignUp = pathname?.startsWith("/signUp");
+  const isVerifyEmail = pathname?.startsWith("/verifyEmail");
 
   return (
     <div className="hex-theme relative flex min-h-screen font-sans">
@@ -107,7 +108,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               className="hex-mono text-[10px] tracking-[0.18em] uppercase"
               style={{ color: "var(--hex-ink-muted)" }}
             >
-              {isSignUp ? "Create a new account" : "Sign in to your account"}
+              {isVerifyEmail
+                ? "Confirm your email address"
+                : isSignUp
+                  ? "Create a new account"
+                  : "Sign in to your account"}
             </p>
           </div>
         </nav>

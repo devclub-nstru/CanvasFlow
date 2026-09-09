@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, LogOut, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { useSignOut } from "~/hooks/api/auth";
+import { useSendVerificationEmail, useSignOut } from "~/hooks/api/auth";
 import { useGetDashboardStats, useListFormsByUserId } from "~/hooks/api/form";
 import { useGetMe, useUpdateMe } from "~/hooks/api/user";
 import {
@@ -33,6 +33,20 @@ export default function ProfilePage() {
   const { forms } = useListFormsByUserId();
   const { signOutAsync } = useSignOut();
   const { updateMeAsync, isPending: isSaving } = useUpdateMe();
+  const { sendVerificationEmail, isPending: isSendingVerification } = useSendVerificationEmail();
+
+  const handleResendVerification = async () => {
+    try {
+      const { message, configured } = await sendVerificationEmail();
+      if (configured) {
+        toast.success(message);
+      } else {
+        toast.warning("Email delivery is not configured on the server, so nothing was sent.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send the confirmation email.");
+    }
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -213,6 +227,28 @@ export default function ProfilePage() {
               </div>
 
               <dl className="space-y-4 border-t border-(--cf-line) pt-4">
+                <Field label="Email">
+                  {meLoading ? (
+                    <span className="text-(--cf-ink-soft)">—</span>
+                  ) : me?.emailVerified ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Check className="size-3.5" style={{ color: "var(--cf-success, #216f61)" }} />
+                      Confirmed
+                    </span>
+                  ) : (
+                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span style={{ color: "var(--cf-danger)" }}>Not confirmed</span>
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={isSendingVerification}
+                        className="cursor-pointer font-mono text-[10px] tracking-[0.12em] uppercase underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSendingVerification ? "Sending…" : "Resend"}
+                      </button>
+                    </span>
+                  )}
+                </Field>
                 <Field label="Days active">
                   <span className="tabular-nums">
                     {daysActive} {daysActive === 1 ? "day" : "days"}

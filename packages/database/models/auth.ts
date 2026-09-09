@@ -4,6 +4,7 @@ import {
   timestamp,
   boolean,
   text,
+  integer,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -87,5 +88,29 @@ export const verificationsTable = pgTable(
   }),
 );
 
+export const pendingSignupsTable = pgTable(
+  "pending_signups",
+  {
+    id: text("id").primaryKey(),
+
+    email: varchar("email", { length: 255 }).notNull(),
+    name: text("name").default("").notNull(),
+    passwordHash: text("password_hash").notNull(),
+
+    codeHash: text("code_hash").notNull(),
+
+    attempts: integer("attempts").default(0).notNull(),
+
+    expiresAt: timestamp("expires_at").notNull(),
+    lastSentAt: timestamp("last_sent_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    emailUniqIdx: uniqueIndex("pending_signups_email_uniq_idx").on(table.email),
+    expiresIdx: index("pending_signups_expires_at_idx").on(table.expiresAt),
+  }),
+);
+
 export type SelectUser = typeof usersTable.$inferSelect;
 export type InsertUser = typeof usersTable.$inferInsert;
+export type SelectPendingSignup = typeof pendingSignupsTable.$inferSelect;

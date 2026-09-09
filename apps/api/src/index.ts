@@ -16,6 +16,7 @@ import { closeDb } from "@repo/database";
 import { closeRedis } from "@repo/redis";
 import { drainProducers } from "@repo/queue";
 import { assertAuthSecret } from "@repo/trpc/server/auth";
+import { reportMailConfiguration } from "@repo/services/mail";
 
 import { app as expressApplication } from "./server";
 import { env } from "./env";
@@ -156,15 +157,13 @@ function init() {
   }
 }
 
-/* Sessions are signed with this secret. A production process without one has
- * no safe behaviour available to it, so refuse to boot rather than serve
- * tokens anyone can forge. Checked before init() so the reason reaches the
- * logs verbatim instead of being folded into a generic startup failure. */
 try {
   assertAuthSecret();
 } catch (err) {
   logger.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 }
+
+reportMailConfiguration();
 
 init();

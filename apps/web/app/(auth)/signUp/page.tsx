@@ -12,13 +12,11 @@ import { toast } from "sonner";
 import { Field, PasswordField, SocialButtons } from "~/components/auth/AuthFields";
 import { useSignUp } from "~/hooks/api/auth";
 import { safeRedirect } from "~/lib/utils";
+import { writePendingSignup } from "~/lib/pending-signup";
 
 const createUserWithEmailAndPasswordInputModel = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  /* Mirrors the server-side floor in packages/trpc/server/auth.ts. Kept in
-   * step so the form catches a short password before the round trip; the
-   * server remains the authority. */
   password: z
     .string()
     .min(12, "Password must be at least 12 characters")
@@ -43,8 +41,6 @@ function SignUpForm() {
       }
       fetch(`${apiURL}/api/auth/signout`, {
         method: "POST",
-        /* Cross-origin, so without this the cookie is not sent and the server
-         * cannot revoke the session being switched away from. */
         credentials: "include",
       }).finally(() => {
         document.cookie =
@@ -53,7 +49,6 @@ function SignUpForm() {
     }
   }, [switchAccount]);
 
-  /** Set when someone arrived from a sign-in-gated form and had no account. */
   const redirectTo = safeRedirect(searchParams.get("redirect"));
 
   const {
@@ -84,9 +79,16 @@ function SignUpForm() {
 
   const onSubmit = (data: SignUpValues) =>
     createUserWithEmailAndPassword(data, {
-      onSuccess: () => {
-        toast.success("Account created. Welcome to CanvasFlow.");
-        router.push(redirectTo);
+      onSuccess: (result) => {
+        writePendingSignup(result.email, redirectTo);
+
+        if (result.delivery === "not-configured") {
+          toast.warning("Email delivery is not configured — the code is in the server log.");
+        } else {
+          toast.success(`We sent a code to ${result.email}.`);
+        }
+
+        router.push("/verifyEmail");
       },
       onError: (error) => {
         toast.error(error.message || "Failed to create account. Please try again.");
@@ -109,7 +111,7 @@ function SignUpForm() {
           <span style={{ color: "var(--c-blue)" }}>.</span>
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-          Create your account &mdash; it only takes a moment.
+          We&apos;ll email you a code to confirm your address.
         </p>
       </div>
 
@@ -141,7 +143,7 @@ function SignUpForm() {
           register={register("password")}
           error={errors.password?.message}
           autoComplete="new-password"
-          hint="Minimum 8 characters"
+          hint="Minimum 12 characters"
         />
 
         <button
@@ -156,7 +158,7 @@ function SignUpForm() {
             />
           ) : (
             <>
-              Create account
+              Continue
               <ArrowRight size={15} />
             </>
           )}

@@ -9,6 +9,8 @@ import cookieParser from "cookie-parser";
 
 import { serverRouter, createContext } from "@repo/trpc/server";
 import { authRouter } from "@repo/trpc/server/auth";
+import { db, sql } from "@repo/database";
+import { isRedisConfigured, redisReady } from "@repo/redis";
 
 
 import { env } from "./env";
@@ -137,7 +139,14 @@ const authRouteLimiter = leakyBucketRateLimiter({
 
 app.use(CREDENTIAL_PATHS, express.json({ limit: "16kb" }), loginIpLimiter, loginAccountLimiter);
 
-const EMAIL_SENDING_PATHS = ["/api/auth/forgot-password", "/api/auth/send-verification-email"];
+const EMAIL_SENDING_PATHS = [
+  "/api/auth/forgot-password",
+  "/api/auth/send-verification-email",
+  /* Each call mails a fresh signup code. The handler also enforces a
+   * per-signup cooldown, but that one is keyed on the pending row — this is
+   * what stops a script cycling addresses it does not own. */
+  "/api/auth/resend-signup-code",
+];
 
 const emailIpLimiter = leakyBucketRateLimiter({
   bucketName: "auth-email-ip",
@@ -176,6 +185,44 @@ app.use(
 );
 app.use("/api/auth/reset-password", express.json({ limit: "16kb" }), resetRedeemLimiter);
 
+/* Signup confirmation codes are six digits — a million candidates, which is
+ * minutes of guessing at any useful request rate. The handler burns one of
+ * five attempts per pending signup, so the code cannot be walked through on a
+ * single signup; these limiters are what stop the other shape of the attack,
+ * where a script opens signups in bulk and guesses once at each.
+ *
+ * Keyed on IP *and* on the submitted address: the per-address bucket follows
+ * the signup being attacked rather than the machine attacking it. */
+const SIGNUP_VERIFY_PATHS = ["/api/auth/verify-signup", "/api/auth/verify-signup-code"];
+
+const signupVerifyIpLimiter = leakyBucketRateLimiter({
+  bucketName: "auth-signup-verify-ip",
+  max: env.RATE_LIMIT_LOGIN_IP_MAX,
+  windowMs: 60_000,
+  identify: "ip",
+  message: { error: "Too many attempts. Wait a minute and try again." },
+});
+
+const signupVerifyAccountLimiter = leakyBucketRateLimiter({
+  bucketName: "auth-signup-verify-account",
+  max: env.RATE_LIMIT_LOGIN_ACCOUNT_MAX,
+  windowMs: 60_000,
+  identify: (req) => {
+    const email = (req.body as { email?: unknown } | undefined)?.email;
+    if (typeof email !== "string") return null;
+    const normalized = email.trim().toLowerCase();
+    return normalized ? `signup:${normalized}` : null;
+  },
+  message: { error: "Too many attempts for this sign-up. Try again shortly." },
+});
+
+app.use(
+  SIGNUP_VERIFY_PATHS,
+  express.json({ limit: "16kb" }),
+  signupVerifyIpLimiter,
+  signupVerifyAccountLimiter,
+);
+
 app.use("/api/auth", authRouteLimiter);
 
 app.use("/api/auth", authRouter);
@@ -190,6 +237,71 @@ app.get("/", (req, res) => {
 
 app.get("/health", (req, res) => {
   return res.json({ message: "CanvasFlow server is healthy", healthy: true });
+});
+
+const READY_CHECK_TIMEOUT_MS = 2_000;
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+type CheckResult = { status: "ok" | "skipped" | "error"; latencyMs: number; error?: string };
+
+async function timedCheck(run: () => Promise<void>): Promise<CheckResult> {
+  const startedAt = Date.now();
+  try {
+    await withTimeout(run(), READY_CHECK_TIMEOUT_MS);
+    return { status: "ok", latencyMs: Date.now() - startedAt };
+  } catch (err) {
+    return {
+      status: "error",
+      latencyMs: Date.now() - startedAt,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+app.get("/ready", async (req, res) => {
+  const [postgres, redis] = await Promise.all([
+    timedCheck(async () => {
+      await db.execute(sql`select 1`);
+    }),
+
+    isRedisConfigured()
+      ? timedCheck(async () => {
+          const connection = await redisReady(READY_CHECK_TIMEOUT_MS);
+          if (!connection) throw new Error("redis connection not ready");
+          await connection.ping();
+        })
+      : Promise.resolve<CheckResult>({ status: "skipped", latencyMs: 0 }),
+  ]);
+
+  const checks = { postgres, redis };
+  const ready = Object.values(checks).every((check) => check.status !== "error");
+
+  if (!ready) {
+    const failed = Object.entries(checks)
+      .filter(([, check]) => check.status === "error")
+      .map(([name, check]) => `${name}: ${check.error}`)
+      .join("; ");
+
+    logger.error(`[api] readiness check failed — ${failed}`);
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(ready ? 200 : 503).json({ ready, checks });
 });
 
 app.get("/api/auth/providers", (req, res) => {

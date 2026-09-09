@@ -10,6 +10,7 @@ import {
   accountsTable,
   sessionsTable,
   verificationsTable,
+  pendingSignupsTable,
   SelectUser,
 } from "@repo/database";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
@@ -17,6 +18,7 @@ import {
   sendMail,
   passwordResetMail,
   emailVerificationMail,
+  signupCodeMail,
   isMailConfigured,
 } from "@repo/services/mail";
 
@@ -642,6 +644,32 @@ async function consumeVerificationToken(
   return row.identifier.slice(prefix.length) || null;
 }
 
+const SIGNUP_CODE_TTL_MS = 15 * 60 * 1000;
+const SIGNUP_CODE_MAX_ATTEMPTS = 5;
+const SIGNUP_CODE_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function generateSignupCode(): string {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function hashSignupCode(email: string, code: string): string {
+  return crypto
+    .createHmac("sha256", authSecret())
+    .update(`signup:${normalizeEmail(email)}:${code}`)
+    .digest("hex");
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function hashesMatch(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8");
+  const right = Buffer.from(b, "utf8");
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
 function dispatchMail(message: Parameters<typeof sendMail>[0]): void {
   void sendMail(message).catch(() => {
   });
@@ -698,7 +726,7 @@ const getSessionCookieOptions = () => {
   };
 };
 
-// Signup
+// Signup — step 1 of 2: stash the details, email a code, create nothing.
 const handleSignup = async (req: express.Request, res: express.Response) => {
   const { email, password, name, fullName } = req.body;
   const userName = name || fullName;
@@ -713,69 +741,263 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
     return;
   }
 
-  const passwordProblem = validatePassword(password, email);
+  const normalizedEmail = normalizeEmail(email);
+
+  const passwordProblem = validatePassword(password, normalizedEmail);
   if (passwordProblem) {
     res.status(400).json({ error: passwordProblem });
     return;
   }
 
   try {
-    const existingUsers = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const existingUsers = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
     if (existingUsers.length > 0) {
       res.status(400).json({ error: "User already exists" });
       return;
     }
 
     const hashedPassword = await hashPassword(password);
-    const userId = crypto.randomUUID();
+    const code = generateSignupCode();
+    const now = new Date();
 
-    await db.insert(usersTable).values({
-      id: userId,
-      email: email,
-      name: userName || "",
-      emailVerified: false,
+    await db
+      .insert(pendingSignupsTable)
+      .values({
+        id: crypto.randomUUID(),
+        email: normalizedEmail,
+        name: userName || "",
+        passwordHash: hashedPassword,
+        codeHash: hashSignupCode(normalizedEmail, code),
+        attempts: 0,
+        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+        lastSentAt: now,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: pendingSignupsTable.email,
+        set: {
+          name: userName || "",
+          passwordHash: hashedPassword,
+          codeHash: hashSignupCode(normalizedEmail, code),
+          attempts: 0,
+          expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+          lastSentAt: now,
+        },
+      });
+
+    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
+    res.json({
+      status: "verification_required",
+      email: normalizedEmail,
+      expiresInMinutes: SIGNUP_CODE_TTL_MS / 60_000,
+      delivery: isMailConfigured() ? "sent" : "not-configured",
     });
-
-    await db.insert(accountsTable).values({
-      id: crypto.randomUUID(),
-      userId: userId,
-      accountId: email,
-      providerId: "credential",
-      password: hashedPassword,
-    });
-
-    const { token } = await issueSession(
-      { id: userId, email, name: userName || "" },
-      req,
-    );
-
-    try {
-      const verifyToken = await issueVerificationToken("email-verify", userId, VERIFY_TTL_MS);
-      dispatchMail(
-        emailVerificationMail(
-          email,
-          `${apiBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}`,
-          VERIFY_TTL_MS / 3_600_000,
-        ),
-      );
-    } catch (mailErr) {
-      console.error(
-        `[auth] could not issue a verification email for ${userId}: ` +
-          `${mailErr instanceof Error ? mailErr.message : mailErr}`,
-      );
-    }
-
-    res.cookie("cf_jwt", token, getCookieOptions());
-    res.cookie("cf_session", "1", getSessionCookieOptions());
-
-    res.json({ status: "success", user: { id: userId, email, name: userName } });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to sign up" });
+    console.error(`[auth] signup failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Failed to start sign-up" });
   }
 };
 
 authRouter.post("/signup/email", handleSignup);
 authRouter.post("/sign-up/email", handleSignup);
+
+// Signup — step 2 of 2: redeem the code, and only now create the account.
+const handleVerifySignup = async (req: express.Request, res: express.Response) => {
+  const { email, code } = req.body ?? {};
+
+  if (typeof email !== "string" || typeof code !== "string") {
+    res.status(400).json({ error: "Enter the code we emailed you." });
+    return;
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  /* People paste codes with spaces in them. */
+  const submittedCode = code.replace(/\s+/g, "");
+
+  if (!/^\d{6}$/.test(submittedCode)) {
+    res.status(400).json({ error: "The code is six digits." });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select()
+      .from(pendingSignupsTable)
+      .where(eq(pendingSignupsTable.email, normalizedEmail))
+      .limit(1);
+
+    const pending = rows[0];
+    if (!pending) {
+      res.status(400).json({
+        error: "That code is no longer valid. Start sign-up again to get a new one.",
+        restart: true,
+      });
+      return;
+    }
+
+    /* Count the attempt before checking the code, so a crash or a dropped
+     * connection mid-request cannot be used to get a free guess. */
+    const [counted] = await db
+      .update(pendingSignupsTable)
+      .set({ attempts: pending.attempts + 1 })
+      .where(eq(pendingSignupsTable.id, pending.id))
+      .returning({ attempts: pendingSignupsTable.attempts });
+
+    const attempts = counted?.attempts ?? pending.attempts + 1;
+
+    if (attempts > SIGNUP_CODE_MAX_ATTEMPTS) {
+      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      res.status(400).json({
+        error: "Too many incorrect codes. Start sign-up again to get a new one.",
+        restart: true,
+      });
+      return;
+    }
+
+    if (pending.expiresAt.getTime() <= Date.now()) {
+      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      res.status(400).json({
+        error: "That code has expired. Start sign-up again to get a new one.",
+        restart: true,
+      });
+      return;
+    }
+
+    if (!hashesMatch(pending.codeHash, hashSignupCode(normalizedEmail, submittedCode))) {
+      const remaining = Math.max(0, SIGNUP_CODE_MAX_ATTEMPTS - attempts);
+      res.status(400).json({
+        error: remaining
+          ? `That code is not right. ${remaining} ${remaining === 1 ? "attempt" : "attempts"} left.`
+          : "That code is not right. Start sign-up again to get a new one.",
+        attemptsRemaining: remaining,
+      });
+      return;
+    }
+
+    const existingUsers = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
+    if (existingUsers.length > 0) {
+      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      res.status(400).json({
+        error: "An account with this email already exists. Try signing in instead.",
+        restart: true,
+      });
+      return;
+    }
+
+    const userId = crypto.randomUUID();
+
+    await db.insert(usersTable).values({
+      id: userId,
+      email: normalizedEmail,
+      name: pending.name || "",
+      emailVerified: true,
+    });
+
+    await db.insert(accountsTable).values({
+      id: crypto.randomUUID(),
+      userId,
+      accountId: normalizedEmail,
+      providerId: "credential",
+      password: pending.passwordHash,
+    });
+
+    await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+
+    const { token } = await issueSession(
+      { id: userId, email: normalizedEmail, name: pending.name || "" },
+      req,
+    );
+
+    res.cookie("cf_jwt", token, getCookieOptions());
+    res.cookie("cf_session", "1", getSessionCookieOptions());
+
+    res.json({
+      status: "success",
+      user: { id: userId, email: normalizedEmail, name: pending.name || "" },
+    });
+  } catch (err) {
+    console.error(`[auth] verify-signup failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Could not confirm your email address." });
+  }
+};
+
+authRouter.post("/verify-signup", handleVerifySignup);
+authRouter.post("/verify-signup-code", handleVerifySignup);
+
+// Signup — a fresh code for a signup already in flight.
+authRouter.post("/resend-signup-code", async (req, res) => {
+  const { email } = req.body ?? {};
+
+  if (typeof email !== "string" || !email.trim()) {
+    res.status(400).json({ error: "Enter the email address you signed up with." });
+    return;
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  const opaqueOk = {
+    status: "success",
+    message: "If that sign-up is still open, a new code is on its way.",
+    delivery: isMailConfigured() ? "sent" : "not-configured",
+  };
+
+  try {
+    const rows = await db
+      .select({
+        id: pendingSignupsTable.id,
+        lastSentAt: pendingSignupsTable.lastSentAt,
+      })
+      .from(pendingSignupsTable)
+      .where(eq(pendingSignupsTable.email, normalizedEmail))
+      .limit(1);
+
+    const pending = rows[0];
+    if (!pending) {
+      res.json(opaqueOk);
+      return;
+    }
+
+    const sinceLastSend = Date.now() - pending.lastSentAt.getTime();
+    if (sinceLastSend < SIGNUP_CODE_RESEND_COOLDOWN_MS) {
+      const retryAfter = Math.ceil((SIGNUP_CODE_RESEND_COOLDOWN_MS - sinceLastSend) / 1000);
+      res.status(429).json({
+        error: `Wait ${retryAfter}s before requesting another code.`,
+        retryAfterSeconds: retryAfter,
+      });
+      return;
+    }
+
+    const code = generateSignupCode();
+    const now = new Date();
+
+    await db
+      .update(pendingSignupsTable)
+      .set({
+        codeHash: hashSignupCode(normalizedEmail, code),
+        attempts: 0,
+        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+        lastSentAt: now,
+      })
+      .where(eq(pendingSignupsTable.id, pending.id));
+
+    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
+
+    res.json(opaqueOk);
+  } catch (err) {
+    console.error(`[auth] resend-signup-code failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Could not send a new code." });
+  }
+});
 
 // Signin
 const handleSignin = async (req: express.Request, res: express.Response) => {
