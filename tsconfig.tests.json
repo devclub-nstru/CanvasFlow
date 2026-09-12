@@ -29,11 +29,13 @@
       "@repo/redis": ["./packages/redis/index.ts"],
       "@repo/redis/*": ["./packages/redis/*"],
       "@repo/services/*": ["./packages/services/*"],
+      "@repo/trpc": ["./packages/trpc/index.ts"],
       "@repo/trpc/*": ["./packages/trpc/*"]
     }
   },
   "include": [
     "vitest.config.ts",
+    "vitest.integration.config.ts",
     "tests/**/*.ts",
     "apps/web/tests/**/*.ts",
     "apps/api/tests/**/*.ts",
