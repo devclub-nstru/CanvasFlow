@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "types": ["vitest/globals", "node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./apps/web/*"],
+      "@/*": ["./apps/web/*"],
+      "@repo/database": ["./packages/database/index.ts"],
+      "@repo/database/*": ["./packages/database/*"],
+      "@repo/logger": ["./packages/logger/index.ts"],
+      "@repo/queue": ["./packages/queue/index.ts"],
+      "@repo/redis": ["./packages/redis/index.ts"],
+      "@repo/redis/*": ["./packages/redis/*"],
+      "@repo/services/*": ["./packages/services/*"],
+      "@repo/trpc/*": ["./packages/trpc/*"]
+    }
+  },
+  "include": [
+    "vitest.config.ts",
+    "tests/**/*.ts",
+    "apps/web/tests/**/*.ts",
+    "apps/api/tests/**/*.ts",
+    "apps/worker/tests/**/*.ts",
+    "packages/services/tests/**/*.ts",
+    "packages/trpc/tests/**/*.ts"
+  ]
+}
