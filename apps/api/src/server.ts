@@ -139,14 +139,11 @@ const authRouteLimiter = leakyBucketRateLimiter({
 
 app.use(CREDENTIAL_PATHS, express.json({ limit: "16kb" }), loginIpLimiter, loginAccountLimiter);
 
-const EMAIL_SENDING_PATHS = [
-  "/api/auth/forgot-password",
-  "/api/auth/send-verification-email",
-  /* Each call mails a fresh signup code. The handler also enforces a
-   * per-signup cooldown, but that one is keyed on the pending row — this is
-   * what stops a script cycling addresses it does not own. */
-  "/api/auth/resend-signup-code",
-];
+/* Password reset is the only endpoint that sends mail now that address
+ * confirmation is switched off. Each request costs money and can be aimed at
+ * an inbox the caller does not own, which is why it is limited harder than the
+ * credential endpoints. */
+const EMAIL_SENDING_PATHS = ["/api/auth/forgot-password"];
 
 const emailIpLimiter = leakyBucketRateLimiter({
   bucketName: "auth-email-ip",
@@ -184,44 +181,6 @@ app.use(
   emailAccountLimiter,
 );
 app.use("/api/auth/reset-password", express.json({ limit: "16kb" }), resetRedeemLimiter);
-
-/* Signup confirmation codes are six digits — a million candidates, which is
- * minutes of guessing at any useful request rate. The handler burns one of
- * five attempts per pending signup, so the code cannot be walked through on a
- * single signup; these limiters are what stop the other shape of the attack,
- * where a script opens signups in bulk and guesses once at each.
- *
- * Keyed on IP *and* on the submitted address: the per-address bucket follows
- * the signup being attacked rather than the machine attacking it. */
-const SIGNUP_VERIFY_PATHS = ["/api/auth/verify-signup", "/api/auth/verify-signup-code"];
-
-const signupVerifyIpLimiter = leakyBucketRateLimiter({
-  bucketName: "auth-signup-verify-ip",
-  max: env.RATE_LIMIT_LOGIN_IP_MAX,
-  windowMs: 60_000,
-  identify: "ip",
-  message: { error: "Too many attempts. Wait a minute and try again." },
-});
-
-const signupVerifyAccountLimiter = leakyBucketRateLimiter({
-  bucketName: "auth-signup-verify-account",
-  max: env.RATE_LIMIT_LOGIN_ACCOUNT_MAX,
-  windowMs: 60_000,
-  identify: (req) => {
-    const email = (req.body as { email?: unknown } | undefined)?.email;
-    if (typeof email !== "string") return null;
-    const normalized = email.trim().toLowerCase();
-    return normalized ? `signup:${normalized}` : null;
-  },
-  message: { error: "Too many attempts for this sign-up. Try again shortly." },
-});
-
-app.use(
-  SIGNUP_VERIFY_PATHS,
-  express.json({ limit: "16kb" }),
-  signupVerifyIpLimiter,
-  signupVerifyAccountLimiter,
-);
 
 app.use("/api/auth", authRouteLimiter);
 

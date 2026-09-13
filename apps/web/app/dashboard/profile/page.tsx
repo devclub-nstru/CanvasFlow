@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, LogOut, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { useSendVerificationEmail, useSignOut } from "~/hooks/api/auth";
+import { useSignOut } from "~/hooks/api/auth";
 import { useGetDashboardStats, useListFormsByUserId } from "~/hooks/api/form";
 import { useGetMe, useUpdateMe } from "~/hooks/api/user";
 import {
@@ -33,21 +33,6 @@ export default function ProfilePage() {
   const { forms } = useListFormsByUserId();
   const { signOutAsync } = useSignOut();
   const { updateMeAsync, isPending: isSaving } = useUpdateMe();
-  const { sendVerificationEmail, isPending: isSendingVerification } = useSendVerificationEmail();
-
-  const handleResendVerification = async () => {
-    try {
-      const { message, configured } = await sendVerificationEmail();
-      if (configured) {
-        toast.success(message);
-      } else {
-        toast.warning("Email delivery is not configured on the server, so nothing was sent.");
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send the confirmation email.");
-    }
-  };
-
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftPreset, setDraftPreset] = useState<AvatarPreset | null>(null);
@@ -236,17 +221,10 @@ export default function ProfilePage() {
                       Confirmed
                     </span>
                   ) : (
-                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span style={{ color: "var(--cf-danger)" }}>Not confirmed</span>
-                      <button
-                        type="button"
-                        onClick={handleResendVerification}
-                        disabled={isSendingVerification}
-                        className="cursor-pointer font-mono text-[10px] tracking-[0.12em] uppercase underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isSendingVerification ? "Sending…" : "Resend"}
-                      </button>
-                    </span>
+                    /* Only reachable for an OAuth account whose provider did
+                     * not assert the address. There is nothing to offer while
+                     * confirmation is switched off, so state it and stop. */
+                    <span style={{ color: "var(--cf-ink-soft)" }}>Not confirmed</span>
                   )}
                 </Field>
                 <Field label="Days active">

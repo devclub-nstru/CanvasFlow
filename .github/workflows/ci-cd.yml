@@ -85,6 +85,16 @@ jobs:
           --health-timeout 5s
           --health-retries 20
 
+      mongo:
+        image: mongo:7
+        ports:
+          - 27018:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -107,9 +117,8 @@ jobs:
       - name: Create CI environment
         run: cp .env.example .env
 
-      # Migrations are applied by the suite's globalSetup; the service
-      # containers above are all it needs. Mongo is not started: the menti
-      # phase of the suite is not written yet.
+      # Postgres migrations are applied by the suite's globalSetup; Mongo needs
+      # no schema step. The service containers above are all it needs.
       - name: Integration tests
         run: pnpm test:integration:only
 
@@ -158,22 +167,22 @@ jobs:
             docker compose -f docker-compose.prod.yml config -q
 
             echo "==> Starting infrastructure"
-            docker compose -f docker-compose.prod.yml up -d postgres redis
+            docker compose -f docker-compose.prod.yml up -d postgres redis mongo
 
             echo "==> Waiting for infrastructure"
-            docker compose -f docker-compose.prod.yml up -d --wait postgres redis
+            docker compose -f docker-compose.prod.yml up -d --wait postgres redis mongo
 
             echo "==> Building Docker images"
-            docker compose -f docker-compose.prod.yml build api worker web migrate
+            docker compose -f docker-compose.prod.yml build api worker web migrate menti menti-worker
 
             echo "==> Running database migrations"
             docker compose -f docker-compose.prod.yml run --rm migrate
 
             echo "==> Starting application"
-            docker compose -f docker-compose.prod.yml up -d api worker web
+            docker compose -f docker-compose.prod.yml up -d api worker web menti menti-worker
 
             echo "==> Waiting for application health"
-            docker compose -f docker-compose.prod.yml up -d --wait api worker web
+            docker compose -f docker-compose.prod.yml up -d --wait api worker web menti
 
             echo "==> Deployment status"
             docker compose -f docker-compose.prod.yml ps

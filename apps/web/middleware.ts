@@ -8,10 +8,7 @@ export function middleware(request: NextRequest) {
     request.cookies.get("__Secure-better-auth.session_token")?.value;
   const { pathname } = request.nextUrl;
 
-  if (
-    token &&
-    (pathname === "/signIn" || pathname === "/signUp" || pathname === "/verifyEmail")
-  ) {
+  if (token && (pathname === "/signIn" || pathname === "/signUp")) {
     if (request.nextUrl.searchParams.get("switch") !== "1") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
@@ -25,5 +22,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/signIn", "/signUp", "/verifyEmail"],
+  matcher: ["/dashboard/:path*", "/signIn", "/signUp"],
 };

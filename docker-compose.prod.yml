@@ -56,6 +56,34 @@ services:
       retries: 15
       start_period: 5s
 
+  # Menti's datastore. Postgres holds the forms side of the product; the live
+  # presentation service is document-shaped and stays on Mongo.
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-menti}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-menti}
+
+    volumes:
+      - mongo_data_prod:/data/db
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping').ok",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
   migrate:
     build:
       context: .
@@ -157,6 +185,12 @@ services:
     build:
       context: .
       target: web
+      # Baked into the client bundle at build time — changing these in .env
+      # alone does nothing until the image is rebuilt.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MENTI_API_URL: ${NEXT_PUBLIC_MENTI_API_URL}
+        NEXT_PUBLIC_API_URLS: ${NEXT_PUBLIC_API_URLS:-}
 
     restart: unless-stopped
 
@@ -193,7 +227,86 @@ services:
       retries: 5
       start_period: 15s
 
+  # ── Menti (live presentations) ────────────────────────────────────────────
+
+  menti:
+    build:
+      context: .
+      target: menti
+
+    restart: unless-stopped
+
+    # Socket.IO rooms drain on SIGTERM (sockets closed, presence flushed) with
+    # a 25s internal deadline, same as the API.
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    env_file:
+      - .env
+
+    # Imported decks land on local disk unless R2/S3 is configured, and the
+    # worker writes the rendered slides that this container then serves at
+    # /uploads — so both must mount the same volume.
+    volumes:
+      - menti_uploads_prod:/app/apps/menti/uploads
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health/ready').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  menti-worker:
+    build:
+      context: .
+      target: menti-worker
+
+    restart: unless-stopped
+
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    env_file:
+      - .env
+
+    volumes:
+      - menti_uploads_prod:/app/apps/menti/uploads
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pg_data_prod:
   redis_data_prod:
   upload_tmp_prod:
+  mongo_data_prod:
+  menti_uploads_prod:

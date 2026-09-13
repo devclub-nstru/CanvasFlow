@@ -1,15 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TestServer } from "../helpers/app";
 
-/* Mail has no provider configured in the suite, so every message goes to the
- * log transport. Capturing the logger is how the test reads the confirmation
- * code — and it doubles as proof the message is actually dispatched. */
+/* Mail has no relay configured in the suite, so every message goes to the log
+ * transport. Capturing the logger is how the password-reset tests read the
+ * link — and it doubles as proof the message is actually dispatched. */
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 vi.mock("@repo/logger", () => ({ logger, default: logger }));
 
 const { eq } = await import("@repo/database");
 const { usersTable, sessionsTable, accountsTable } = await import("@repo/database");
-const { pendingSignupsTable } = await import("@repo/database");
 const { db, resetDatabase, teardownDatabase } = await import("../helpers/db");
 const { closeRedis, resetRedis } = await import("../helpers/redis");
 const { startAuthServer, post, get, cookieValue } = await import("../helpers/app");
@@ -19,30 +18,20 @@ const { makeUser } = await import("../helpers/factories");
 /* Sign-up through to sign-out, against real rows.
  *
  * The unit suite covers password hashing, the policy, and the redirect
- * validation. What it cannot cover is the sequence: that a pending signup
- * becomes a user and an account, that the session row is what makes a token
- * work, and that deleting that row is what makes it stop. */
+ * validation. What it cannot cover is the sequence: that signing up writes a
+ * user and a credential account together, that the session row is what makes a
+ * token work, and that deleting that row is what makes it stop.
+ *
+ * Address confirmation is switched off, so sign-up is one request and every
+ * account is created already verified. */
 
 const EMAIL = "newcomer@example.test";
 const PASSWORD = "correct horse battery staple";
 
 let server: TestServer;
 
-/** The confirmation code, read out of the logged message body. */
-function lastSignupCode(): string {
-  const lines = logger.warn.mock.calls.map((call) => String(call[0]));
-  const message = [...lines].reverse().find((line) => line.includes("confirmation code"));
-  const code = message?.match(/code is:\s*(\d{4,10})/)?.[1];
-  if (!code) throw new Error(`no confirmation code was emailed. Saw: ${lines.join(" | ")}`);
-  return code;
-}
-
 async function signUp(email = EMAIL, password = PASSWORD) {
   return post(server, "/api/auth/signup/email", { email, password, name: "Newcomer" });
-}
-
-async function verify(email = EMAIL, code?: string) {
-  return post(server, "/api/auth/verify-signup", { email, code: code ?? lastSignupCode() });
 }
 
 beforeAll(async () => {
@@ -61,90 +50,42 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-/* ─── Step one: the code ───────────────────────────────────────────────── */
+/* ─── Signing up ───────────────────────────────────────────────────────── */
 
 describe("POST /signup/email", () => {
-  it("creates nothing but a pending row, and emails a code", async () => {
+  it("creates the user, the credential account, and a session in one request", async () => {
     const result = await signUp();
 
     expect(result.status).toBe(200);
-    expect(result.body.status).toBe("verification_required");
-
-    expect(await db.select().from(usersTable), "no account exists yet").toHaveLength(0);
-    const pending = await db.select().from(pendingSignupsTable);
-    expect(pending).toHaveLength(1);
-    expect(pending[0]?.email).toBe(EMAIL);
-
-    expect(lastSignupCode()).toMatch(/^\d{4,10}$/);
-  });
-
-  it("never stores the code or the password in readable form", async () => {
-    await signUp();
-    const [pending] = await db.select().from(pendingSignupsTable);
-
-    expect(pending?.codeHash).not.toBe(lastSignupCode());
-    expect(pending?.passwordHash).not.toContain(PASSWORD);
-    expect(pending?.passwordHash?.startsWith("scrypt$")).toBe(true);
-  });
-
-  it("normalises the address", async () => {
-    await signUp("  NEWCOMER@Example.TEST  ");
-    const [pending] = await db.select().from(pendingSignupsTable);
-    expect(pending?.email).toBe(EMAIL);
-  });
-
-  it("replaces an earlier pending signup rather than stacking them", async () => {
-    await signUp();
-    const firstCode = lastSignupCode();
-    await signUp();
-
-    expect(await db.select().from(pendingSignupsTable)).toHaveLength(1);
-    expect(lastSignupCode(), "a fresh code invalidates the old one").not.toBe(firstCode);
-  });
-
-  it("enforces the password policy before writing anything", async () => {
-    const result = await signUp(EMAIL, "short");
-
-    expect(result.status).toBe(400);
-    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
-  });
-
-  it("rejects an address that is not one", async () => {
-    expect((await signUp("not-an-email")).status).toBe(400);
-  });
-
-  it("refuses an address that already has an account", async () => {
-    await makeUser({ email: EMAIL });
-    const result = await signUp();
-
-    expect(result.status).toBe(400);
-    expect(result.body.error).toMatch(/already exists/i);
-  });
-});
-
-/* ─── Step two: the account ────────────────────────────────────────────── */
-
-describe("POST /verify-signup", () => {
-  it("creates the user, the credential account, and a session", async () => {
-    await signUp();
-    const result = await verify();
-
-    expect(result.status).toBe(200);
+    expect(result.body.status).toBe("success");
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, EMAIL));
-    expect(user?.emailVerified).toBe(true);
+    expect(user).toBeTruthy();
 
     const accounts = await db.select().from(accountsTable);
     expect(accounts[0]?.providerId).toBe("credential");
     expect(accounts[0]?.userId).toBe(user?.id);
 
-    const sessions = await db.select().from(sessionsTable);
-    expect(sessions).toHaveLength(1);
+    expect(await db.select().from(sessionsTable)).toHaveLength(1);
+  });
+
+  /* The point of this change: nobody is asked to prove the address. A false
+   * here means new accounts are landing in a state the product no longer has
+   * any way to resolve, since the confirmation endpoints are gone. */
+  it("marks the address confirmed without asking", async () => {
+    await signUp();
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, EMAIL));
+    expect(user?.emailVerified).toBe(true);
+  });
+
+  it("sends no mail at all", async () => {
+    await signUp();
+    const logged = logger.warn.mock.calls.map((call) => String(call[0]));
+    expect(logged.filter((line) => line.includes("[mail:log]"))).toHaveLength(0);
   });
 
   it("returns a session cookie that actually works", async () => {
-    await signUp();
-    const result = await verify();
+    const result = await signUp();
 
     const token = cookieValue(result.cookies, "cf_jwt");
     expect(token).toBeTruthy();
@@ -154,42 +95,40 @@ describe("POST /verify-signup", () => {
     expect(forms).toEqual([]);
   });
 
-  it("clears the pending row", async () => {
+  it("never stores the password in readable form", async () => {
     await signUp();
-    await verify();
-    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+    const [account] = await db.select().from(accountsTable);
+
+    expect(account?.password).not.toContain(PASSWORD);
+    expect(account?.password?.startsWith("scrypt$")).toBe(true);
   });
 
-  it("refuses the wrong code and says how many attempts are left", async () => {
-    await signUp();
-    const result = await verify(EMAIL, "000000");
+  it("normalises the address", async () => {
+    await signUp("  NEWCOMER@Example.TEST  ");
+    const [user] = await db.select().from(usersTable);
+    expect(user?.email).toBe(EMAIL);
+  });
+
+  it("enforces the password policy before writing anything", async () => {
+    const result = await signUp(EMAIL, "short");
 
     expect(result.status).toBe(400);
-    expect(result.body.attemptsRemaining).toBeTypeOf("number");
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+    expect(await db.select().from(accountsTable)).toHaveLength(0);
+  });
+
+  it("rejects an address that is not one", async () => {
+    expect((await signUp("not-an-email")).status).toBe(400);
     expect(await db.select().from(usersTable)).toHaveLength(0);
   });
 
-  it("stops accepting attempts after enough wrong guesses", async () => {
-    await signUp();
+  it("refuses an address that already has an account", async () => {
+    await makeUser({ email: EMAIL });
+    const result = await signUp();
 
-    let last = await verify(EMAIL, "000000");
-    for (let i = 0; i < 6; i++) last = await verify(EMAIL, "000000");
-
-    expect(last.status).toBe(400);
-    expect(await db.select().from(usersTable)).toHaveLength(0);
-  });
-
-  it("does not accept a code that was issued for another address", async () => {
-    await signUp();
-    const code = lastSignupCode();
-    await signUp("other@example.test");
-
-    const result = await verify("other@example.test", code);
     expect(result.status).toBe(400);
-  });
-
-  it("refuses a code for an address with no pending signup", async () => {
-    expect((await verify("nobody@example.test", "123456")).status).toBe(400);
+    expect(result.body.error).toMatch(/already exists/i);
+    expect(await db.select().from(usersTable)).toHaveLength(1);
   });
 });
 
@@ -198,7 +137,6 @@ describe("POST /verify-signup", () => {
 describe("POST /signin/email", () => {
   async function register() {
     await signUp();
-    await verify();
     await db.delete(sessionsTable);
   }
 
@@ -257,7 +195,7 @@ describe("POST /signin/email", () => {
    * from a copy-paste does the same.
    *
    * The fix is one line in packages/trpc/server/auth.ts — look the user up by
-   * `normalizeEmail(email)`, as verify-signup and forgot-password already do.
+   * `normalizeEmail(email)`, as signup and forgot-password already do.
    *
    * `it.fails` keeps the suite honest: it passes while the bug exists and
    * starts failing the moment it is fixed, which is the prompt to delete this
@@ -287,9 +225,8 @@ describe("POST /signin/email", () => {
 
 describe("a session", () => {
   async function registerAndSignIn() {
-    await signUp();
-    const verified = await verify();
-    return cookieValue(verified.cookies, "cf_jwt")!;
+    const signedUp = await signUp();
+    return cookieValue(signedUp.cookies, "cf_jwt")!;
   }
 
   it("is readable through get-session while it lives", async () => {
@@ -330,8 +267,7 @@ describe("a session", () => {
   });
 
   it("leaves other devices signed in when one signs out", async () => {
-    await signUp();
-    const first = cookieValue((await verify()).cookies, "cf_jwt")!;
+    const first = cookieValue((await signUp()).cookies, "cf_jwt")!;
 
     const secondResult = await post(server, "/api/auth/signin/email", {
       email: EMAIL,
@@ -348,8 +284,7 @@ describe("a session", () => {
   });
 
   it("is one of several that signout-all removes together", async () => {
-    await signUp();
-    const first = cookieValue((await verify()).cookies, "cf_jwt")!;
+    const first = cookieValue((await signUp()).cookies, "cf_jwt")!;
     await post(server, "/api/auth/signin/email", { email: EMAIL, password: PASSWORD });
 
     expect(await db.select().from(sessionsTable)).toHaveLength(2);
@@ -383,7 +318,6 @@ describe("password reset", () => {
 
   async function register() {
     await signUp();
-    await verify();
     vi.clearAllMocks();
   }
 

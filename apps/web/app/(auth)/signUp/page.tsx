@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { Field, PasswordField, SocialButtons } from "~/components/auth/AuthFields";
 import { useSignUp } from "~/hooks/api/auth";
 import { safeRedirect } from "~/lib/utils";
-import { writePendingSignup } from "~/lib/pending-signup";
 
 const createUserWithEmailAndPasswordInputModel = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -79,16 +78,9 @@ function SignUpForm() {
 
   const onSubmit = (data: SignUpValues) =>
     createUserWithEmailAndPassword(data, {
-      onSuccess: (result) => {
-        writePendingSignup(result.email, redirectTo);
-
-        if (result.delivery === "not-configured") {
-          toast.warning("Email delivery is not configured — the code is in the server log.");
-        } else {
-          toast.success(`We sent a code to ${result.email}.`);
-        }
-
-        router.push("/verifyEmail");
+      onSuccess: () => {
+        toast.success("Account created.");
+        router.push(redirectTo);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to create account. Please try again.");

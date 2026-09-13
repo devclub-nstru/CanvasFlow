@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-export interface SignUpStarted {
-  status: "verification_required";
-  email: string;
-  expiresInMinutes: number;
-  delivery: "sent" | "not-configured";
+export interface SignUpResult {
+  status: "success";
+  user: { id: string; email: string; name: string };
 }
 
 export const useSignUp = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const queryClient = useQueryClient();
 
   const createUserWithEmailAndPassword = async (
     data: any,
-    options?: { onSuccess?: (result: SignUpStarted) => void; onError?: (err: Error) => void },
+    options?: { onSuccess?: (result: SignUpResult) => void; onError?: (err: Error) => void },
   ) => {
     setIsPending(true);
     setError(null);
@@ -25,6 +24,10 @@ export const useSignUp = () => {
       }
       const res = await fetch(`${apiURL}/api/auth/signup/email`, {
         method: "POST",
+        /* Signup now issues the session itself, so the response's Set-Cookie
+         * has to be accepted — without this the account is created and the
+         * person lands on the dashboard signed out. */
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -41,7 +44,10 @@ export const useSignUp = () => {
         throw new Error(resData.error || "Failed to sign up");
       }
 
-      options?.onSuccess?.(resData as SignUpStarted);
+      document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
+
+      options?.onSuccess?.(resData as SignUpResult);
     } catch (err: any) {
       setError(err);
       options?.onError?.(err);
@@ -194,73 +200,6 @@ function apiOrigin(): string {
   return raw.endsWith("/trpc") ? raw.replace(/\/trpc$/, "") : raw;
 }
 
-export class SignupRestartRequired extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "SignupRestartRequired";
-  }
-}
-
-export const useVerifySignup = () => {
-  const [isPending, setIsPending] = useState(false);
-  const queryClient = useQueryClient();
-
-  const verifySignup = async (email: string, code: string): Promise<void> => {
-    setIsPending(true);
-    try {
-      const res = await fetch(`${apiOrigin()}/api/auth/verify-signup`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ email, code }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const message = data.error || "Could not confirm your email address.";
-        throw data.restart ? new SignupRestartRequired(message) : new Error(message);
-      }
-
-      document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
-      await queryClient.invalidateQueries({ queryKey: ["session"] });
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return { verifySignup, isPending };
-};
-
-export const useResendSignupCode = () => {
-  const [isPending, setIsPending] = useState(false);
-
-  const resendSignupCode = async (
-    email: string,
-  ): Promise<{ message: string; configured: boolean }> => {
-    setIsPending(true);
-    try {
-      const res = await fetch(`${apiOrigin()}/api/auth/resend-signup-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not send a new code.");
-
-      return {
-        message: data.message ?? "A new code is on its way.",
-        configured: data.delivery !== "not-configured",
-      };
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return { resendSignupCode, isPending };
-};
-
 export const useForgotPassword = () => {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -317,31 +256,4 @@ export const useResetPassword = () => {
   };
 
   return { resetPassword, isPending, error };
-};
-
-export const useSendVerificationEmail = () => {
-  const [isPending, setIsPending] = useState(false);
-
-  const sendVerificationEmail = async (): Promise<{ message: string; configured: boolean }> => {
-    setIsPending(true);
-    try {
-      const res = await fetch(`${apiOrigin()}/api/auth/send-verification-email`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not send the confirmation email.");
-
-      return {
-        message: data.message ?? "Confirmation email sent.",
-        configured: data.delivery !== "not-configured",
-      };
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return { sendVerificationEmail, isPending };
 };

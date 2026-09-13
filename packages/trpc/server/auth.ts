@@ -10,17 +10,10 @@ import {
   accountsTable,
   sessionsTable,
   verificationsTable,
-  pendingSignupsTable,
   SelectUser,
 } from "@repo/database";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
-import {
-  sendMail,
-  passwordResetMail,
-  emailVerificationMail,
-  signupCodeMail,
-  isMailConfigured,
-} from "@repo/services/mail";
+import { sendMail, passwordResetMail, isMailConfigured } from "@repo/services/mail";
 
 const DEV_ONLY_SECRET = "canvasflow-development-only-insecure-secret";
 const MIN_RECOMMENDED_LENGTH = 32;
@@ -578,10 +571,12 @@ async function revokeAllSessionsForUser(userId: string): Promise<number> {
   return rows.length;
 }
 
-type VerificationPurpose = "password-reset" | "email-verify";
+/* Only one purpose remains now that address confirmation is off. The type is
+ * kept as a union of one so the identifier prefixes stay namespaced — a reset
+ * token must never be redeemable as anything else. */
+type VerificationPurpose = "password-reset";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
-const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
 function verificationIdentifier(purpose: VerificationPurpose, userId: string): string {
   return `${purpose}:${userId}`;
@@ -644,30 +639,8 @@ async function consumeVerificationToken(
   return row.identifier.slice(prefix.length) || null;
 }
 
-const SIGNUP_CODE_TTL_MS = 15 * 60 * 1000;
-const SIGNUP_CODE_MAX_ATTEMPTS = 5;
-const SIGNUP_CODE_RESEND_COOLDOWN_MS = 60 * 1000;
-
-function generateSignupCode(): string {
-  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-}
-
-function hashSignupCode(email: string, code: string): string {
-  return crypto
-    .createHmac("sha256", authSecret())
-    .update(`signup:${normalizeEmail(email)}:${code}`)
-    .digest("hex");
-}
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
-}
-
-function hashesMatch(a: string, b: string): boolean {
-  const left = Buffer.from(a, "utf8");
-  const right = Buffer.from(b, "utf8");
-  if (left.length !== right.length) return false;
-  return crypto.timingSafeEqual(left, right);
 }
 
 function dispatchMail(message: Parameters<typeof sendMail>[0]): void {
@@ -726,7 +699,13 @@ const getSessionCookieOptions = () => {
   };
 };
 
-// Signup — step 1 of 2: stash the details, email a code, create nothing.
+/* Signup — one step: the account is created and signed in immediately.
+ *
+ * Address confirmation is deliberately switched off for now, so every account
+ * is created with emailVerified already true rather than being asked to prove
+ * the address first. The column, the pending_signups table and the code and
+ * confirmation mail templates are all still here, unused, because turning this
+ * back on should be a change to this handler and nothing else. */
 const handleSignup = async (req: express.Request, res: express.Response) => {
   const { email, password, name, fullName } = req.body;
   const userName = name || fullName;
@@ -762,144 +741,12 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
     }
 
     const hashedPassword = await hashPassword(password);
-    const code = generateSignupCode();
-    const now = new Date();
-
-    await db
-      .insert(pendingSignupsTable)
-      .values({
-        id: crypto.randomUUID(),
-        email: normalizedEmail,
-        name: userName || "",
-        passwordHash: hashedPassword,
-        codeHash: hashSignupCode(normalizedEmail, code),
-        attempts: 0,
-        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
-        lastSentAt: now,
-        createdAt: now,
-      })
-      .onConflictDoUpdate({
-        target: pendingSignupsTable.email,
-        set: {
-          name: userName || "",
-          passwordHash: hashedPassword,
-          codeHash: hashSignupCode(normalizedEmail, code),
-          attempts: 0,
-          expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
-          lastSentAt: now,
-        },
-      });
-
-    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
-    res.json({
-      status: "verification_required",
-      email: normalizedEmail,
-      expiresInMinutes: SIGNUP_CODE_TTL_MS / 60_000,
-      delivery: isMailConfigured() ? "sent" : "not-configured",
-    });
-  } catch (err: any) {
-    console.error(`[auth] signup failed: ${err instanceof Error ? err.message : err}`);
-    res.status(500).json({ error: "Failed to start sign-up" });
-  }
-};
-
-authRouter.post("/signup/email", handleSignup);
-authRouter.post("/sign-up/email", handleSignup);
-
-// Signup — step 2 of 2: redeem the code, and only now create the account.
-const handleVerifySignup = async (req: express.Request, res: express.Response) => {
-  const { email, code } = req.body ?? {};
-
-  if (typeof email !== "string" || typeof code !== "string") {
-    res.status(400).json({ error: "Enter the code we emailed you." });
-    return;
-  }
-
-  const normalizedEmail = normalizeEmail(email);
-  /* People paste codes with spaces in them. */
-  const submittedCode = code.replace(/\s+/g, "");
-
-  if (!/^\d{6}$/.test(submittedCode)) {
-    res.status(400).json({ error: "The code is six digits." });
-    return;
-  }
-
-  try {
-    const rows = await db
-      .select()
-      .from(pendingSignupsTable)
-      .where(eq(pendingSignupsTable.email, normalizedEmail))
-      .limit(1);
-
-    const pending = rows[0];
-    if (!pending) {
-      res.status(400).json({
-        error: "That code is no longer valid. Start sign-up again to get a new one.",
-        restart: true,
-      });
-      return;
-    }
-
-    /* Count the attempt before checking the code, so a crash or a dropped
-     * connection mid-request cannot be used to get a free guess. */
-    const [counted] = await db
-      .update(pendingSignupsTable)
-      .set({ attempts: pending.attempts + 1 })
-      .where(eq(pendingSignupsTable.id, pending.id))
-      .returning({ attempts: pendingSignupsTable.attempts });
-
-    const attempts = counted?.attempts ?? pending.attempts + 1;
-
-    if (attempts > SIGNUP_CODE_MAX_ATTEMPTS) {
-      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
-      res.status(400).json({
-        error: "Too many incorrect codes. Start sign-up again to get a new one.",
-        restart: true,
-      });
-      return;
-    }
-
-    if (pending.expiresAt.getTime() <= Date.now()) {
-      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
-      res.status(400).json({
-        error: "That code has expired. Start sign-up again to get a new one.",
-        restart: true,
-      });
-      return;
-    }
-
-    if (!hashesMatch(pending.codeHash, hashSignupCode(normalizedEmail, submittedCode))) {
-      const remaining = Math.max(0, SIGNUP_CODE_MAX_ATTEMPTS - attempts);
-      res.status(400).json({
-        error: remaining
-          ? `That code is not right. ${remaining} ${remaining === 1 ? "attempt" : "attempts"} left.`
-          : "That code is not right. Start sign-up again to get a new one.",
-        attemptsRemaining: remaining,
-      });
-      return;
-    }
-
-    const existingUsers = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(eq(usersTable.email, normalizedEmail))
-      .limit(1);
-
-    if (existingUsers.length > 0) {
-      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
-      res.status(400).json({
-        error: "An account with this email already exists. Try signing in instead.",
-        restart: true,
-      });
-      return;
-    }
-
     const userId = crypto.randomUUID();
 
     await db.insert(usersTable).values({
       id: userId,
       email: normalizedEmail,
-      name: pending.name || "",
+      name: userName || "",
       emailVerified: true,
     });
 
@@ -908,13 +755,11 @@ const handleVerifySignup = async (req: express.Request, res: express.Response) =
       userId,
       accountId: normalizedEmail,
       providerId: "credential",
-      password: pending.passwordHash,
+      password: hashedPassword,
     });
 
-    await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
-
     const { token } = await issueSession(
-      { id: userId, email: normalizedEmail, name: pending.name || "" },
+      { id: userId, email: normalizedEmail, name: userName || "" },
       req,
     );
 
@@ -923,81 +768,16 @@ const handleVerifySignup = async (req: express.Request, res: express.Response) =
 
     res.json({
       status: "success",
-      user: { id: userId, email: normalizedEmail, name: pending.name || "" },
+      user: { id: userId, email: normalizedEmail, name: userName || "" },
     });
-  } catch (err) {
-    console.error(`[auth] verify-signup failed: ${err instanceof Error ? err.message : err}`);
-    res.status(500).json({ error: "Could not confirm your email address." });
+  } catch (err: any) {
+    console.error(`[auth] signup failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Failed to create the account" });
   }
 };
 
-authRouter.post("/verify-signup", handleVerifySignup);
-authRouter.post("/verify-signup-code", handleVerifySignup);
-
-// Signup — a fresh code for a signup already in flight.
-authRouter.post("/resend-signup-code", async (req, res) => {
-  const { email } = req.body ?? {};
-
-  if (typeof email !== "string" || !email.trim()) {
-    res.status(400).json({ error: "Enter the email address you signed up with." });
-    return;
-  }
-
-  const normalizedEmail = normalizeEmail(email);
-
-  const opaqueOk = {
-    status: "success",
-    message: "If that sign-up is still open, a new code is on its way.",
-    delivery: isMailConfigured() ? "sent" : "not-configured",
-  };
-
-  try {
-    const rows = await db
-      .select({
-        id: pendingSignupsTable.id,
-        lastSentAt: pendingSignupsTable.lastSentAt,
-      })
-      .from(pendingSignupsTable)
-      .where(eq(pendingSignupsTable.email, normalizedEmail))
-      .limit(1);
-
-    const pending = rows[0];
-    if (!pending) {
-      res.json(opaqueOk);
-      return;
-    }
-
-    const sinceLastSend = Date.now() - pending.lastSentAt.getTime();
-    if (sinceLastSend < SIGNUP_CODE_RESEND_COOLDOWN_MS) {
-      const retryAfter = Math.ceil((SIGNUP_CODE_RESEND_COOLDOWN_MS - sinceLastSend) / 1000);
-      res.status(429).json({
-        error: `Wait ${retryAfter}s before requesting another code.`,
-        retryAfterSeconds: retryAfter,
-      });
-      return;
-    }
-
-    const code = generateSignupCode();
-    const now = new Date();
-
-    await db
-      .update(pendingSignupsTable)
-      .set({
-        codeHash: hashSignupCode(normalizedEmail, code),
-        attempts: 0,
-        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
-        lastSentAt: now,
-      })
-      .where(eq(pendingSignupsTable.id, pending.id));
-
-    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
-
-    res.json(opaqueOk);
-  } catch (err) {
-    console.error(`[auth] resend-signup-code failed: ${err instanceof Error ? err.message : err}`);
-    res.status(500).json({ error: "Could not send a new code." });
-  }
-});
+authRouter.post("/signup/email", handleSignup);
+authRouter.post("/sign-up/email", handleSignup);
 
 // Signin
 const handleSignin = async (req: express.Request, res: express.Response) => {
@@ -1149,78 +929,6 @@ authRouter.post("/reset-password", async (req, res) => {
   } catch (err) {
     console.error(`[auth] reset-password failed: ${err instanceof Error ? err.message : err}`);
     res.status(500).json({ error: "Could not reset the password. Try requesting a new link." });
-  }
-});
-
-authRouter.get("/verify-email", async (req, res) => {
-  const userId = await consumeVerificationToken("email-verify", req.query.token);
-
-  if (!userId) {
-    res.redirect(`${defaultWebOrigin()}/dashboard?verified=invalid`);
-    return;
-  }
-
-  try {
-    await db
-      .update(usersTable)
-      .set({ emailVerified: true, updatedAt: new Date() })
-      .where(eq(usersTable.id, userId));
-
-    res.redirect(`${defaultWebOrigin()}/dashboard?verified=1`);
-  } catch (err) {
-    console.error(`[auth] verify-email failed: ${err instanceof Error ? err.message : err}`);
-    res.redirect(`${defaultWebOrigin()}/dashboard?verified=error`);
-  }
-});
-
-authRouter.post("/send-verification-email", async (req, res) => {
-  const token = readSessionToken(req);
-  if (!token) {
-    res.status(401).json({ error: "Not signed in" });
-    return;
-  }
-
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, authSecret());
-  } catch {
-    res.status(401).json({ error: "Not signed in" });
-    return;
-  }
-
-  try {
-    if (!decoded?.id || !(await sessionIsActive(decoded.sid))) {
-      res.status(401).json({ error: "Not signed in" });
-      return;
-    }
-
-    const users = await db.select().from(usersTable).where(eq(usersTable.id, decoded.id));
-    const user = users[0];
-    if (!user) {
-      res.status(401).json({ error: "Not signed in" });
-      return;
-    }
-
-    if (user.emailVerified) {
-      res.json({ status: "success", message: "Your address is already confirmed." });
-      return;
-    }
-
-    const raw = await issueVerificationToken("email-verify", user.id, VERIFY_TTL_MS);
-    const link = `${apiBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(raw)}`;
-
-    dispatchMail(emailVerificationMail(user.email, link, VERIFY_TTL_MS / 3_600_000));
-
-    res.json({
-      status: "success",
-      message: "Confirmation email sent.",
-      delivery: isMailConfigured() ? "sent" : "not-configured",
-    });
-  } catch (err) {
-    console.error(
-      `[auth] send-verification-email failed: ${err instanceof Error ? err.message : err}`,
-    );
-    res.status(500).json({ error: "Could not send the confirmation email." });
   }
 });
 

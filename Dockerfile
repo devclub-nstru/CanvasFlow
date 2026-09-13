@@ -23,6 +23,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY apps/menti/package.json apps/menti/package.json
 
 COPY packages/database/package.json packages/database/package.json
 COPY packages/eslint-config/package.json packages/eslint-config/package.json
@@ -41,6 +42,18 @@ RUN pnpm install --frozen-lockfile
 # ============================================================
 
 FROM deps AS build
+
+# NEXT_PUBLIC_* values are inlined into the browser bundle at build time, and
+# .dockerignore keeps .env out of the build context — so without these the web
+# image ships pointing at http://localhost:8000 no matter what the runtime
+# environment says. They are public values by definition; never add a secret.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_MENTI_API_URL
+ARG NEXT_PUBLIC_API_URLS
+
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_MENTI_API_URL=$NEXT_PUBLIC_MENTI_API_URL
+ENV NEXT_PUBLIC_API_URLS=$NEXT_PUBLIC_API_URLS
 
 COPY . .
 
@@ -130,3 +143,55 @@ WORKDIR /app/apps/web
 EXPOSE 3000
 
 CMD ["node", "server.js"]
+
+# ============================================================
+# Menti (live presentations service)
+#
+# Plain ESM JavaScript — nothing to compile, so this copies the source as-is
+# together with the workspace node_modules the deps stage installed. The pnpm
+# symlinks under apps/menti/node_modules point back into /app/node_modules/.pnpm,
+# which is why both trees have to be copied and kept at the same paths.
+# ============================================================
+
+FROM node:24-bookworm-slim AS menti
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/menti ./apps/menti
+
+# cwd matters: storage.service.js resolves its upload directory from
+# process.cwd(), and index.js serves /uploads from the same place.
+WORKDIR /app/apps/menti
+
+EXPOSE 8080
+
+CMD ["node", "index.js"]
+
+
+# ============================================================
+# Menti PowerPoint worker
+#
+# Same code as the menti stage plus the two binaries the import pipeline shells
+# out to: LibreOffice converts .pptx to PDF, poppler's pdftoppm rasterises the
+# pages. The fonts are not optional — without them LibreOffice substitutes and
+# every rendered slide comes out with the wrong metrics.
+# ============================================================
+
+FROM menti AS menti-worker
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libreoffice-impress \
+        poppler-utils \
+        fonts-dejavu \
+        fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/apps/menti
+
+CMD ["node", "src/workers/pptxWorker.js"]

@@ -3,6 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 vi.mock("@repo/logger", () => ({ logger, default: logger }));
 
+/* The relay itself is nodemailer's problem, not this module's. What is worth
+ * asserting is the envelope handed to it and that a refusal comes back as
+ * `false` rather than an exception, so the transport is mocked at the seam. */
+const sendMailSpy = vi.fn().mockResolvedValue({ messageId: "1" });
+/* Typed with its argument so `mock.calls[n][0]` is the transport options the
+ * module built, rather than an empty tuple. */
+const createTransport = vi.fn((_options: unknown) => ({ sendMail: sendMailSpy }));
+vi.mock("nodemailer", () => ({ default: { createTransport } }));
+
 const {
   activeMailTransport,
   emailVerificationMail,
@@ -13,12 +22,32 @@ const {
   signupCodeMail,
 } = await import("@repo/services/mail");
 
+/* The transporter is cached for the life of the process — deliberately, since
+ * a fresh TLS + AUTH handshake per message is what relays throttle. A test
+ * that asserts on how it was *built* therefore needs a module whose cache is
+ * empty, rather than one primed by whichever test ran first. */
+async function freshMail() {
+  vi.resetModules();
+  vi.clearAllMocks();
+  return import("@repo/services/mail");
+}
+
 const snapshot = { ...process.env };
 
 beforeEach(() => {
-  delete process.env.RESEND_API_KEY;
-  delete process.env.MAIL_FROM;
+  for (const key of [
+    "SMTP_URL",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "SMTP_SECURE",
+    "MAIL_FROM",
+  ]) {
+    delete process.env[key];
+  }
   vi.clearAllMocks();
+  sendMailSpy.mockResolvedValue({ messageId: "1" });
 });
 
 afterEach(() => {
@@ -29,20 +58,33 @@ afterEach(() => {
 /* ─── Transport selection ──────────────────────────────────────────────── */
 
 describe("activeMailTransport", () => {
-  it("logs instead of sending when no API key is configured", () => {
+  it("logs instead of sending when no relay is configured", () => {
     expect(activeMailTransport()).toBe("log");
     expect(isMailConfigured()).toBe(false);
   });
 
-  it("treats a blank API key as unconfigured", () => {
-    process.env.RESEND_API_KEY = "   ";
+  it("treats a blank host as unconfigured", () => {
+    process.env.SMTP_HOST = "   ";
     expect(activeMailTransport()).toBe("log");
   });
 
-  it("uses Resend once an API key is present", () => {
-    process.env.RESEND_API_KEY = "re_test_key";
-    expect(activeMailTransport()).toBe("resend");
+  it("uses SMTP once a host is present", () => {
+    process.env.SMTP_HOST = "smtp.example.com";
+    expect(activeMailTransport()).toBe("smtp");
     expect(isMailConfigured()).toBe(true);
+  });
+
+  it("accepts the single-URL form too", () => {
+    process.env.SMTP_URL = "smtps://user:pass@smtp.example.com:465";
+    expect(activeMailTransport()).toBe("smtp");
+  });
+
+  /* A typo'd URL must not look like a working relay, or the failure surfaces
+   * as silently undelivered mail rather than as a configuration error. */
+  it("falls back to the log when SMTP_URL is not a URL at all", () => {
+    process.env.SMTP_URL = "smtp.example.com:587";
+    expect(activeMailTransport()).toBe("log");
+    expect(senderConfigurationProblem()).toContain("not a valid URL");
   });
 });
 
@@ -106,74 +148,93 @@ describe("senderConfigurationProblem", () => {
 describe("sendMail", () => {
   const message = { to: "user@example.com", subject: "s", html: "<p>h</p>", text: "t" };
 
-  it("reports failure and logs the body when no provider is configured", async () => {
+  it("reports failure and logs the body when no relay is configured", async () => {
     await expect(sendMail(message)).resolves.toBe(false);
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("[mail:log]"));
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("user@example.com"));
   });
 
-  it("posts to Resend and reports success", async () => {
-    process.env.RESEND_API_KEY = "re_test_key";
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", fetchMock);
+  it("hands the message to the relay and reports success", async () => {
+    process.env.SMTP_HOST = "smtp.canvasflow.app";
+    process.env.MAIL_FROM = "CanvasFlow <noreply@canvasflow.app>";
 
     await expect(sendMail(message)).resolves.toBe(true);
 
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://api.resend.com/emails");
-    expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer re_test_key");
-
-    const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body.to).toEqual(["user@example.com"]);
-    expect(body.subject).toBe("s");
-    expect(body.from).toBe("CanvasFlow <onboarding@resend.dev>");
+    const envelope = sendMailSpy.mock.calls[0]![0] as Record<string, unknown>;
+    expect(envelope.to).toBe("user@example.com");
+    expect(envelope.subject).toBe("s");
+    expect(envelope.from).toBe("CanvasFlow <noreply@canvasflow.app>");
+    expect(envelope.text).toBe("t");
+    expect(envelope.html).toBe("<p>h</p>");
   });
 
-  it("uses the configured sender when there is one", async () => {
-    process.env.RESEND_API_KEY = "re_test_key";
+  /* There is no vendor sandbox sender to fall back on, so the authenticating
+   * account is the only address the relay is certain to accept. */
+  it("falls back to the SMTP username as sender when MAIL_FROM is unset", async () => {
+    process.env.SMTP_HOST = "smtp.gmail.com";
+    process.env.SMTP_USER = "me@gmail.com";
+
+    await sendMail(message);
+
+    const envelope = sendMailSpy.mock.calls[0]![0] as { from: string };
+    expect(envelope.from).toBe("CanvasFlow <me@gmail.com>");
+  });
+
+  it("reads that fallback out of SMTP_URL credentials as well", async () => {
+    process.env.SMTP_URL = "smtp://me%40gmail.com:app-password@smtp.gmail.com:587";
+
+    await sendMail(message);
+
+    const envelope = sendMailSpy.mock.calls[0]![0] as { from: string };
+    expect(envelope.from).toBe("CanvasFlow <me@gmail.com>");
+  });
+
+  it("derives implicit TLS from port 465 and STARTTLS from 587", async () => {
+    process.env.SMTP_HOST = "smtp.canvasflow.app";
     process.env.MAIL_FROM = "CanvasFlow <noreply@canvasflow.app>";
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", fetchMock);
 
-    await sendMail(message);
-    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string) as {
-      from: string;
-    };
-    expect(body.from).toBe("CanvasFlow <noreply@canvasflow.app>");
+    process.env.SMTP_PORT = "465";
+    await (await freshMail()).sendMail(message);
+    expect((createTransport.mock.calls[0]![0] as { secure: boolean }).secure).toBe(true);
+
+    process.env.SMTP_PORT = "587";
+    await (await freshMail()).sendMail(message);
+    expect((createTransport.mock.calls[0]![0] as { secure: boolean }).secure).toBe(false);
   });
 
-  it("reports failure when the provider rejects the message", async () => {
-    process.env.RESEND_API_KEY = "re_test_key";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        text: () => Promise.resolve("domain not verified"),
-      }),
-    );
+  it("reports failure when the relay rejects the message", async () => {
+    process.env.SMTP_HOST = "smtp.canvasflow.app";
+    process.env.MAIL_FROM = "CanvasFlow <noreply@canvasflow.app>";
+    sendMailSpy.mockRejectedValueOnce(new Error("550 sender not verified"));
 
     await expect(sendMail(message)).resolves.toBe(false);
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("403"));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("550"));
   });
 
-  it("never throws when the provider is unreachable", async () => {
-    process.env.RESEND_API_KEY = "re_test_key";
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
+  /* Auth failures and dropped sockets poison a pooled transporter: every later
+   * send fails the same way until the process restarts. The pool is therefore
+   * rebuilt after a failure, which is what this asserts. */
+  it("recovers on the next send after a failure", async () => {
+    process.env.SMTP_HOST = "smtp.canvasflow.app";
+    process.env.MAIL_FROM = "CanvasFlow <noreply@canvasflow.app>";
+    const mail = await freshMail();
+    sendMailSpy.mockRejectedValueOnce(new Error("EAUTH"));
 
-    await expect(sendMail(message)).resolves.toBe(false);
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("ECONNREFUSED"));
+    await expect(mail.sendMail(message)).resolves.toBe(false);
+    await expect(mail.sendMail(message)).resolves.toBe(true);
+    expect(createTransport).toHaveBeenCalledTimes(2);
   });
 
-  it("gives the request a deadline so a hung provider cannot hold the caller open", async () => {
-    process.env.RESEND_API_KEY = "re_test_key";
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", fetchMock);
+  it("gives the connection a deadline so a hung relay cannot hold the caller open", async () => {
+    process.env.SMTP_HOST = "smtp.canvasflow.app";
+    process.env.MAIL_FROM = "CanvasFlow <noreply@canvasflow.app>";
 
-    await sendMail(message);
-    const init = fetchMock.mock.calls[0]![1] as RequestInit;
-    expect(init.signal).toBeInstanceOf(AbortSignal);
+    await (await freshMail()).sendMail(message);
+
+    const options = createTransport.mock.calls[0]![0] as Record<string, number>;
+    expect(options.connectionTimeout).toBeGreaterThan(0);
+    expect(options.greetingTimeout).toBeGreaterThan(0);
+    expect(options.socketTimeout).toBeGreaterThan(0);
   });
 });
 
