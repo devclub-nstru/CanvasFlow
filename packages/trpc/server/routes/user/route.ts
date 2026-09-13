@@ -22,6 +22,7 @@ const meOutput = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string(),
+  emailVerified: z.boolean(),
   image: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -30,6 +31,7 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
+  emailVerified: boolean;
   image: string | null;
   createdAt: Date;
 };
@@ -38,6 +40,7 @@ const toMe = (user: UserRow) => ({
   id: user.id,
   name: user.name,
   email: user.email,
+  emailVerified: user.emailVerified,
   image: user.image,
   createdAt: user.createdAt.toISOString(),
 });
@@ -64,6 +67,7 @@ export const userRouter = router({
           id: users.id,
           name: users.name,
           email: users.email,
+          emailVerified: users.emailVerified,
           image: users.image,
           createdAt: users.createdAt,
         })
@@ -109,6 +113,7 @@ export const userRouter = router({
         id: users.id,
         name: users.name,
         email: users.email,
+        emailVerified: users.emailVerified,
         image: users.image,
         createdAt: users.createdAt,
       });

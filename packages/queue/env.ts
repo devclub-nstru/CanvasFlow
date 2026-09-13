@@ -5,18 +5,18 @@ const numeric = (fallback: number, min: number, max: number) =>
 
 const envSchema = z.object({
   UPLOAD_WORKER_CONCURRENCY: numeric(8, 1, 200),
-
-  ANALYTICS_WORKER_CONCURRENCY: numeric(4, 1, 64),
-
-  ANALYTICS_BATCH_MS: numeric(250, 0, 5_000),
-
-  ANALYTICS_BATCH_MAX: numeric(500, 1, 5_000),
-
-  ANALYTICS_INSERT_CHUNK: numeric(500, 1, 5_000),
 });
 
+function withoutBlanks(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out = { ...source };
+  for (const [key, value] of Object.entries(out)) {
+    if (typeof value === "string" && value.trim() === "") delete out[key];
+  }
+  return out;
+}
+
 function createEnv(env: NodeJS.ProcessEnv) {
-  const safeParseResult = envSchema.safeParse(env);
+  const safeParseResult = envSchema.safeParse(withoutBlanks(env));
   if (!safeParseResult.success) throw new Error(safeParseResult.error.message);
   return safeParseResult.data;
 }

@@ -16,7 +16,10 @@ import { safeRedirect } from "~/lib/utils";
 const createUserWithEmailAndPasswordInputModel = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(200, "Password must be at most 200 characters"),
 });
 
 type SignUpValues = z.infer<typeof createUserWithEmailAndPasswordInputModel>;
@@ -35,14 +38,16 @@ function SignUpForm() {
       if (apiURL.endsWith("/trpc")) {
         apiURL = apiURL.replace(/\/trpc$/, "");
       }
-      fetch(`${apiURL}/api/auth/signout`, { method: "POST" }).finally(() => {
+      fetch(`${apiURL}/api/auth/signout`, {
+        method: "POST",
+        credentials: "include",
+      }).finally(() => {
         document.cookie =
           "cf_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax";
       });
     }
   }, [switchAccount]);
 
-  /** Set when someone arrived from a sign-in-gated form and had no account. */
   const redirectTo = safeRedirect(searchParams.get("redirect"));
 
   const {
@@ -74,7 +79,7 @@ function SignUpForm() {
   const onSubmit = (data: SignUpValues) =>
     createUserWithEmailAndPassword(data, {
       onSuccess: () => {
-        toast.success("Account created. Welcome to CanvasFlow.");
+        toast.success("Account created.");
         router.push(redirectTo);
       },
       onError: (error) => {
@@ -98,7 +103,7 @@ function SignUpForm() {
           <span style={{ color: "var(--c-blue)" }}>.</span>
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-          Create your account &mdash; it only takes a moment.
+          We&apos;ll email you a code to confirm your address.
         </p>
       </div>
 
@@ -130,7 +135,7 @@ function SignUpForm() {
           register={register("password")}
           error={errors.password?.message}
           autoComplete="new-password"
-          hint="Minimum 8 characters"
+          hint="Minimum 12 characters"
         />
 
         <button
@@ -145,7 +150,7 @@ function SignUpForm() {
             />
           ) : (
             <>
-              Create account
+              Continue
               <ArrowRight size={15} />
             </>
           )}

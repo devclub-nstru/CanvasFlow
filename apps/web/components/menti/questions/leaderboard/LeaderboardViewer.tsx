@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { MentiSlide, MentiLeaderboardSnapshot, MentiLeaderboardParticipant } from "~/lib/menti";
 import { Trophy, Award, TrendingUp } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 
 interface Props {
   slide: MentiSlide;
@@ -42,10 +42,28 @@ function getParticipantColor(participantId?: string, nickname?: string) {
   return AVATAR_COLORS[index];
 }
 
-/** Smoothly counts up from previous score to target score without resetting */
-function AnimatedScoreNumber({ value }: { value: number }) {
-  const [displayed, setDisplayed] = useState(value);
-  const prevRef = useRef(value);
+/**
+ * Counts from the previously displayed score to the target.
+ *
+ * It seeds at 0 rather than at `value`, so the FIRST render animates upward
+ * instead of snapping straight to the final number. That first render is
+ * exactly the moment the presenter lands on the leaderboard slide — the slide
+ * unmounts and remounts on every visit — so this is what makes arriving on the
+ * standings feel like a reveal rather than a static table. Subsequent live
+ * updates still tween from wherever the counter already was.
+ */
+function AnimatedScoreNumber({
+  value,
+  delayMs = 0,
+  animateOnMount = true,
+}: {
+  value: number;
+  delayMs?: number;
+  animateOnMount?: boolean;
+}) {
+  const [displayed, setDisplayed] = useState(animateOnMount ? 0 : value);
+  const prevRef = useRef(animateOnMount ? 0 : value);
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
     const from = prevRef.current;
@@ -57,10 +75,18 @@ function AnimatedScoreNumber({ value }: { value: number }) {
       return;
     }
 
+    /* Only the entrance is staggered; a live score change should land
+     * immediately, not queue behind a rank-ordered delay. */
+    const delay = hasMountedRef.current ? 0 : delayMs;
+    hasMountedRef.current = true;
+
+    let animId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const run = () => {
     const startTime = performance.now();
     const duration = 750; // ms
 
-    let animId: number;
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(1, elapsed / duration);
@@ -73,14 +99,29 @@ function AnimatedScoreNumber({ value }: { value: number }) {
       }
     };
 
-    animId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animId);
-  }, [value]);
+      animId = requestAnimationFrame(animate);
+    };
+
+    if (delay > 0) timeoutId = setTimeout(run, delay);
+    else run();
+
+    return () => {
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(animId);
+    };
+  }, [value, delayMs]);
 
   return <span>{displayed.toLocaleString()}</span>;
 }
 
 export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = false }: Props) {
+  /* A full-screen leaderboard filling in is a lot of motion. Honour the
+   * viewer's OS-level preference and render the final state directly. */
+  const prefersReducedMotion = useReducedMotion();
+
+  /* Rank-ordered stagger, so the standings build from the bottom of the board
+   * up to first place instead of every row landing at once. */
+  const ENTRANCE_STEP_MS = 90;
   // Extract raw participants from props
   const rawParticipants = useMemo<MentiLeaderboardParticipant[]>(() => {
     let rawList: MentiLeaderboardParticipant[] = [];
@@ -195,8 +236,12 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
       ) : (
         <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col justify-center gap-2 sm:gap-2.5 py-2 max-h-[66vh] overflow-y-auto overflow-x-hidden pr-0.5">
           <AnimatePresence mode="popLayout">
-            {displayedParticipants.map((player) => {
+            {displayedParticipants.map((player, index) => {
               const rank = player.rank;
+              /* Last place animates first, #1 last. */
+              const entranceDelayMs = prefersReducedMotion
+                ? 0
+                : (displayedParticipants.length - 1 - index) * ENTRANCE_STEP_MS;
               const isFirst = rank === 1;
               const isSecond = rank === 2;
               const isThird = rank === 3;
@@ -214,7 +259,9 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                   exit={{ opacity: 0, scale: 0.94 }}
                   transition={{
                     layout: { type: "spring", stiffness: 120, damping: 20 },
-                    opacity: { duration: 0.25 },
+                    opacity: { duration: 0.25, delay: entranceDelayMs / 1000 },
+                    y: { duration: 0.3, delay: entranceDelayMs / 1000 },
+                    scale: { duration: 0.3, delay: entranceDelayMs / 1000 },
                   }}
                   className={`w-full relative overflow-hidden rounded-xl border-2 cf-raised flex items-center justify-between px-3 sm:px-4 ${
                     isCompact ? "h-11 sm:h-12" : "h-12 sm:h-14"
@@ -230,7 +277,10 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                 >
                   {/* Dynamic Animated Horizontal Bar Fill with Smooth Spring Physics matching BarGraph */}
                   <motion.div
-                    initial={false}
+                    /* `initial` applies only at mount, so the bar grows from
+                     * zero when the slide is opened while later live updates
+                     * still tween smoothly from their current width. */
+                    initial={prefersReducedMotion ? false : { width: 0 }}
                     animate={{
                       width: `${barFillPercent}%`,
                     }}
@@ -239,6 +289,7 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                       stiffness: 75,
                       damping: 15,
                       mass: 0.85,
+                      delay: entranceDelayMs / 1000,
                     }}
                     className={`absolute inset-y-0 left-0 rounded-l-lg opacity-25 sm:opacity-30 ${
                       isFirst ? "bg-amber-400 opacity-40" : ""
@@ -306,7 +357,11 @@ export function LeaderboardViewer({ slide, analytics, leaderboard, isPreview = f
                         isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"
                       } text-(--cf-ink) tabular-nums`}
                     >
-                      <AnimatedScoreNumber value={player.currentScore} />{" "}
+                      <AnimatedScoreNumber
+                        value={player.currentScore}
+                        delayMs={entranceDelayMs}
+                        animateOnMount={!prefersReducedMotion}
+                      />{" "}
                       <span className="text-[10px] sm:text-xs font-normal text-(--cf-ink-soft)">pts</span>
                     </div>
                   </div>

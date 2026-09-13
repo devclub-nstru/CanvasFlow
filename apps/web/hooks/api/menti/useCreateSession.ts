@@ -14,6 +14,9 @@ export interface MentiSessionResponse {
   };
   participantToken: string;
   participantId: string;
+  /* Presenter-display credential for a screen with no auth cookie. Rotated on
+   * every createSession call, so an older projector link stops working. */
+  displayToken?: string;
 }
 
 export function useCreateSession() {

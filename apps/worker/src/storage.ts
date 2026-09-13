@@ -134,6 +134,19 @@ export const cloudinaryStorage: FileStorage = {
       const source = fs.createReadStream(localPath);
       source.on("error", (err) => {
         stream.destroy();
+
+        /* The temp file is gone — the API container's disk is not this
+         * container's disk, the file was swept, or a retry outlived it.
+         * Retrying cannot bring it back, and the raw ENOENT (which carries a
+         * server path) must never reach the respondent. */
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          return reject(
+            new PermanentStorageError(
+              "The uploaded file is no longer available on the server. Please attach it again.",
+            ),
+          );
+        }
+
         reject(err);
       });
       source.pipe(stream);

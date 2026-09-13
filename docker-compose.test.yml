@@ -1,0 +1,71 @@
+# Throwaway infrastructure for the integration suite.
+#
+# Deliberately separate containers, volumes and ports from docker-compose.yml:
+# the suite truncates every table between test files, so it must never be able
+# to reach a developer's working database. Nothing here is persisted — the
+# volumes are anonymous and `down -v` leaves no trace.
+
+services:
+  postgres-test:
+    image: postgres:15
+    container_name: canvasflow-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: canvasflow_test
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      # Durability is worthless for a database that is truncated constantly,
+      # and turning it off makes the suite noticeably faster.
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+    ports:
+      - "${TEST_POSTGRES_PORT:-5435}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres -d canvasflow_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: canvasflow-redis-test
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "${TEST_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 2s
+
+  mongo-test:
+    image: mongo:7
+    container_name: canvasflow-mongo-test
+    environment:
+      MONGO_INITDB_DATABASE: canvasflow_test
+    ports:
+      - "${TEST_MONGO_PORT:-27018}:27017"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s

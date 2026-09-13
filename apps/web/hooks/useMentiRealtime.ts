@@ -42,6 +42,10 @@ export interface QuizResponseResult {
 export interface UseMentiRealtimeProps {
   sessionId: string;
   token?: string; // Participant token (optional for host)
+  /* Presenter-display credential, returned by POST /api/sessions to the
+   * presenter who started the session. Lets a screen that carries no auth
+   * cookie drive the deck; the session id alone no longer does. */
+  displayToken?: string;
   isHost?: boolean;
   disabled?: boolean;
 }
@@ -49,6 +53,7 @@ export interface UseMentiRealtimeProps {
 export function useMentiRealtime({
   sessionId,
   token,
+  displayToken,
   isHost = false,
   disabled = false,
 }: UseMentiRealtimeProps) {
@@ -114,6 +119,10 @@ export function useMentiRealtime({
     if (isHost || sessionId) {
       options.query.sessionId = sessionId;
       options.auth.sessionId = sessionId;
+    }
+    if (displayToken) {
+      options.query.displayToken = displayToken;
+      options.auth.displayToken = displayToken;
     }
 
     const socketInstance = io(baseUrl, options);
@@ -207,7 +216,7 @@ export function useMentiRealtime({
     return () => {
       socketInstance.disconnect();
     };
-  }, [sessionId, token, isHost, disabled]);
+  }, [sessionId, token, displayToken, isHost, disabled]);
 
   // Host Action: Navigate Slide
   const changeSlide = useCallback(

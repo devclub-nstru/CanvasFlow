@@ -33,7 +33,6 @@ export default function ProfilePage() {
   const { forms } = useListFormsByUserId();
   const { signOutAsync } = useSignOut();
   const { updateMeAsync, isPending: isSaving } = useUpdateMe();
-
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftPreset, setDraftPreset] = useState<AvatarPreset | null>(null);
@@ -213,6 +212,21 @@ export default function ProfilePage() {
               </div>
 
               <dl className="space-y-4 border-t border-(--cf-line) pt-4">
+                <Field label="Email">
+                  {meLoading ? (
+                    <span className="text-(--cf-ink-soft)">—</span>
+                  ) : me?.emailVerified ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Check className="size-3.5" style={{ color: "var(--cf-success, #216f61)" }} />
+                      Confirmed
+                    </span>
+                  ) : (
+                    /* Only reachable for an OAuth account whose provider did
+                     * not assert the address. There is nothing to offer while
+                     * confirmation is switched off, so state it and stop. */
+                    <span style={{ color: "var(--cf-ink-soft)" }}>Not confirmed</span>
+                  )}
+                </Field>
                 <Field label="Days active">
                   <span className="tabular-nums">
                     {daysActive} {daysActive === 1 ? "day" : "days"}

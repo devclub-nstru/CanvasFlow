@@ -219,6 +219,15 @@ export async function requireViewer(formId: string, userId: string): Promise<voi
   }
 }
 
+export function canReadFormBundle(
+  form: { isArchived: boolean; isPublished: boolean },
+  role: FormRole | null,
+): boolean {
+  if (form.isArchived) return false;
+  if (form.isPublished) return true;
+  return role === "owner" || role === "editor";
+}
+
 export function getFormPermissions(role: FormRole | null, isArchived = false): FormPermissions {
   const isOwner = role === "owner";
   const isEditor = role === "editor";
@@ -370,18 +379,23 @@ class FormService {
     });
   }
 
-  // Retrieves public form payload
-  public async getFormById(payload: GetFormInputType) {
+  public async getFormById(payload: GetFormInputType & { viewerId?: string | null }) {
     const { id } = await getFormInput.parseAsync(payload);
+    const viewerId = payload.viewerId ?? null;
 
     const [bundle, submissionsCount] = await Promise.all([
       getFormBundle(id),
       getFormSubmissionsCount(id),
     ]);
 
-    if (!bundle || bundle.form.isArchived) {
-      throw new Error("Form not found");
-    }
+    const notFound = () => new Error("Form not found");
+
+    if (!bundle) throw notFound();
+
+    const needsRole = !bundle.form.isArchived && !bundle.form.isPublished && Boolean(viewerId);
+    const role = needsRole ? await checkFormAccess(id, viewerId as string) : null;
+
+    if (!canReadFormBundle(bundle.form, role)) throw notFound();
 
     return {
       ...bundle.form,

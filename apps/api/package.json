@@ -26,7 +26,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.6.20",
     "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/queue": "workspace:*",
@@ -35,17 +34,14 @@
     "@repo/trpc": "workspace:*",
     "@scalar/express-api-reference": "^0.8.30",
     "@trpc/server": "^11.8.1",
-    "better-auth": "^1.6.20",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.5.2",
     "multer": "2.0.2",
     "pg": "^8.16.3",
-    "rate-limit-redis": "4.2.0",
     "trpc-to-openapi": "^3.1.0",
     "winston": "^3.19.0",
     "zod": "^4.3.5"

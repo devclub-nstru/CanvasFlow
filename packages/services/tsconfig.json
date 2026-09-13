@@ -1,3 +1,6 @@
 {
-  "extends": ["@repo/typescript-config/node.json"]
+  "extends": ["@repo/typescript-config/node.json"],
+  /* Test files are type-checked by the root tsconfig.tests.json, which knows
+   * about the vitest globals and the workspace path aliases. */
+  "exclude": ["node_modules", "tests"]
 }

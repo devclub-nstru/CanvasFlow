@@ -47,14 +47,84 @@ jobs:
       - name: Type check
         run: pnpm check-types
 
+      - name: Test
+        run: pnpm test
+
       - name: Build
         env:
           SKIP_ENV_VALIDATION: "true"
         run: pnpm build
 
+  integration:
+    name: Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: canvasflow_test
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d canvasflow_test"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 20
+
+      mongo:
+        image: mongo:7
+        ports:
+          - 27018:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create CI environment
+        run: cp .env.example .env
+
+      # Postgres migrations are applied by the suite's globalSetup; Mongo needs
+      # no schema step. The service containers above are all it needs.
+      - name: Integration tests
+        run: pnpm test:integration:only
+
   deploy:
     name: Deploy
-    needs: verify
+    needs: [verify, integration]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -97,22 +167,22 @@ jobs:
             docker compose -f docker-compose.prod.yml config -q
 
             echo "==> Starting infrastructure"
-            docker compose -f docker-compose.prod.yml up -d postgres redis
+            docker compose -f docker-compose.prod.yml up -d postgres redis mongo
 
             echo "==> Waiting for infrastructure"
-            docker compose -f docker-compose.prod.yml up -d --wait postgres redis
+            docker compose -f docker-compose.prod.yml up -d --wait postgres redis mongo
 
             echo "==> Building Docker images"
-            docker compose -f docker-compose.prod.yml build api worker web migrate
+            docker compose -f docker-compose.prod.yml build api worker web migrate menti menti-worker
 
             echo "==> Running database migrations"
             docker compose -f docker-compose.prod.yml run --rm migrate
 
             echo "==> Starting application"
-            docker compose -f docker-compose.prod.yml up -d api worker web
+            docker compose -f docker-compose.prod.yml up -d api worker web menti menti-worker
 
             echo "==> Waiting for application health"
-            docker compose -f docker-compose.prod.yml up -d --wait api worker web
+            docker compose -f docker-compose.prod.yml up -d --wait api worker web menti
 
             echo "==> Deployment status"
             docker compose -f docker-compose.prod.yml ps

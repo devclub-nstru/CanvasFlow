@@ -24,4 +24,8 @@ docker-compose*.yml
 coverage
 .turbo
 
+# Locally stored uploads and renders — never part of a build context.
+uploads
+**/uploads
+
 .DS_Store

@@ -59,5 +59,33 @@ services:
       retries: 15
       start_period: 3s
 
+  # MongoDB for the Menti live-presentation service. Menti is document-shaped
+  # (presentations, slides, per-participant responses) and stays on Mongo after
+  # the move into this repo; the rest of the stack remains on Postgres.
+  mongo:
+    image: mongo:7
+    container_name: canvasflow-mongo
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-menti}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-menti}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-menti}
+
+    # 27017 is the standard port; published as-is for local tooling.
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+
+    volumes:
+      - mongo_data:/data/db
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
 volumes:
   pg_data:
+  mongo_data:

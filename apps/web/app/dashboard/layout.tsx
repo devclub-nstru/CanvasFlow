@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { ArrowUpRight, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 
+import { EmailVerificationNotice } from "~/components/auth/EmailVerificationNotice";
 import DashboardNav from "~/components/DashboardNav";
 import Noise from "~/components/Noise";
 import Footer from "~/components/Footer";
@@ -130,6 +131,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {isCreatingForm && <CreatingOverlay />}
         <div className={wrapperClass}>
           <Noise />
+          <Suspense fallback={null}>
+            <EmailVerificationNotice />
+          </Suspense>
           {children}
         </div>
       </DashboardProvider>
@@ -149,6 +153,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     >
       <div className={wrapperClass}>
         <Noise />
+        <Suspense fallback={null}>
+          <EmailVerificationNotice />
+        </Suspense>
         {(isCreatingForm || isCreatingMenti) && <CreatingOverlay />}
 
         <DashboardNav />

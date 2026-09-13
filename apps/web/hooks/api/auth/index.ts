@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+export interface SignUpResult {
+  status: "success";
+  user: { id: string; email: string; name: string };
+}
+
 export const useSignUp = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -8,7 +13,7 @@ export const useSignUp = () => {
 
   const createUserWithEmailAndPassword = async (
     data: any,
-    options?: { onSuccess?: () => void; onError?: (err: Error) => void },
+    options?: { onSuccess?: (result: SignUpResult) => void; onError?: (err: Error) => void },
   ) => {
     setIsPending(true);
     setError(null);
@@ -19,6 +24,10 @@ export const useSignUp = () => {
       }
       const res = await fetch(`${apiURL}/api/auth/signup/email`, {
         method: "POST",
+        /* Signup now issues the session itself, so the response's Set-Cookie
+         * has to be accepted — without this the account is created and the
+         * person lands on the dashboard signed out. */
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -37,7 +46,8 @@ export const useSignUp = () => {
 
       document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      options?.onSuccess?.();
+
+      options?.onSuccess?.(resData as SignUpResult);
     } catch (err: any) {
       setError(err);
       options?.onError?.(err);
@@ -147,7 +157,7 @@ export const useSignOut = () => {
   const [isPending, setIsPending] = useState(false);
   const queryClient = useQueryClient();
 
-  const signOutAsync = async () => {
+  const signOutAsync = async (options?: { allDevices?: boolean }) => {
     setIsPending(true);
     setError(null);
     try {
@@ -155,8 +165,13 @@ export const useSignOut = () => {
       if (apiURL.endsWith("/trpc")) {
         apiURL = apiURL.replace(/\/trpc$/, "");
       }
-      const res = await fetch(`${apiURL}/api/auth/signout`, {
+
+      const path = options?.allDevices ? "/api/auth/signout-all" : "/api/auth/signout";
+
+      const res = await fetch(`${apiURL}${path}`, {
         method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
         throw new Error("Failed to sign out");
@@ -178,4 +193,67 @@ export const useSignOut = () => {
     error,
     isPending,
   };
+};
+
+function apiOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return raw.endsWith("/trpc") ? raw.replace(/\/trpc$/, "") : raw;
+}
+
+export const useForgotPassword = () => {
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const requestReset = async (email: string): Promise<string> => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiOrigin()}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not send the reset link.");
+
+      return data.message ?? "If an account exists for that address, a reset link is on its way.";
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { requestReset, isPending, error };
+};
+
+export const useResetPassword = () => {
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const resetPassword = async (token: string, password: string): Promise<string> => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiOrigin()}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not reset the password.");
+
+      return data.message ?? "Password updated.";
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { resetPassword, isPending, error };
 };

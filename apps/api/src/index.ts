@@ -15,6 +15,8 @@ import { logger } from "@repo/logger";
 import { closeDb } from "@repo/database";
 import { closeRedis } from "@repo/redis";
 import { drainProducers } from "@repo/queue";
+import { assertAuthSecret } from "@repo/trpc/server/auth";
+import { reportMailConfiguration } from "@repo/services/mail";
 
 import { app as expressApplication } from "./server";
 import { env } from "./env";
@@ -154,5 +156,14 @@ function init() {
     process.exit(1);
   }
 }
+
+try {
+  assertAuthSecret();
+} catch (err) {
+  logger.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+}
+
+reportMailConfiguration();
 
 init();

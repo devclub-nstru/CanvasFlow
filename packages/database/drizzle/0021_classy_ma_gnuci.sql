@@ -1,0 +1,24 @@
+-- Finding 23: index the composite that findOrCreateOAuthUser queries first on
+-- every social sign-in. Unique as well as indexed, because the linking code
+-- already relies on one provider account mapping to one local account.
+--
+-- This will fail if duplicate (provider_id, account_id) pairs already exist.
+-- That is deliberate: such rows are a real data bug — two local accounts
+-- claiming the same provider identity — and should be reconciled rather than
+-- indexed around. Check before deploying with:
+--
+--   SELECT provider_id, account_id, count(*)
+--   FROM account GROUP BY 1, 2 HAVING count(*) > 1;
+--
+CREATE UNIQUE INDEX IF NOT EXISTS "account_provider_account_uniq_idx" ON "account" USING btree ("provider_id","account_id");
+
+-- NOTE: drizzle-kit also generated a `DROP TABLE "form_field_views" CASCADE`
+-- here, and it has been removed deliberately.
+--
+-- That table was created in migration 0003 and its model was later deleted
+-- from schema.ts without a migration, so the generator saw it as drift and
+-- proposed dropping it. Nothing in the codebase references it, but silently
+-- destroying a table while adding an index is not a trade this migration is
+-- entitled to make. The snapshot no longer lists it, so the drop will not be
+-- re-proposed; the table simply lingers in existing databases until someone
+-- decides deliberately to remove it.

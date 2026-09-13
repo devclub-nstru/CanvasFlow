@@ -12,6 +12,14 @@ const envSchema = z.object({
     .default(10_000),
 });
 
+function withoutBlanks(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out = { ...source };
+  for (const [key, value] of Object.entries(out)) {
+    if (typeof value === "string" && value.trim() === "") delete out[key];
+  }
+  return out;
+}
+
 function createEnv(env: NodeJS.ProcessEnv) {
   if (env.SKIP_ENV_VALIDATION) {
     return {
@@ -20,7 +28,7 @@ function createEnv(env: NodeJS.ProcessEnv) {
       DB_STATEMENT_TIMEOUT_MS: 10000,
     };
   }
-  const safeParseResult = envSchema.safeParse(env);
+  const safeParseResult = envSchema.safeParse(withoutBlanks(env));
 
   if (!safeParseResult.success) {
     const problems = safeParseResult.error.issues
