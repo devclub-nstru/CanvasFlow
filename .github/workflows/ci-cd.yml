@@ -218,10 +218,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PASSWORD }}
-          source: |
-            docker-compose.prod.yml
-            docker-compose.monitoring.yml
-            monitoring
+          source: "docker-compose.prod.yml,docker-compose.monitoring.yml,monitoring"
           target: /home/${{ secrets.SSH_USER }}/projects/CanvasFlow
           strip_components: 0
           overwrite: true
