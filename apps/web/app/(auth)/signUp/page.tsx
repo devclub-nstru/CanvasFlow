@@ -103,7 +103,7 @@ function SignUpForm() {
           <span style={{ color: "var(--c-blue)" }}>.</span>
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-          We&apos;ll email you a code to confirm your address.
+          You&apos;ll be signed in straight away — no confirmation email to wait for.
         </p>
       </div>
 
@@ -191,10 +191,6 @@ function SignUpForm() {
         style={{ color: "var(--hex-ink-muted)" }}
       >
         By continuing you agree to our{" "}
-        <Link href="/terms" className="underline underline-offset-2 hover:opacity-70">
-          Terms
-        </Link>{" "}
-        and{" "}
         <Link href="/privacy" className="underline underline-offset-2 hover:opacity-70">
           Privacy Policy
         </Link>

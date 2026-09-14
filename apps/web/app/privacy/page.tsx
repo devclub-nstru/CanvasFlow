@@ -2,23 +2,32 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import Footer from "~/components/Footer";
+import { JsonLd } from "~/components/seo/JsonLd";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
+import { absoluteUrl } from "~/lib/seo";
+import { breadcrumbSchema } from "~/lib/structured-data";
 import { HorizontalScale, VerticalScale } from "~/components/Scale";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · CanvasFlow",
+  title: "Privacy Policy",
   description:
     "What CanvasFlow stores, why, how long for, and how to get it back or have it deleted — for account holders and for people answering a form.",
+  alternates: { canonical: absoluteUrl("/privacy") },
+  openGraph: {
+    type: "website",
+    title: "Privacy Policy",
+    url: absoluteUrl("/privacy"),
+  },
 };
 
-const CONTACT_EMAIL: string | null = null;
-const LEGAL_ENTITY: string | null = null;
-const LAST_UPDATED = "31 July 2026";
+const CONTACT_EMAIL: string | null = "softwaredevg.club@rishihood.edu.in";
+const LEGAL_ENTITY: string | null = "DevClub NST";
+const LAST_UPDATED = "14 September 2026";
 
 const SUMMARY = [
   "We store what you create and what people send you. We don't sell it, and we don't use it to advertise to anyone.",
-  "People answering your forms are not tracked with cookies, and we never record their IP address.",
+  "No analytics or advertising scripts run on a public form. Answering one sets nothing beyond what it takes to stop abuse and to stop the same browser submitting twice.",
   "You can export every response to CSV at any time, and deleting a form or an account really deletes the data underneath it.",
 ];
 
@@ -26,7 +35,7 @@ const ACCOUNT_DATA = [
   {
     what: "Identity",
     detail:
-      "Your name, email address, whether that email is verified, and a profile image if your sign-in provider supplies one.",
+      "Your name, email address, whether that address has been confirmed, and a profile image if your sign-in provider supplies one.",
   },
   {
     what: "Sign-in credentials",
@@ -36,16 +45,21 @@ const ACCOUNT_DATA = [
   {
     what: "Sessions",
     detail:
-      "A session token, its expiry, and the IP address and browser user-agent the session was created from. This is how we keep you signed in and how you can tell a stranger's session from your own.",
+      "A session token, its expiry, and the IP address and browser user-agent the session was created from. This is how we keep you signed in and how you can tell a stranger's session from your own. Sessions last seven days.",
   },
   {
     what: "What you build",
     detail:
-      "Your forms: titles, descriptions, questions, options, and settings such as expiry dates and submission caps.",
+      "Your forms: titles, descriptions, questions, options, segments, branching rules, and settings such as the closing date and who is allowed to answer.",
   },
   {
     what: "Collaborators",
     detail: "If you share a form, we record who has access, their role, and who added them.",
+  },
+  {
+    what: "Live presentations",
+    detail:
+      "If you use Menti, your decks and the answers your audience gives are held by a separate presentation service rather than alongside your forms.",
   },
   {
     what: "Support reports",
@@ -62,9 +76,19 @@ const RESPONDENT_DATA = [
       "Everything you type or select, and the time you submitted. These go to the form's owner, who decides what they are for.",
   },
   {
-    what: "Partial answers",
+    what: "Files you attach",
     detail:
-      "Each answer is saved as you move to the next question, so an answer you gave is kept even if you close the form and never submit it. This is what tells an owner which question people give up on.",
+      "If the form asks for a file, its contents, name, type, and size are stored with your response and handed to the owner. A file you pick but never submit is not attached to anyone's response.",
+  },
+  {
+    what: "A saved draft",
+    detail:
+      "On a form that requires signing in, your answers so far and your position in the form are saved against your account as you go, so a closed tab doesn't lose your progress. It is replaced by your submission when you send it.",
+  },
+  {
+    what: "Your account and email",
+    detail:
+      "Only if the owner turned it on. A form can be set to require signing in, to record the respondent's account email with the response, to allow one response per account, or to accept only certain email domains. On a form with none of those switched on, you answer anonymously.",
   },
   {
     what: "A per-form identifier",
@@ -86,10 +110,29 @@ const RESPONDENT_DATA = [
   },
 ];
 
+/** What abuse prevention costs, stated plainly rather than buried. */
+const ABUSE_PREVENTION = [
+  {
+    what: "A rate-limiting cookie",
+    detail:
+      "Requests to our API carry a random cf_visitor_id, set by us and readable only by us. It holds no information about you and is used for one thing: counting requests so a script can't flood the service. It is not written into any response.",
+  },
+  {
+    what: "Your IP address, briefly",
+    detail:
+      "Rate limits are also counted against the address a request came from, because that is the one identifier a script cannot simply change. Those counters live in a short-lived cache keyed on the address and roll over on the minute. Your IP address is never written into a form response and never shown to a form's owner.",
+  },
+  {
+    what: "Duplicate suppression",
+    detail:
+      "A submission carries a one-time key generated by your own browser so that a double-click or a retried request is recorded once rather than twice.",
+  },
+];
+
 /** Deliberate absences. Each of these is a real property of the system. */
 const NOT_COLLECTED = [
-  "No IP address is recorded for people answering a form. IP addresses are only stored for signed-in account sessions.",
-  "No cookies are set on respondents, and no third-party analytics or advertising scripts run on public form pages.",
+  "No IP address is stored with a form response, and no owner is ever shown one. Addresses appear only in your own account sessions and in the short-lived rate-limit counters described above.",
+  "No analytics, advertising, or third-party tracking scripts run on a public form page. The only cookie a respondent meets is our own rate-limiting one.",
   "No cross-form or cross-site identifier. Nothing links a person who answered one form to a person who answered another.",
   "No page-view or visitor tracking. We removed it — the only records that exist are of answers actually given.",
   "We do not sell personal data, share it with data brokers, or use responses to train models.",
@@ -104,7 +147,7 @@ const RETENTION = [
   {
     what: "When you delete a form",
     detail:
-      "Its questions, every submission, every partial answer, and the collaborator list are removed with it. This cascades at the database level, so there is no orphaned copy left behind.",
+      "Its questions, segments, branching rules, every submission, every saved draft, every uploaded file, and the collaborator list are removed with it. This cascades at the database level, so there is no orphaned copy left behind.",
   },
   {
     what: "When you delete your account",
@@ -112,8 +155,14 @@ const RETENTION = [
       "Your forms and everything underneath them are removed, along with your sessions and sign-in credentials. Support reports you sent are kept but detached from your account, so we don't lose the record of a bug while still unlinking it from you.",
   },
   {
-    what: "Sessions",
-    detail: "Expire on their own and are removed after expiry.",
+    what: "Sessions and links",
+    detail:
+      "Sessions expire on their own after seven days and are removed after expiry. A password reset link is valid for one hour and works once.",
+  },
+  {
+    what: "Rate-limit counters",
+    detail:
+      "Held in a cache for the length of the limit window — a minute or so — and then gone. They are never copied into the database.",
   },
 ];
 
@@ -121,7 +170,7 @@ const RIGHTS = [
   {
     what: "Get a copy",
     detail:
-      "Export any form's full response set to CSV from the analytics view, whenever you like, without asking us.",
+      "Export any form's full response set to CSV from its Responses tab, whenever you like, without asking us.",
   },
   {
     what: "Correct or delete",
@@ -351,6 +400,45 @@ export default function PrivacyPage() {
         </div>
       </section>
 
+      {/* ── Abuse prevention ───────────────────────────────────────── */}
+      <section
+        className="relative border-b hex-line-soft py-16 sm:py-20 lg:py-24"
+        style={{ borderBottomWidth: 1 }}
+      >
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <h2 className="max-w-2xl text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:tracking-[-0.035em] lg:text-[40px]">
+            Keeping the service standing
+          </h2>
+          <p
+            className="mt-5 max-w-2xl text-[15px] leading-relaxed"
+            style={{ color: "var(--hex-ink-soft)" }}
+          >
+            A public form is a public endpoint, so some of it has to be defended. Three things are
+            processed for that reason and no other. None of them reaches a form&rsquo;s owner.
+          </p>
+
+          <div className="mt-10 sm:mt-14">
+            {ABUSE_PREVENTION.map((item) => (
+              <div
+                key={item.what}
+                className="flex flex-col gap-1 border-b hex-line-soft py-5 sm:flex-row sm:items-baseline sm:gap-8 sm:py-6"
+                style={{ borderBottomWidth: 1 }}
+              >
+                <div className="text-[16px] font-medium tracking-[-0.01em] sm:w-64 sm:shrink-0">
+                  {item.what}
+                </div>
+                <div
+                  className="text-[14.5px] leading-relaxed"
+                  style={{ color: "var(--hex-ink-soft)" }}
+                >
+                  {item.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── What we don't do ───────────────────────────────────────── */}
       <section
         className="relative border-b hex-line-soft py-16 sm:py-20 lg:py-24"
@@ -446,10 +534,16 @@ export default function PrivacyPage() {
               else.
             </p>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              Beyond that, we rely on a small number of infrastructure providers to run the service
-              — application hosting, a managed database, and email delivery for things like
-              verification links. They process data only to provide that infrastructure, under
-              contract, and never for their own purposes.
+              Beyond that, we rely on a small number of infrastructure providers to run the service:
+              application hosting, a managed database, a cache, a media host that stores the files
+              people attach to a form, and email delivery for things like password reset links. They
+              process data only to provide that infrastructure, under contract, and never for their
+              own purposes.
+            </p>
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+              Menti runs as its own service. If you present with it, the deck and the answers your
+              audience gives are held there rather than alongside your forms, and the two are not
+              joined up.
             </p>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
               We will disclose data if the law genuinely requires it. If we receive such a request
@@ -516,9 +610,11 @@ export default function PrivacyPage() {
                 How it&rsquo;s protected
               </h3>
               <p className="text-[14.5px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-                Traffic is encrypted in transit. Passwords are hashed, never stored readably. Access
-                to a form&rsquo;s responses is checked on every request against ownership or an
-                explicit collaborator role. No system is perfect, and we won&rsquo;t pretend
+                Traffic is encrypted in transit. Passwords are hashed with a slow, salted algorithm
+                and never stored readably. Session tokens are held in cookies your browser
+                won&rsquo;t hand to a script. Access to a form&rsquo;s responses is checked on the
+                server on every request, against ownership or an explicit collaborator role, so a
+                link alone never grants it. No system is perfect, and we won&rsquo;t pretend
                 otherwise — but if we ever discover a breach affecting your data, we will tell you
                 rather than wait to be asked.
               </p>
@@ -548,10 +644,24 @@ export default function PrivacyPage() {
               a change that materially affects your data, we&rsquo;ll do more than move a date —
               we&rsquo;ll tell you.
             </p>
+            {LEGAL_ENTITY && (
+              <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                CanvasFlow is operated by {LEGAL_ENTITY}.
+              </p>
+            )}
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-              {LEGAL_ENTITY
-                ? `CanvasFlow is operated by ${LEGAL_ENTITY}.`
-                : "For anything about your data — a question, a correction, or a deletion request — use the feedback option inside the app, which reaches us directly."}
+              For anything about your data — a question, a correction, or a deletion request —{" "}
+              {CONTACT_EMAIL ? (
+                <>
+                  write to{" "}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className="hex-link">
+                    {CONTACT_EMAIL}
+                  </a>
+                  , or use the feedback option inside the app. Either reaches us directly.
+                </>
+              ) : (
+                "use the feedback option inside the app, which reaches us directly."
+              )}
             </p>
           </div>
 
@@ -571,6 +681,12 @@ export default function PrivacyPage() {
         </div>
       </section>
 
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Privacy", path: "/privacy" },
+        ])}
+      />
       <Footer />
     </div>
   );

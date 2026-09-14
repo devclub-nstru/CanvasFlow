@@ -2,17 +2,26 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import Footer from "~/components/Footer";
+import { JsonLd } from "~/components/seo/JsonLd";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
+import { absoluteUrl } from "~/lib/seo";
+import { breadcrumbSchema } from "~/lib/structured-data";
 import { HorizontalScale, VerticalScale } from "~/components/Scale";
 
 export const metadata: Metadata = {
-  title: "About · CanvasFlow",
+  title: "About",
   description:
     "Why CanvasFlow exists: a structured way to build forms, collect answers, and read what came back.",
+  alternates: { canonical: absoluteUrl("/about") },
+  openGraph: {
+    type: "website",
+    title: "About",
+    url: absoluteUrl("/about"),
+  },
 };
 
-const CONTACT_EMAIL: string | null = null;
+const CONTACT_EMAIL: string | null = "softwaredevg.club@rishihood.edu.in";
 
 const PRINCIPLES = [
   {
@@ -25,26 +34,26 @@ const PRINCIPLES = [
   },
   {
     title: "Ownership by default",
-    desc: "Your responses stay yours. Export the full set to CSV whenever you want, without asking.",
+    desc: "Your responses stay yours. Export the full set to CSV whenever you want, and deleting a form really deletes what sat underneath it.",
   },
 ];
 
 const SYSTEM = [
   {
     step: "Build",
-    desc: "Twelve field types on a canvas or an ordered outline. Set what's required, cap the choices, reorder as you think.",
+    desc: "Thirteen field types on a canvas or an ordered outline. Group them into segments, branch where the answers diverge, set what's required, reorder as you think.",
   },
   {
     step: "Collect",
-    desc: "One question at a time, with a progress bar and inline validation. Share by link or QR.",
+    desc: "One question at a time, one segment per page, or the whole form at once — your call. Inline validation on the way in. Share by link or QR.",
   },
   {
     step: "Read",
-    desc: "Views, responses, completion rate, and the question people gave up on — live, the moment answers land.",
+    desc: "Total responses, completion rate, time spent, and every answer to a question side by side — the moment they land.",
   },
   {
     step: "Act",
-    desc: "Close a form, set an expiry, cap submissions, or take the whole response set to CSV.",
+    desc: "Close a form, give it a closing date, restrict it to your organisation, or take the whole response set to CSV.",
   },
 ];
 
@@ -52,13 +61,16 @@ const AUDIENCES = [
   { who: "Product teams", what: "User research and feedback loops." },
   { who: "Marketing", what: "Lead capture and qualification." },
   { who: "Customer success", what: "Satisfaction ratings and follow-ups." },
+  { who: "Educators", what: "Course check-ins, and live quizzes the whole room answers at once." },
 ];
 
 const DIFFERENCES = [
   "A builder you can read: freeform canvas or ordered outline, same form either way.",
+  "Branching that weighs several answers at once, not just the last one.",
   "Analytics in the product, not bolted on behind an export.",
-  "Access you control — close it, expire it, or cap it.",
+  "Access you control — open to anyone, or locked to your organisation's email domains.",
   "Collaboration with real roles, including handing over ownership.",
+  "Live sessions in the same account, for the questions better asked in a room.",
 ];
 
 export default function AboutPage() {
@@ -201,9 +213,9 @@ export default function AboutPage() {
               className="mt-6 max-w-xl text-[16px] leading-relaxed sm:text-[17px]"
               style={{ color: "var(--hex-ink-soft)" }}
             >
-              Publish a form and it starts reporting on itself. Completion rate, where people
-              dropped off, and every response in a table you can export — no spreadsheets to stitch
-              together first.
+              Publish a form and it starts reporting on itself. Completion rate, how long people
+              spent, every answer to a question in one place, and the full response table ready to
+              export — no spreadsheets to stitch together first.
             </p>
             <Link href="/dashboard/sketches" className="hex-btn-ghost mt-7 sm:mt-8">
               Explore responses →
@@ -303,6 +315,12 @@ export default function AboutPage() {
         </div>
       </section>
 
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about" },
+        ])}
+      />
       <Footer />
     </div>
   );

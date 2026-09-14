@@ -6,7 +6,10 @@ import { NotFoundPanel } from "~/components/NotFoundPanel";
 import { VerticalScale } from "~/components/Scale";
 
 export const metadata: Metadata = {
-  title: "Page not found · CanvasFlow",
+  title: "Page not found",
+  /* A 404 carries no content worth ranking, and indexing one lets a dead URL
+   * compete with a live page for the same query. */
+  robots: { index: false, follow: true },
 };
 
 export default function NotFound() {
