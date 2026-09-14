@@ -207,7 +207,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key: ${{ secrets.SSH_PASSWORD }}
           source: docker-compose.prod.yml
           target: /home/${{ secrets.SSH_USER }}/projects/CanvasFlow
           strip_components: 0
@@ -222,7 +222,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key: ${{ secrets.SSH_PASSWORD }}
           envs: ENV_FILE_CONTENT,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,IMAGE_TAG
           command_timeout: 25m
           script: |
