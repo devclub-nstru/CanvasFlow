@@ -28,6 +28,8 @@ export function FormThankYou({
   customMessage,
   onRespondAgain,
 }: FormThankYouProps) {
+  const rated = siteRating !== null;
+
   const display = (field: SummaryField): string => {
     const value = answers[field.id];
 
@@ -158,7 +160,7 @@ export function FormThankYou({
         style={{ borderColor: "var(--cf-line-strong)", background: "#fff" }}
       >
         <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-(--cf-ink-soft) uppercase">
-          {siteRating ? "Thanks for the rating" : "How was the experience?"}
+          {rated ? "Thanks for rating!" : "How was the experience?"}
         </p>
         <div className="mt-3 flex items-center justify-center gap-1">
           {[1, 2, 3, 4, 5].map((score) => {
@@ -167,11 +169,14 @@ export function FormThankYou({
               <button
                 key={score}
                 type="button"
+                disabled={rated}
                 onClick={() => {
                   setSiteRating(score);
-                  toast.success("Thanks for the feedback");
+                  toast.success("Thanks for rating!");
                 }}
-                className="cursor-pointer p-1 transition-transform hover:scale-125"
+                className={`p-1 transition-transform ${
+                  rated ? "cursor-default" : "cursor-pointer hover:scale-125"
+                }`}
                 aria-label={`Rate ${score} out of 5`}
               >
                 <Star
@@ -183,6 +188,11 @@ export function FormThankYou({
             );
           })}
         </div>
+        {rated && (
+          <p className="cf-animate-card mt-3 text-[13px] leading-relaxed text-(--cf-ink-soft)">
+            You rated us {siteRating} out of 5 — we appreciate the feedback.
+          </p>
+        )}
       </div>
 
       {/* ── CTA ── */}
