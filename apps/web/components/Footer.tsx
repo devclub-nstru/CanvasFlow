@@ -78,7 +78,7 @@ const Footer = () => {
           <div className="flex flex-col gap-3">
             <h3 className="text-xs font-bold uppercase tracking-widest mb-2">Social</h3>
             <a
-              href="https://twitter.com/canvasflow"
+              href="https://canvasflow.devclubxnst.online"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
@@ -86,7 +86,7 @@ const Footer = () => {
               Twitter
             </a>
             <a
-              href="https://github.com/canvasflow"
+              href="https://canvasflow.devclubxnst.online"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
@@ -94,7 +94,7 @@ const Footer = () => {
               GitHub
             </a>
             <a
-              href="https://discord.gg/canvasflow"
+              href="https://canvasflow.devclubxnst.online"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
