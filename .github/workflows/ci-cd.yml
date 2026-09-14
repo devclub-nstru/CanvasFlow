@@ -163,7 +163,7 @@ jobs:
           ENV_FILE_CONTENT: ${{ secrets.ENV }}
         run: |
           printf '%s\n' "$ENV_FILE_CONTENT" > /tmp/prod.env
-          for key in NEXT_PUBLIC_API_URL NEXT_PUBLIC_MENTI_API_URL NEXT_PUBLIC_API_URLS; do
+          for key in NEXT_PUBLIC_API_URL NEXT_PUBLIC_MENTI_API_URL NEXT_PUBLIC_API_URLS NEXT_PUBLIC_SITE_URL; do
             value=$(grep -E "^${key}=" /tmp/prod.env | tail -n1 | cut -d '=' -f2-)
             echo "${key}=${value}" >> "$GITHUB_ENV"
           done
@@ -179,6 +179,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_MENTI_API_URL=${{ env.NEXT_PUBLIC_MENTI_API_URL }}
             NEXT_PUBLIC_API_URLS=${{ env.NEXT_PUBLIC_API_URLS }}
+            NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
           tags: |
             ${{ env.REGISTRY_IMAGE_PREFIX }}-${{ matrix.target }}:latest
             ${{ env.REGISTRY_IMAGE_PREFIX }}-${{ matrix.target }}:${{ github.sha }}
@@ -200,17 +201,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The server only needs docker-compose.prod.yml and .env — no source
-      # checkout, since images are pulled pre-built from Docker Hub.
-      - name: Copy docker-compose.prod.yml to server
+      # The server needs no source checkout — images are pulled pre-built from
+      # Docker Hub. It does need the compose files, and the monitoring stack's
+      # configuration, which is bind-mounted rather than baked into an image:
+      # Prometheus' scrape targets and Grafana's provisioned datasources and
+      # dashboards. Copying them here is what keeps the dashboards in version
+      # control instead of drifting on the box.
+      - name: Copy compose and monitoring config to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PASSWORD }}
-          source: docker-compose.prod.yml
+          source: |
+            docker-compose.prod.yml
+            docker-compose.monitoring.yml
+            monitoring
           target: /home/${{ secrets.SSH_USER }}/projects/CanvasFlow
           strip_components: 0
+          overwrite: true
 
       - name: Deploy to production
         uses: appleboy/ssh-action@v1.2.0
@@ -269,6 +278,44 @@ jobs:
 
             echo "==> Deployment status"
             docker compose -f docker-compose.prod.yml ps
+
+            # Monitoring is deliberately started after the application and in a
+            # subshell that cannot abort the deploy. The product is already
+            # serving traffic by this point, and a Grafana that fails to come
+            # up must not roll anything back or mark the deploy failed.
+            #
+            # Skipped entirely when GRAFANA_ROOT_URL is absent from the ENV
+            # secret, so a host that cannot spare the ~450 MB simply runs
+            # without it — no separate branch, no edited compose file.
+            echo "==> Monitoring"
+            MONITOR_FILES="-f docker-compose.prod.yml -f docker-compose.monitoring.yml"
+            if [ ! -f docker-compose.monitoring.yml ]; then
+              echo "    skipped — docker-compose.monitoring.yml is not on the host"
+            elif ! grep -qE '^GRAFANA_ROOT_URL=.+' .env; then
+              echo "    skipped — GRAFANA_ROOT_URL is not set in the ENV secret"
+            elif ! grep -qE '^POSTGRES_EXPORTER_DSN=.+' .env; then
+              echo "    skipped — POSTGRES_EXPORTER_DSN is not set in the ENV secret"
+            elif (
+              set -e
+              # Both -f flags, every time: the overlay has to join the same
+              # compose project or Prometheus cannot resolve api:9464.
+              docker compose $MONITOR_FILES config -q
+              docker compose $MONITOR_FILES pull prometheus grafana postgres-exporter node-exporter
+              docker compose $MONITOR_FILES up -d prometheus grafana postgres-exporter node-exporter
+            ); then
+              docker compose $MONITOR_FILES ps prometheus grafana postgres-exporter node-exporter
+
+              # Worth surfacing in the deploy log: a target that is down here is
+              # the difference between "the dashboard is broken" and "the thing
+              # it watches is".
+              sleep 10
+              docker compose $MONITOR_FILES exec -T prometheus \
+                wget -qO- 'http://127.0.0.1:9090/api/v1/targets?state=active' 2>/dev/null \
+                | tr ',' '\n' | grep -E '"(job|health)":' | paste - - 2>/dev/null \
+                || echo "    (target list unavailable — Prometheus may still be starting)"
+            else
+              echo "    WARNING: monitoring failed to start. The application is unaffected."
+            fi
 
             echo "==> Removing superseded images"
             if [ -n "$OLD_IMAGE_IDS" ]; then

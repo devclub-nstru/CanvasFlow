@@ -1,0 +1,453 @@
+{
+  "uid": "canvasflow-infrastructure",
+  "title": "CanvasFlow \u00b7 Infrastructure",
+  "description": "CPU and memory per Node service, host resources, and Postgres health.",
+  "tags": ["canvasflow", "infrastructure"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Postgres up",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "pg_up",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "DB connections",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "sum(pg_stat_activity_count)",
+          "legendFormat": ""
+        }
+      ],
+      "description": "Against max_connections=300 in docker-compose.prod.yml. The API's own budget is CLUSTER_WORKERS x DB_POOL_MAX."
+    },
+    {
+      "type": "stat",
+      "title": "Host memory available",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Root disk free",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "node_filesystem_avail_bytes{mountpoint=\"/\"}",
+          "legendFormat": ""
+        }
+      ],
+      "description": "The failure you cannot recover from quickly: Postgres stops accepting writes when this hits zero."
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU by service",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "rate(process_cpu_seconds_total[5m])",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "description": "Seconds of CPU per second. 1.0 is one saturated core."
+    },
+    {
+      "type": "timeseries",
+      "title": "Resident memory by service",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Event-loop lag (p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "nodejs_eventloop_lag_p99_seconds",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "description": "The earliest signal a Node process is in trouble, and the one a container metrics collector cannot see at all. Sustained lag means requests are queueing behind synchronous work."
+    },
+    {
+      "type": "timeseries",
+      "title": "Heap used by service",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "nodejs_heap_size_used_bytes",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres connections by state",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "sum by (state) (pg_stat_activity_count)",
+          "legendFormat": "{{state}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host CPU utilisation",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "busy"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue depth",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "canvasflow_queue_depth",
+          "legendFormat": "{{queue}} \u00b7 {{state}}"
+        }
+      ],
+      "description": "Sampled every METRICS_QUEUE_POLL_MS by the worker. Waiting climbing while active stays flat means the worker is stuck, not busy."
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue job outcomes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "sum by (result) (rate(canvasflow_queue_jobs_total[5m]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "description": "Failures are counted per attempt. BullMQ retries four times, so failed rising against flat completed is a job that will eventually give up."
+    }
+  ]
+}

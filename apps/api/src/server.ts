@@ -11,6 +11,7 @@ import { serverRouter, createContext } from "@repo/trpc/server";
 import { authRouter } from "@repo/trpc/server/auth";
 import { db, sql } from "@repo/database";
 import { isRedisConfigured, redisReady } from "@repo/redis";
+import { metricsMiddleware } from "@repo/observability";
 
 import { env } from "./env";
 import { uploadRouter, uploadErrorHandler } from "./routes/upload";
@@ -75,6 +76,12 @@ app.use(
 );
 
 app.use(cookieParser());
+
+/* Before the rate limiters on purpose. A 429 is a response a user experiences,
+ * and a limiter that has started rejecting traffic is exactly the moment the
+ * graph needs to show it. Health probes are excluded so that Docker's 10s
+ * healthcheck does not dominate the request histogram. */
+app.use(metricsMiddleware(["/health", "/ready"]));
 
 const publicWriteLimiter = leakyBucketRateLimiter({
   bucketName: "public-write",

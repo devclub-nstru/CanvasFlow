@@ -15,6 +15,7 @@ import {
 } from "@repo/database";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
 import { sendMail, passwordResetMail, signupCodeMail, isMailConfigured } from "@repo/services/mail";
+import { recordSignup } from "@repo/observability";
 
 const DEV_ONLY_SECRET = "canvasflow-development-only-insecure-secret";
 const MIN_RECOMMENDED_LENGTH = 32;
@@ -813,6 +814,7 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
       });
 
     dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
+    recordSignup("started");
 
     res.json({
       status: "pending",
@@ -883,6 +885,8 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
         .set({ attempts })
         .where(eq(pendingSignupsTable.id, pending.id));
 
+      recordSignup("rejected");
+
       const remaining = SIGNUP_CODE_MAX_ATTEMPTS - attempts;
       res.status(400).json({
         error:
@@ -936,6 +940,11 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
 
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
+
+    /* Counted here rather than at step one: an account exists only once the
+     * code has been redeemed. The gap between started and verified is the
+     * signal — codes going out and not coming back is an inbox problem. */
+    recordSignup("verified");
 
     res.json({
       status: "success",

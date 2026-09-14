@@ -1,4 +1,5 @@
 import { logger } from "@repo/logger";
+import { recordMailSend } from "@repo/observability";
 
 /* ── Outbound mail ─────────────────────────────────────────────────────────
  *
@@ -35,7 +36,13 @@ export interface MailMessage {
    * mail landing in spam is the failure mode that matters most here. */
   html: string;
   text: string;
+  /* Which template produced this, for the mail metric. A closed set — it is
+   * set by the builders below, never by a caller, so it cannot become an
+   * unbounded label. */
+  template?: MailTemplate;
 }
+
+export type MailTemplate = "password_reset" | "signup_code" | "email_verification" | "unknown";
 
 export type MailTransport = "smtp" | "log";
 
@@ -361,9 +368,21 @@ async function deliverBySmtp(message: MailMessage): Promise<boolean> {
  * which addresses are registered.
  */
 export async function sendMail(message: MailMessage): Promise<boolean> {
-  if (activeMailTransport() === "smtp") return deliverBySmtp(message);
+  const template = message.template ?? "unknown";
+
+  if (activeMailTransport() === "smtp") {
+    const delivered = await deliverBySmtp(message);
+    /* The distinction that matters operationally: `failed` means the relay
+     * rejected it or was unreachable, which is invisible everywhere else —
+     * sendMail deliberately never throws, so callers cannot tell. */
+    recordMailSend(template, delivered ? "sent" : "failed");
+    return delivered;
+  }
 
   deliverByLog(message);
+  /* Not a failure, but not delivery either: no relay is configured and the
+   * body went to the log. In production that means nobody received it. */
+  recordMailSend(template, "logged");
   return false;
 }
 
@@ -414,6 +433,7 @@ function layout(heading: string, body: string, action?: { href: string; label: s
 
 export function passwordResetMail(to: string, link: string, ttlMinutes: number): MailMessage {
   return {
+    template: "password_reset",
     to,
     subject: "Reset your CanvasFlow password",
     html: layout(
@@ -451,6 +471,7 @@ export function passwordResetMail(to: string, link: string, ttlMinutes: number):
  */
 export function signupCodeMail(to: string, code: string, ttlMinutes: number): MailMessage {
   return {
+    template: "signup_code",
     to,
     subject: `${code} is your CanvasFlow confirmation code`,
     html: layout(
@@ -481,6 +502,7 @@ export function signupCodeMail(to: string, code: string, ttlMinutes: number): Ma
 
 export function emailVerificationMail(to: string, link: string, ttlHours: number): MailMessage {
   return {
+    template: "email_verification",
     to,
     subject: "Confirm your CanvasFlow email address",
     html: layout(

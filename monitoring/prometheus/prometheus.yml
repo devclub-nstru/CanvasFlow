@@ -1,0 +1,38 @@
+# Scrape configuration.
+#
+# Every target below is reached over the compose network by service name. None
+# of them publish a port to the host: /metrics is unauthenticated and describes
+# the internals of each service, so nothing here is ever proxied by nginx.
+#
+# 15s matches the queue-depth poll in the worker. Scraping faster would not
+# make that gauge fresher, it would only cost series.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: production
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # The API serves metrics on its own port, not on 8000. When CLUSTER_WORKERS
+  # is greater than 1 this is the primary answering for every fork; a scrape of
+  # the shared application port would reach one worker and undercount.
+  - job_name: api
+    static_configs:
+      - targets: ["api:9464"]
+
+  - job_name: worker
+    static_configs:
+      - targets: ["worker:9465"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]

@@ -35,7 +35,7 @@ async function waitForPostgres(pool: Pool, timeoutMs = 30_000): Promise<void> {
     [
       `The integration suite could not reach Postgres at ${DATABASE_URL}.`,
       "",
-      "  With Docker:      pnpm test:up        (needs Docker Desktop running)",
+      "  With Docker:      pnpm test:infra:up  (needs Docker Desktop running)",
       "  Without Docker:   brew services start postgresql@15 redis",
       "                    createdb canvasflow_test",
       "                    TEST_DATABASE_URL=postgresql://$(whoami)@127.0.0.1:5432/canvasflow_test \\",

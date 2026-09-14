@@ -73,6 +73,16 @@ export function createUploadWorker(processor: Processor<ProcessUploadJob>): Work
   });
 }
 
+/* Queue depth for the metrics gauge.
+ *
+ * Depth is a level rather than an event — there is no "job became waiting"
+ * hook to increment on — so it has to be sampled. Returned raw so the caller
+ * decides the labels. */
+export async function uploadQueueCounts(): Promise<Record<string, number>> {
+  if (!isQueueAvailable()) return {};
+  return uploadsQueue().getJobCounts("waiting", "active", "delayed", "failed", "completed");
+}
+
 export async function drainProducers(): Promise<void> {
   await Promise.allSettled([...queues.values()].map((queue) => queue.close()));
   queues.clear();

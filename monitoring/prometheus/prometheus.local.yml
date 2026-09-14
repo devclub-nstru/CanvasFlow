@@ -1,0 +1,31 @@
+# Local development.
+#
+# The API and worker run on the host under `pnpm dev`, not in compose, so the
+# targets are host.docker.internal rather than service names. That is the only
+# difference from prometheus.yml — keep the two in step when adding a target.
+#
+# 5s instead of 15s: locally you want a graph to move while you are still
+# looking at it. The cost is series churn on a database you throw away.
+
+global:
+  scrape_interval: 5s
+  scrape_timeout: 4s
+  external_labels:
+    environment: local
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: api
+    static_configs:
+      - targets: ["host.docker.internal:9464"]
+
+  - job_name: worker
+    static_configs:
+      - targets: ["host.docker.internal:9465"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]

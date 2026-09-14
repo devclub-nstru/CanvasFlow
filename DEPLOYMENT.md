@@ -125,6 +125,10 @@ would have to be percent-encoded inside `DATABASE_URL` and friends.
 `setup.sh` and the per-workspace `.env` symlinks are a source-tree concern —
 skip them here, there is no source tree on this box.
 
+If you plan to run the monitoring overlay (§10), the deploy workflow also
+copies `docker-compose.monitoring.yml` and the `monitoring/` directory into
+this same directory. Nothing to do by hand.
+
 ## 4. Log in to Docker Hub and start
 
 ```bash
@@ -240,6 +244,36 @@ Four things the app depends on, whatever else you change:
 3. **The WebSocket upgrade headers** on the Menti block.
 4. **`client_max_body_size`** raised on the api and menti blocks.
 
+A fourth block, only if the monitoring overlay is running (see section 10):
+
+```nginx
+server {                      # grafana.example.com  ->  grafana
+    listen 443 ssl http2;
+    server_name grafana.example.com;
+
+    location / {
+        # 3001, not 3000: web already owns 3000 on loopback, so Grafana's
+        # container port 3000 is published one higher.
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Grafana Live streams dashboard updates over a WebSocket, same as
+        # Menti. Without these the dashboards still work but never refresh
+        # themselves.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+Grafana is the only monitoring service that is ever proxied. Prometheus and the
+exporters publish no ports at all — `/metrics` is unauthenticated and describes
+the internals of each service.
+
 Certificates with certbot: `sudo certbot --nginx -d app.example.com -d
 api.example.com -d menti.example.com`. It installs a renewal timer itself.
 
@@ -340,11 +374,17 @@ two stages:
    `<DOCKERHUB_USERNAME>/canvasflow-<target>`, tagged both `:latest` and
    `:<git sha>`. The `web` build's `NEXT_PUBLIC_*` args are read out of the
    `ENV` secret at this point — see the note in §3.
-2. **`deploy`** — SCPs `docker-compose.prod.yml` onto the instance (the
-   instance holds no source checkout), SSHes in, writes `.env` from the `ENV`
-   secret plus `DOCKERHUB_USERNAME`/`IMAGE_TAG`, logs in to Docker Hub, pulls
-   the images tagged with the current commit SHA, runs migrations, restarts
-   the app services, and removes the image IDs that were replaced.
+2. **`deploy`** — SCPs `docker-compose.prod.yml`,
+   `docker-compose.monitoring.yml` and the `monitoring/` directory onto the
+   instance (the instance holds no source checkout), SSHes in, writes `.env`
+   from the `ENV` secret plus `DOCKERHUB_USERNAME`/`IMAGE_TAG`, logs in to
+   Docker Hub, pulls the images tagged with the current commit SHA, runs
+   migrations, restarts the app services, brings the monitoring overlay up if
+   it is configured (§10), and removes the image IDs that were replaced.
+
+   The monitoring step runs last and cannot fail the deploy: the application
+   is already healthy by then, and it is skipped outright when the `ENV`
+   secret carries no `GRAFANA_ROOT_URL`.
 
 nginx is untouched by it, which is one advantage of keeping the proxy on the
 host. Six repository secrets:
@@ -354,7 +394,7 @@ host. Six repository secrets:
 | `SSH_HOST`            | the Elastic IP                                                    |
 | `SSH_USER`            | `ubuntu`                                                          |
 | `SSH_PASSWORD`        | password for that user                                            |
-| `ENV`                 | the entire contents of `.env`                                     |
+| `ENV`                 | the entire contents of `.env` — including the monitoring values from §10, since this file is overwritten from the secret on every deploy |
 | `DOCKERHUB_USERNAME`  | Docker Hub username/org images are pushed to and pulled from      |
 | `DOCKERHUB_TOKEN`     | Docker Hub access token (Account Settings → Security), not the account password |
 
@@ -386,3 +426,109 @@ docker image prune -f
 
 Containers log with `json-file` capped at 10 MB × 3 per service, so logs cannot
 fill the disk. Images can — hence the prune, which the workflow also runs.
+
+
+## 10. Monitoring (optional)
+
+Prometheus, Grafana, `postgres_exporter` and `node_exporter`, as an overlay on
+the production stack. Roughly 450 MB of RAM and under 1 GB of disk at the
+configured 15-day retention.
+
+**The deploy workflow starts it for you.** §8 copies
+`docker-compose.monitoring.yml` and the whole `monitoring/` directory to the
+instance alongside `docker-compose.prod.yml`, then brings the four services up
+after the application is healthy. Dashboards therefore live in version control
+rather than drifting on the box.
+
+It is skipped, with a line in the deploy log saying so, unless both
+`GRAFANA_ROOT_URL` and `POSTGRES_EXPORTER_DSN` are present in the `ENV` secret.
+A host that cannot spare the memory simply runs without it — there is no
+separate branch and no edited compose file. And if the stack fails to start,
+the deploy logs a warning and still succeeds: the application is already
+serving traffic by that point, and Grafana is not worth rolling it back for.
+
+Three things have to be done once, by hand, before the first deploy that
+includes it.
+
+**1. The read-only database role.** Grafana and `postgres_exporter` share it,
+and it must not be able to write:
+
+```bash
+docker compose -f docker-compose.prod.yml exec postgres psql -U postgres -d canvasflow
+```
+
+```sql
+CREATE ROLE grafana_ro LOGIN PASSWORD '<generate one>';
+GRANT CONNECT ON DATABASE canvasflow TO grafana_ro;
+GRANT USAGE ON SCHEMA public TO grafana_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO grafana_ro;
+GRANT pg_monitor TO grafana_ro;
+```
+
+`ALTER DEFAULT PRIVILEGES` is the line people skip. Without it the next
+migration creates a table Grafana cannot read, and a panel quietly empties.
+
+**2. The environment.** These go in the **`ENV` repository secret**, not in the
+`.env` on the instance — §8 overwrites that file from the secret on every
+deploy, so anything edited by hand there disappears at the next push:
+
+```dotenv
+METRICS_ENABLED=true
+METRICS_PORT=
+METRICS_QUEUE_POLL_MS=15000
+
+GRAFANA_ROOT_URL=https://grafana.example.com
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=<generate one>
+
+GRAFANA_DB_HOST=postgres:5432
+GRAFANA_DB_NAME=canvasflow
+GRAFANA_DB_USER=grafana_ro
+GRAFANA_DB_PASSWORD=<the role password>
+
+POSTGRES_EXPORTER_DSN=postgresql://grafana_ro:<the role password>@postgres:5432/canvasflow?sslmode=disable
+```
+
+`METRICS_PORT` is deliberately blank. The API and the worker read the same
+file, so one value here would point both at the same port and the second to
+start could not bind it. Their defaults already differ — 9464 and 9465.
+
+**3. DNS and nginx.** An A record for `grafana.<domain>`, the fourth server
+block from §5, and a certificate:
+
+```bash
+sudo certbot --nginx -d grafana.example.com
+```
+
+Grafana is the only monitoring service that is ever proxied. Prometheus and
+both exporters publish no ports at all: `/metrics` is unauthenticated
+everywhere, and a reachable Prometheus is a full read of the internal topology.
+To look at it, tunnel instead:
+
+```bash
+ssh -L 9090:127.0.0.1:9090 your-host
+```
+
+### Checking it
+
+The deploy log prints the scrape targets after starting the stack. To check by
+hand:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml exec prometheus wget -qO- 'http://127.0.0.1:9090/api/v1/targets?state=active'
+```
+
+All four — api, worker, postgres, node — should read `"health":"up"`. Both `-f`
+flags are required on every monitoring command: the overlay has to join the
+same compose project, or Prometheus cannot resolve `api:9464`.
+
+Three dashboards are provisioned automatically: service health, infrastructure,
+and product. Details and the full metric list are in
+[monitoring/README.md](monitoring/README.md).
+
+The API serves metrics on `METRICS_PORT` (9464) rather than on 8000, and the
+worker on 9465 — neither should be proxied. If `CLUSTER_WORKERS` is greater
+than 1, that port is bound by the cluster primary, which aggregates its forks;
+a scrape of a cluster-shared port would silently report a fraction of every
+counter.

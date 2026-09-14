@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { recordFormSubmission, type SubmissionReason } from "@repo/observability";
+import { ALREADY_RESPONDED_ERROR, ALREADY_SUBMITTED_ERROR } from "@repo/services/form-submission";
 import { authenticatedProcedure, publicProcedure, router } from "../../trpc";
 import { auth } from "../../auth";
 import { generatePath } from "../../utils/path-generator";
@@ -75,6 +77,70 @@ import {
 
 const TAGS = ["Forms"];
 const getPath = generatePath("/forms");
+
+/* Maps a thrown error to one of a fixed set of label values.
+ *
+ * Deliberately not the error message itself: messages embed form names and
+ * ids, and a label with unbounded values is how a metrics backend runs out of
+ * memory. What happens here is the opposite — a handful of *known* messages
+ * are recognised and collapsed into a closed set, and anything unrecognised
+ * becomes "unknown" rather than leaking through.
+ *
+ * The matching is on messages rather than error codes because the submission
+ * service throws plain Errors. tRPC wraps them into a TRPCError with code
+ * INTERNAL_SERVER_ERROR, but only *after* this catch runs — so at this point
+ * there is no code to read, and a classifier written against TRPCError codes
+ * silently labels every single rejection "unknown". The two identity strings
+ * are imported rather than retyped, so renaming one is a type error here
+ * instead of a quietly mislabelled panel.
+ *
+ * Not counted at all: input that fails the Zod model. tRPC rejects that before
+ * the resolver body runs, so it never reaches this function — those show up as
+ * 4xx on the request metrics instead. */
+function submissionFailureReason(err: unknown): SubmissionReason {
+  /* Anything that genuinely is a TRPCError still classifies by code. */
+  const code = (err as { code?: unknown })?.code;
+  if (typeof code === "string") {
+    switch (code) {
+      case "BAD_REQUEST":
+      case "PARSE_ERROR":
+      case "UNPROCESSABLE_CONTENT":
+        return "validation";
+      case "NOT_FOUND":
+        return "not_found";
+      case "FORBIDDEN":
+      case "UNAUTHORIZED":
+        return "forbidden";
+      case "TOO_MANY_REQUESTS":
+        return "rate_limited";
+      case "CONFLICT":
+      case "PRECONDITION_FAILED":
+        return "closed";
+      case "INTERNAL_SERVER_ERROR":
+        break; /* fall through to the message check — see above */
+      default:
+        return "unknown";
+    }
+  }
+
+  const message = err instanceof Error ? err.message : "";
+  if (!message) return "unknown";
+
+  if (message === ALREADY_RESPONDED_ERROR || message === ALREADY_SUBMITTED_ERROR) {
+    return "already_responded";
+  }
+  if (message === "Form not found") return "not_found";
+  if (
+    message === "Form is archived" ||
+    message === "Form is not published yet" ||
+    message === "Form is closed for submissions" ||
+    message === "Form has expired"
+  ) {
+    return "closed";
+  }
+
+  return "unknown";
+}
 
 export const formRouter = router({
   createForm: authenticatedProcedure
@@ -302,7 +368,19 @@ export const formRouter = router({
 
       const respondent = session?.user ? { id: session.user.id, email: session.user.email } : null;
 
-      return formSubmissionService.submitForm({ ...input, respondent });
+      /* A failed submission is a respondent who filled in a form and lost it.
+       * It surfaces to them as an error toast and to us, until now, as
+       * nothing — this is the one failure in the product with no second
+       * chance, since the answers are gone with the page. */
+      try {
+        const result = await formSubmissionService.submitForm({ ...input, respondent });
+        recordFormSubmission("accepted", "ok");
+        return result;
+      } catch (err) {
+        const reason = submissionFailureReason(err);
+        recordFormSubmission(reason === "internal" ? "error" : "rejected", reason);
+        throw err;
+      }
     }),
 
   listCollaborators: authenticatedProcedure

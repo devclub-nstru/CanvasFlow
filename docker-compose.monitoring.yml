@@ -1,0 +1,138 @@
+# Monitoring, as an overlay on docker-compose.prod.yml.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+#
+# Deliberately a separate file rather than more services in the production one:
+#
+#   * monitoring can be restarted, upgraded or removed without touching the
+#     product, and a Grafana that runs out of memory cannot take the API down
+#     with it;
+#   * a deploy that does not pass this file simply has no monitoring, which is
+#     the correct behaviour on a host that cannot spare ~300 MB.
+#
+# Exactly one port is published: Grafana's, on loopback, for nginx to proxy.
+# Prometheus and both exporters stay on the compose network — /metrics is
+# unauthenticated everywhere, and a reachable Prometheus is a full read of the
+# internal topology. Reach it with an SSH tunnel when you need the UI:
+#
+#   ssh -L 9090:127.0.0.1:9090 your-host
+#
+# and then bring the port up temporarily, or use `docker compose exec`.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+
+    # 15 days is the plan's retention; the size cap is the backstop that keeps
+    # a cardinality mistake from filling the disk Postgres is writing to.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+      - --web.enable-lifecycle
+
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      # Without a root URL Grafana builds redirects and share links from the
+      # container's own hostname, and every login bounces to localhost:3000.
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # This is a private dashboard for one team, not a public status page.
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+    # web already owns 3000 on loopback, so Grafana's container port 3000 is
+    # published as 3001. nginx proxies grafana.<domain> here.
+    ports:
+      - "127.0.0.1:3001:3000"
+
+  # Connections, locks, cache-hit ratio, transaction rates. Reads pg_stat_*,
+  # which needs no superuser — see monitoring/README.md for the role.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    restart: unless-stopped
+
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN}
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Host CPU, memory, disk. Mounts are read-only; unlike a container metrics
+  # collector this needs no access to the Docker socket.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+
+    pid: host
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  prometheus_data:
+  grafana_data:

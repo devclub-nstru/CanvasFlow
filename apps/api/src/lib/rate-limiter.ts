@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { createHash, randomUUID } from "node:crypto";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
+import { recordRateLimitFallback, recordRateLimitRejection } from "@repo/observability";
 
 interface RateLimiterOptions {
   bucketName: string;
@@ -215,6 +216,11 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
 
   let warnedAboutFallback = false;
   const noteFallback = (reason: string) => {
+    /* Counted every time, not just the first: the log line is deduplicated to
+     * keep the output readable, but the metric is what tells you the degraded
+     * mode is still happening an hour later. */
+    recordRateLimitFallback(bucketName);
+
     if (warnedAboutFallback) return;
     warnedAboutFallback = true;
     console.warn(
@@ -280,6 +286,8 @@ export function leakyBucketRateLimiter(opts: RateLimiterOptions) {
     if (allowed === 1) return next();
 
     res.setHeader("Retry-After", Math.max(1, Math.ceil(retryAfterMs / 1000)));
+
+    recordRateLimitRejection(bucketName);
 
     const errorMsg = message || {
       error: "Too many requests — slow down and try again shortly.",

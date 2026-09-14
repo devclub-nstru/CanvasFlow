@@ -1,0 +1,22 @@
+apiVersion: 1
+
+providers:
+  - name: canvasflow
+    type: file
+    updateIntervalSeconds: 30
+
+    # Edits in the UI stick until the file behind them changes, so a dashboard
+    # can be adjusted live and then copied back into the repo.
+    allowUiUpdates: true
+
+    # Without this, Grafana deletes every provisioned dashboard the moment it
+    # cannot see the files — and "cannot see" includes a bind mount that has
+    # gone stale, a deploy where the copy step failed, and a host where the
+    # monitoring directory was moved. The dashboards vanish with a 404 and no
+    # error, at exactly the moment something is wrong and you want to look at
+    # them. Keeping the last known good copy is strictly better.
+    disableDeletion: true
+
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -12,7 +12,13 @@ import https from "node:https";
 
 import { logger } from "@repo/logger";
 import { closeRedis, isRedisConfigured } from "@repo/redis";
-import { createUploadWorker, queueEnv } from "@repo/queue";
+import { createUploadWorker, queueEnv, uploadQueueCounts, QUEUE_UPLOADS } from "@repo/queue";
+import {
+  collectProcessMetrics,
+  recordQueueDepth,
+  recordQueueJob,
+  startMetricsServer,
+} from "@repo/observability";
 
 import { env, isCloudinaryConfigured } from "./env";
 import { cloudinaryStorage } from "./storage";
@@ -37,14 +43,40 @@ async function main() {
     );
   }
 
+  collectProcessMetrics("worker");
+  const metrics = startMetricsServer({ port: env.METRICS_PORT, serviceName: "worker" });
+
   const uploadWorker = createUploadWorker(createUploadProcessor(cloudinaryStorage));
 
+  uploadWorker.on("completed", () => {
+    recordQueueJob(QUEUE_UPLOADS, "completed");
+  });
   uploadWorker.on("failed", (job, err) => {
+    /* Counted on every attempt, not only the last. BullMQ retries four times
+     * with exponential backoff, so a rising failure count against a flat
+     * completed count is the shape of a job that will eventually give up —
+     * visible well before it lands in the failed set. */
+    recordQueueJob(QUEUE_UPLOADS, "failed");
     logger.error(`[worker:upload] job ${job?.id ?? "unknown"} failed: ${err.message}`);
   });
   uploadWorker.on("error", (err) => {
     logger.error(`[worker:upload] worker error: ${err.message}`);
   });
+
+  /* Depth has no event to hang off, so it is polled. Failures are swallowed:
+   * Redis being briefly unreachable should stale the gauge, not kill the
+   * worker that is otherwise still draining its queue. */
+  const pollDepth = async () => {
+    try {
+      recordQueueDepth(QUEUE_UPLOADS, await uploadQueueCounts());
+    } catch {
+      /* next tick will retry */
+    }
+  };
+
+  const depthTimer = setInterval(() => void pollDepth(), env.METRICS_QUEUE_POLL_MS);
+  depthTimer.unref();
+  void pollDepth();
 
   logger.info(
     `[worker] listening — uploads x${queueEnv.UPLOAD_WORKER_CONCURRENCY} (${env.NODE_ENV})`,
@@ -64,8 +96,10 @@ async function main() {
     }, 25_000);
     forceExit.unref();
 
+    clearInterval(depthTimer);
+
     try {
-      await Promise.allSettled([uploadWorker.close()]);
+      await Promise.allSettled([uploadWorker.close(), metrics?.close()]);
       await closeRedis();
       logger.info("[worker] stopped cleanly");
       process.exit(0);

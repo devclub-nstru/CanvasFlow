@@ -1,0 +1,35 @@
+# Two datasources, because the questions have two shapes.
+#
+# Prometheus answers rates, latency and errors — things you alert on.
+# Postgres answers "how many people signed up" and "how many were active in the
+# last 30 days" — things you report on. Distinct-users-over-a-window cannot be
+# derived from counters at all, so DAU/WAU/MAU is plain SQL against the
+# application database rather than a metric.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: canvasflow-prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: CanvasFlow Postgres
+    type: postgres
+    uid: canvasflow-postgres
+    access: proxy
+    url: ${GRAFANA_DB_HOST}
+    user: ${GRAFANA_DB_USER}
+    database: ${GRAFANA_DB_NAME}
+    secureJsonData:
+      password: ${GRAFANA_DB_PASSWORD}
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1500
+      # Grafana must never be able to write to the application database. Create
+      # the role read-only; see monitoring/README.md for the grant.
+      timescaledb: false

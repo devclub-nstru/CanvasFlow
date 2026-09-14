@@ -83,6 +83,16 @@ export default defineConfig({
       {
         resolve: { alias: repoAlias },
         test: {
+          name: "observability",
+          root,
+          environment: "node",
+          setupFiles: setup,
+          include: ["packages/observability/tests/**/*.test.ts"],
+        },
+      },
+      {
+        resolve: { alias: repoAlias },
+        test: {
           name: "guards",
           root,
           environment: "node",
@@ -118,6 +128,8 @@ export default defineConfig({
         "apps/web/lib/utils.ts",
         "apps/web/lib/pending-signup.ts",
         "apps/api/src/lib/rate-limiter.ts",
+        "packages/observability/route.ts",
+        "packages/observability/registry.ts",
         "apps/worker/src/processors/upload.ts",
         "apps/menti/src/modules/quiz/quizScorer.js",
         "apps/menti/src/modules/quiz/quizTimerManager.js",

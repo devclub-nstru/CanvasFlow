@@ -1,0 +1,17 @@
+{
+  "name": "@repo/observability",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@repo/logger": "workspace:*",
+    "prom-client": "^15.1.3"
+  }
+}

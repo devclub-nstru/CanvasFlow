@@ -1,3 +1,19 @@
+# Pinned to a single copy across the workspace.
+#
+# better-auth and @scalar/express-api-reference pull a newer zod than the
+# workspace packages declare. Two copies are two distinct sets of types, and
+# @hookform/resolvers — which declares zod only as a devDependency — resolves
+# whichever one lands in pnpm's hoisted directory. That choice is not recorded
+# in the lockfile, so the same commit type-checks locally and fails in a clean
+# container.
+#
+# Declared here as well as in package.json's `pnpm.overrides`: pnpm 9 (what
+# `packageManager` and the Dockerfile use) reads the package.json field, and
+# pnpm 10+ reads this file and ignores that field with a warning. Keeping both
+# means a contributor on either version resolves the same tree.
+overrides:
+  zod: 4.4.3
+
 packages:
   - "apps/*"
   - "packages/*"

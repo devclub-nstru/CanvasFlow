@@ -28,6 +28,7 @@ COPY apps/menti/package.json apps/menti/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/eslint-config/package.json packages/eslint-config/package.json
 COPY packages/logger/package.json packages/logger/package.json
+COPY packages/observability/package.json packages/observability/package.json
 COPY packages/queue/package.json packages/queue/package.json
 COPY packages/redis/package.json packages/redis/package.json
 COPY packages/services/package.json packages/services/package.json
@@ -50,10 +51,15 @@ FROM deps AS build
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_MENTI_API_URL
 ARG NEXT_PUBLIC_API_URLS
+# Every canonical link, OG url, sitemap entry and JSON-LD id is built from this
+# at prerender time. Missing, it falls back to http://localhost:3000 — and the
+# deployed site then tells search engines its canonical home is localhost.
+ARG NEXT_PUBLIC_SITE_URL
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_MENTI_API_URL=$NEXT_PUBLIC_MENTI_API_URL
 ENV NEXT_PUBLIC_API_URLS=$NEXT_PUBLIC_API_URLS
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
 COPY . .
 

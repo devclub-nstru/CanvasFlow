@@ -26,6 +26,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@repo/observability": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/queue": "workspace:*",

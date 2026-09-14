@@ -1,0 +1,350 @@
+{
+  "uid": "canvasflow-product",
+  "title": "CanvasFlow \u00b7 Product",
+  "description": "Users, signups and activity. SQL against the application database \u2014 exact counts, not sampled metrics. Defaults to 30 days because every panel here buckets by day; a shorter window shows \"Data outside time range\" rather than nothing, which is easy to mistake for a broken query.",
+  "tags": ["canvasflow", "product"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total users",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS value FROM users;"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "DAU",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT user_id) AS value FROM sessions WHERE created_at > now() - interval '1 day';"
+        }
+      ],
+      "description": "Distinct users who started a session in the window. Sessions are created at sign-in, so this counts returning visits, not page views."
+    },
+    {
+      "type": "stat",
+      "title": "WAU",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT user_id) AS value FROM sessions WHERE created_at > now() - interval '7 days';"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "MAU",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT user_id) AS value FROM sessions WHERE created_at > now() - interval '30 days';"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Signups per day",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) AS \"signups\" FROM users GROUP BY 1 ORDER BY 1;"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active users per day",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(DISTINCT user_id) AS \"active users\" FROM sessions GROUP BY 1 ORDER BY 1;"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sign-up funnel (started vs verified)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "canvasflow-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "canvasflow-prometheus"
+          },
+          "expr": "sum by (stage) (increase(canvasflow_signups_total[1h]))",
+          "legendFormat": "{{stage}}"
+        }
+      ],
+      "description": "started without a matching verified means codes are going out and not coming back \u2014 an inbox problem, not an app problem. Compare with mail dispatch on the Service health dashboard.\n\nPinned to the last 24h regardless of the dashboard's range: this is the one Prometheus panel here, and Prometheus keeps 15 days while the SQL panels around it happily go back further. Without the pin, widening the dashboard range just adds empty space to the left of this graph.",
+      "timeFrom": "24h"
+    },
+    {
+      "type": "timeseries",
+      "title": "Forms created per day",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) AS \"forms\" FROM forms GROUP BY 1 ORDER BY 1;"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Submissions per day",
+      "datasource": {
+        "type": "postgres",
+        "uid": "canvasflow-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "canvasflow-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) AS \"submissions\" FROM form_submissions GROUP BY 1 ORDER BY 1;"
+        }
+      ]
+    }
+  ]
+}

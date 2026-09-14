@@ -7,6 +7,10 @@ node_modules
 
 # Local env files
 .env
+# Any .env.<something> a backup or a per-environment copy lands at. `.env` alone
+# does not match .env.backup, and a copy of a real .env is a secrets leak.
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local

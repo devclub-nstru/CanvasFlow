@@ -10,6 +10,17 @@ const envSchema = z.object({
   CLOUDINARY_FOLDER: z.string().optional().default("canvasflow"),
 
   UPLOAD_TMP_DIR: z.string().optional(),
+
+  METRICS_ENABLED: z
+    .string()
+    .optional()
+    .default("true")
+    .transform((value) => value.toLowerCase() !== "false"),
+  METRICS_PORT: z.coerce.number().int().min(1).max(65_535).optional().default(9465),
+
+  /* How often queue depth is sampled. Depth is a level, not an event, so it
+   * has to be polled; 15s matches the scrape interval. */
+  METRICS_QUEUE_POLL_MS: z.coerce.number().int().min(1_000).optional().default(15_000),
 });
 
 function withoutBlanks(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {

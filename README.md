@@ -192,21 +192,44 @@ Sign up at `/signUp`, build a form, publish it, share `/forms/<id>`, watch respo
 
 All scripts are turbo-orchestrated and `dotenv -- ...` wrapped so workspaces share the root env.
 
-| Script             | What it does                                        |
-| ------------------ | --------------------------------------------------- |
-| `pnpm dev`         | Start Postgres + Redis, then run every workspace's dev task |
-| `pnpm dev:no-db`   | Same, without touching Docker                       |
-| `pnpm build`       | Build the API, worker, and web app for production   |
-| `pnpm lint`        | ESLint across all workspaces (zero-warning)         |
-| `pnpm check-types` | TypeScript no-emit type-check                       |
-| `pnpm format`      | Prettier across `**/*.{ts,tsx,md}`                  |
-| `pnpm db:up`       | Start the Postgres + Redis containers, wait until healthy |
-| `pnpm db:down`     | Stop them, keeping the data volumes                 |
-| `pnpm db:logs`     | Tail Postgres logs                                  |
-| `pnpm db:psql`     | Open a `psql` shell inside the container            |
-| `pnpm db:reset`    | **Destroys the volume**, recreates, re-migrates     |
-| `pnpm db:generate` | Generate a Drizzle migration from schema changes    |
-| `pnpm db:migrate`  | Apply pending migrations                            |
+| Script                     | What it does                                                  |
+| -------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                 | Start the datastores, then run every workspace's dev task      |
+| `pnpm dev:no-db`           | Same, without touching Docker                                  |
+| `pnpm build`               | Build the API, worker, Menti and web app for production        |
+| `pnpm lint`                | ESLint across all workspaces (zero-warning)                    |
+| `pnpm check-types`         | TypeScript no-emit type-check, including the test configs      |
+| `pnpm format`              | Prettier across `**/*.{ts,tsx,md}` — rewrites files            |
+| `pnpm format:check`        | The same check without writing; for CI or a pre-push hook      |
+| `pnpm test`                | Unit suite. No database, no Docker, ~4s                        |
+| `pnpm test:watch`          | Unit suite in watch mode                                       |
+| `pnpm test:coverage`       | Unit suite with a coverage report                              |
+| `pnpm test:integration`    | Start the throwaway datastores, then run the integration suite |
+| `pnpm test:integration:only` | Integration suite against containers that are already up     |
+| `pnpm test:infra:up`       | Start the throwaway Postgres/Redis/Mongo (ports 5435/6380/27018) |
+| `pnpm test:infra:down`     | Stop them and destroy their volumes                            |
+| `pnpm db:up`               | Start the dev datastores, wait until healthy                   |
+| `pnpm db:down`             | Stop them, keeping the data volumes                            |
+| `pnpm db:reset`            | **Destroys the volumes**, recreates, re-migrates               |
+| `pnpm db:logs`             | Tail all three datastores                                      |
+| `pnpm db:psql`             | Open a `psql` shell, using the user and database from `.env`   |
+| `pnpm db:generate`         | Generate a Drizzle migration from schema changes               |
+| `pnpm db:migrate`          | Apply pending migrations                                       |
+| `pnpm monitor:up`          | Prometheus + Grafana locally — http://localhost:3001           |
+| `pnpm monitor:down`        | Stop them                                                      |
+| `pnpm monitor:logs`        | Tail the monitoring stack                                      |
+| `pnpm monitor:targets`     | Which scrape targets are up, and why the others are not        |
+
+The integration scripts manage a *separate* set of containers from `db:up`, on
+different ports, because the suite truncates every table between test files and
+must never be able to reach a working database. `test:infra:*` was named
+`test:up` / `test:down`, which read as starting and stopping the tests
+themselves rather than the infrastructure they talk to.
+
+`pnpm monitor:targets` is the first thing to check when a dashboard panel is
+empty: an application that is not running reports as `DOWN` there, with the
+connection error, rather than as a blank graph.
+
 
 `db:migrate` and `db:generate` are marked `"cache": false` in `turbo.json`.
 They mutate a database / write files, so a turbo cache hit would report

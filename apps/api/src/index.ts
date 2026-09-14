@@ -17,6 +17,11 @@ import { closeRedis } from "@repo/redis";
 import { drainProducers } from "@repo/queue";
 import { assertAuthSecret } from "@repo/trpc/server/auth";
 import { reportMailConfiguration } from "@repo/services/mail";
+import {
+  collectProcessMetrics,
+  joinClusterMetrics,
+  startMetricsServer,
+} from "@repo/observability";
 
 import { app as expressApplication } from "./server";
 import { env } from "./env";
@@ -42,6 +47,23 @@ function warnOnConnectionBudget() {
 }
 
 function startServer() {
+  /* Per-process CPU, resident memory, heap, GC and event-loop lag. This is
+   * where "CPU / memory" comes from for the Node tier. */
+  collectProcessMetrics("api");
+
+  /* A cluster worker shares PORT with its siblings but not METRICS_PORT, so
+   * only the primary may bind it — otherwise every worker but the first dies
+   * with EADDRINUSE. When clustered, the primary aggregates instead (see
+   * init()); a lone process serves its own registry here.
+   *
+   * The worker's side of that aggregation is joinClusterMetrics: without it
+   * the primary's scrape times out, because nothing answers its IPC request. */
+  joinClusterMetrics();
+
+  const metrics = cluster.isWorker
+    ? null
+    : startMetricsServer({ port: env.METRICS_PORT, serviceName: "api" });
+
   const server = http.createServer(expressApplication);
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
@@ -81,7 +103,7 @@ function startServer() {
     server.close(async () => {
       try {
         await drainProducers();
-        await Promise.allSettled([closeRedis(), closeDb()]);
+        await Promise.allSettled([closeRedis(), closeDb(), metrics?.close()]);
         logger.info("shutdown complete");
         process.exit(0);
       } catch (err) {
@@ -109,6 +131,16 @@ function init() {
       warnOnConnectionBudget();
 
       for (let i = 0; i < workerCount; i += 1) cluster.fork();
+
+      /* Scraping a cluster-shared port would reach one arbitrary worker and
+       * report a fraction of every counter. The primary holds no request
+       * state of its own, so it aggregates the workers' registries over IPC
+       * and answers the scrape for all of them. */
+      startMetricsServer({
+        port: env.METRICS_PORT,
+        serviceName: "api",
+        aggregateCluster: true,
+      });
 
       let primaryShuttingDown = false;
 

@@ -1,0 +1,76 @@
+# Prometheus and Grafana for local development.
+#
+#   docker compose -f docker-compose.monitoring.local.yml up -d
+#   open http://localhost:3001          # admin / admin
+#
+# Standalone, not an overlay: locally the app runs on the host under `pnpm dev`
+# while only the datastores are in compose, so there is no shared network to
+# extend. Prometheus reaches the host processes through host.docker.internal.
+#
+# Nothing is persisted — no named volumes. A local metrics database is
+# disposable by definition, and this way `down` leaves nothing behind.
+#
+# The production stack is a different file (docker-compose.monitoring.yml) and
+# runs as an overlay on docker-compose.prod.yml.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: canvasflow-prometheus-local
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+
+    volumes:
+      - ./monitoring/prometheus/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+
+    # Published locally, unlike production, because reading it is the point of
+    # having it on a laptop.
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    container_name: canvasflow-grafana-local
+
+    env_file:
+      - .env
+
+    environment:
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Straight to the dashboards; there is no reason to log in on a laptop.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+    # web owns 3000 locally too.
+    ports:
+      - "127.0.0.1:3001:3000"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    depends_on:
+      - prometheus
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: canvasflow-postgres-exporter-local
+
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN}
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
