@@ -2,13 +2,16 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { TestServer } from "../helpers/app";
 
 /* Mail has no relay configured in the suite, so every message goes to the log
- * transport. Capturing the logger is how the password-reset tests read the
- * link — and it doubles as proof the message is actually dispatched. */
+ * transport. Capturing the logger is how these tests read the confirmation
+ * code and the reset link — and it doubles as proof the message is actually
+ * dispatched. */
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 vi.mock("@repo/logger", () => ({ logger, default: logger }));
 
 const { eq } = await import("@repo/database");
-const { usersTable, sessionsTable, accountsTable } = await import("@repo/database");
+const { usersTable, sessionsTable, accountsTable, pendingSignupsTable } = await import(
+  "@repo/database"
+);
 const { db, resetDatabase, teardownDatabase } = await import("../helpers/db");
 const { closeRedis, resetRedis } = await import("../helpers/redis");
 const { startAuthServer, post, get, cookieValue } = await import("../helpers/app");
@@ -18,20 +21,49 @@ const { makeUser } = await import("../helpers/factories");
 /* Sign-up through to sign-out, against real rows.
  *
  * The unit suite covers password hashing, the policy, and the redirect
- * validation. What it cannot cover is the sequence: that signing up writes a
- * user and a credential account together, that the session row is what makes a
- * token work, and that deleting that row is what makes it stop.
+ * validation. What it cannot cover is the sequence: that confirming the code
+ * writes a user and a credential account together, that the session row is
+ * what makes a token work, and that deleting that row is what makes it stop.
  *
- * Address confirmation is switched off, so sign-up is one request and every
- * account is created already verified. */
+ * Sign-up is two requests. Step one writes only a `pending_signups` row and
+ * mails a six-digit code; step two exchanges that code for the account and the
+ * session. The split is the reason for most of what follows: almost every
+ * assertion about "after signing up" is really an assertion about after
+ * verifying. */
 
 const EMAIL = "newcomer@example.test";
 const PASSWORD = "correct horse battery staple";
 
 let server: TestServer;
 
-async function signUp(email = EMAIL, password = PASSWORD) {
+/** Step one. Returns the raw HTTP result so failure cases can inspect it. */
+async function startSignUp(email = EMAIL, password = PASSWORD) {
   return post(server, "/api/auth/signup/email", { email, password, name: "Newcomer" });
+}
+
+/** The code from the most recent confirmation mail. */
+function lastSignupCode(): string {
+  const lines = logger.warn.mock.calls.map((call) => String(call[0]));
+  const message = [...lines].reverse().find((line) => line.includes("confirmation code"));
+  const code = message?.match(/\b\d{6}\b/)?.[0];
+  if (!code) throw new Error("no confirmation code was emailed");
+  return code;
+}
+
+/** A code that is definitely not the one that was sent. */
+function wrongCode(actual: string): string {
+  return actual === "000000" ? "111111" : "000000";
+}
+
+async function verify(email: string, code: string) {
+  return post(server, "/api/auth/signup/verify", { email, code });
+}
+
+/** Both steps. The account exists and a session is open when this resolves. */
+async function signUp(email = EMAIL, password = PASSWORD) {
+  const started = await startSignUp(email, password);
+  if (started.status !== 200) return started;
+  return verify(email, lastSignupCode());
 }
 
 beforeAll(async () => {
@@ -50,10 +82,116 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-/* ─── Signing up ───────────────────────────────────────────────────────── */
+/* ─── Step one: asking for a code ──────────────────────────────────────── */
 
 describe("POST /signup/email", () => {
-  it("creates the user, the credential account, and a session in one request", async () => {
+  /* The whole point of the split. A false here means an address someone else
+   * owns can be given an account they never asked for. */
+  it("creates nothing but a pending row", async () => {
+    const result = await startSignUp();
+
+    expect(result.status).toBe(200);
+    expect(result.body.status).toBe("pending");
+    expect(result.body.email).toBe(EMAIL);
+
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+    expect(await db.select().from(accountsTable)).toHaveLength(0);
+    expect(await db.select().from(sessionsTable)).toHaveLength(0);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(1);
+  });
+
+  it("emails a six-digit code", async () => {
+    await startSignUp();
+
+    const logged = logger.warn.mock.calls.map((call) => String(call[0]));
+    const mail = logged.filter((line) => line.includes("[mail:log]"));
+    expect(mail).toHaveLength(1);
+    expect(lastSignupCode()).toMatch(/^\d{6}$/);
+  });
+
+  it("hands out no session until the code is entered", async () => {
+    const result = await startSignUp();
+    expect(cookieValue(result.cookies, "cf_jwt")).toBeNull();
+  });
+
+  /* The plaintext password never has to survive between the two requests. */
+  it("stores the password already hashed on the pending row", async () => {
+    await startSignUp();
+    const [pending] = await db.select().from(pendingSignupsTable);
+
+    expect(pending?.passwordHash).not.toContain(PASSWORD);
+    expect(pending?.passwordHash?.startsWith("scrypt$")).toBe(true);
+  });
+
+  /* Never the code itself — a leaked database read would otherwise be enough
+   * to finish somebody else's sign-up. */
+  it("stores only a hash of the code", async () => {
+    await startSignUp();
+    const [pending] = await db.select().from(pendingSignupsTable);
+
+    expect(pending?.codeHash).not.toBe(lastSignupCode());
+    expect(pending?.codeHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("normalises the address", async () => {
+    await startSignUp("  NEWCOMER@Example.TEST  ");
+    const [pending] = await db.select().from(pendingSignupsTable);
+    expect(pending?.email).toBe(EMAIL);
+  });
+
+  /* Starting over must not be punished: a mistyped code followed by a fresh
+   * attempt would otherwise leave the attempt budget spent. */
+  it("replaces an earlier attempt rather than adding a second", async () => {
+    await startSignUp();
+    const first = lastSignupCode();
+
+    await verify(EMAIL, wrongCode(first));
+    await startSignUp();
+
+    const rows = await db.select().from(pendingSignupsTable);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.attempts).toBe(0);
+
+    const second = lastSignupCode();
+    expect((await verify(EMAIL, second)).status).toBe(200);
+  });
+
+  it("retires the previous code when a new one is sent", async () => {
+    await startSignUp();
+    const first = lastSignupCode();
+    await startSignUp();
+
+    expect((await verify(EMAIL, first)).status).toBe(400);
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+  });
+
+  it("enforces the password policy before writing anything", async () => {
+    const result = await startSignUp(EMAIL, "short");
+
+    expect(result.status).toBe(400);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+  });
+
+  it("rejects an address that is not one", async () => {
+    expect((await startSignUp("not-an-email")).status).toBe(400);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+  });
+
+  it("refuses an address that already has an account", async () => {
+    await makeUser({ email: EMAIL });
+    const result = await startSignUp();
+
+    expect(result.status).toBe(400);
+    expect(result.body.error).toMatch(/already exists/i);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+  });
+});
+
+/* ─── Step two: redeeming the code ─────────────────────────────────────── */
+
+describe("POST /signup/verify", () => {
+  it("creates the user, the credential account, and a session", async () => {
     const result = await signUp();
 
     expect(result.status).toBe(200);
@@ -69,19 +207,12 @@ describe("POST /signup/email", () => {
     expect(await db.select().from(sessionsTable)).toHaveLength(1);
   });
 
-  /* The point of this change: nobody is asked to prove the address. A false
-   * here means new accounts are landing in a state the product no longer has
-   * any way to resolve, since the confirmation endpoints are gone. */
-  it("marks the address confirmed without asking", async () => {
+  /* The address was proven by the code that reached the inbox, so there is
+   * nothing further to confirm. */
+  it("marks the address confirmed", async () => {
     await signUp();
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, EMAIL));
     expect(user?.emailVerified).toBe(true);
-  });
-
-  it("sends no mail at all", async () => {
-    await signUp();
-    const logged = logger.warn.mock.calls.map((call) => String(call[0]));
-    expect(logged.filter((line) => line.includes("[mail:log]"))).toHaveLength(0);
   });
 
   it("returns a session cookie that actually works", async () => {
@@ -109,26 +240,161 @@ describe("POST /signup/email", () => {
     expect(user?.email).toBe(EMAIL);
   });
 
-  it("enforces the password policy before writing anything", async () => {
-    const result = await signUp(EMAIL, "short");
+  it("clears the pending row so the code cannot be redeemed twice", async () => {
+    await startSignUp();
+    const code = lastSignupCode();
 
+    expect((await verify(EMAIL, code)).status).toBe(200);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+
+    const second = await verify(EMAIL, code);
+    expect(second.status).toBe(400);
+    expect(await db.select().from(usersTable)).toHaveLength(1);
+  });
+
+  it("counts a wrong code against the attempt budget", async () => {
+    await startSignUp();
+    const code = lastSignupCode();
+
+    const result = await verify(EMAIL, wrongCode(code));
+    expect(result.status).toBe(400);
+
+    const [pending] = await db.select().from(pendingSignupsTable);
+    expect(pending?.attempts).toBe(1);
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+  });
+
+  /* Six digits is only 1e6 possibilities, so the attempt cap — not the length
+   * — is what makes the short code acceptable. */
+  it("abandons the signup after five wrong codes", async () => {
+    await startSignUp();
+    const code = lastSignupCode();
+    const wrong = wrongCode(code);
+
+    for (let i = 0; i < 5; i += 1) {
+      expect((await verify(EMAIL, wrong)).status).toBe(400);
+    }
+
+    const afterwards = await verify(EMAIL, code);
+    expect(afterwards.status).toBe(429);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+  });
+
+  it("refuses a code that has expired", async () => {
+    await startSignUp();
+    const code = lastSignupCode();
+
+    await db
+      .update(pendingSignupsTable)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(pendingSignupsTable.email, EMAIL));
+
+    const result = await verify(EMAIL, code);
+    expect(result.status).toBe(400);
+    expect(result.body.error).toMatch(/expired/i);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+    expect(await db.select().from(usersTable)).toHaveLength(0);
+  });
+
+  it("rejects a code for an address with nothing pending", async () => {
+    const result = await verify(EMAIL, "123456");
     expect(result.status).toBe(400);
     expect(await db.select().from(usersTable)).toHaveLength(0);
-    expect(await db.select().from(accountsTable)).toHaveLength(0);
   });
 
-  it("rejects an address that is not one", async () => {
-    expect((await signUp("not-an-email")).status).toBe(400);
-    expect(await db.select().from(usersTable)).toHaveLength(0);
+  it("rejects anything that is not six digits", async () => {
+    await startSignUp();
+
+    expect((await verify(EMAIL, "12345")).status).toBe(400);
+    expect((await verify(EMAIL, "")).status).toBe(400);
+
+    /* Malformed input is turned away before the budget is touched, so a
+     * fat-fingered paste cannot burn a try. */
+    const [pending] = await db.select().from(pendingSignupsTable);
+    expect(pending?.attempts).toBe(0);
   });
 
-  it("refuses an address that already has an account", async () => {
+  /* The address can be claimed by a different signup while this one sits
+   * waiting for its code. */
+  it("refuses when the address was claimed in the meantime", async () => {
+    await startSignUp();
+    const code = lastSignupCode();
+
     await makeUser({ email: EMAIL });
-    const result = await signUp();
 
+    const result = await verify(EMAIL, code);
     expect(result.status).toBe(400);
     expect(result.body.error).toMatch(/already exists/i);
-    expect(await db.select().from(usersTable)).toHaveLength(1);
+    expect(await db.select().from(pendingSignupsTable)).toHaveLength(0);
+  });
+});
+
+/* ─── Resending the code ───────────────────────────────────────────────── */
+
+describe("POST /signup/resend", () => {
+  /* The cooldown is wall-clock, so the row is aged rather than the test slept. */
+  async function ageLastSent() {
+    await db
+      .update(pendingSignupsTable)
+      .set({ lastSentAt: new Date(Date.now() - 5 * 60_000) })
+      .where(eq(pendingSignupsTable.email, EMAIL));
+  }
+
+  it("sends a fresh code that works, and retires the old one", async () => {
+    await startSignUp();
+    const first = lastSignupCode();
+    await ageLastSent();
+
+    const result = await post(server, "/api/auth/signup/resend", { email: EMAIL });
+    expect(result.status).toBe(200);
+
+    const second = lastSignupCode();
+    expect(second).not.toBe(first);
+
+    expect((await verify(EMAIL, first)).status).toBe(400);
+    expect((await verify(EMAIL, second)).status).toBe(200);
+  });
+
+  it("restores the attempt budget along with the code", async () => {
+    await startSignUp();
+    const first = lastSignupCode();
+    await verify(EMAIL, wrongCode(first));
+    await ageLastSent();
+
+    await post(server, "/api/auth/signup/resend", { email: EMAIL });
+
+    const [pending] = await db.select().from(pendingSignupsTable);
+    expect(pending?.attempts).toBe(0);
+  });
+
+  /* Otherwise the endpoint is a mailbomb aimed at an inbox the caller does not
+   * own. */
+  it("sends nothing again inside the cooldown", async () => {
+    await startSignUp();
+    const first = lastSignupCode();
+
+    const result = await post(server, "/api/auth/signup/resend", { email: EMAIL });
+    expect(result.status).toBe(200);
+
+    const mail = logger.warn.mock.calls
+      .map((call) => String(call[0]))
+      .filter((line) => line.includes("confirmation code"));
+    expect(mail).toHaveLength(1);
+    expect(lastSignupCode()).toBe(first);
+  });
+
+  it("answers the same way when nothing is pending", async () => {
+    await startSignUp();
+    await ageLastSent();
+
+    const pending = await post(server, "/api/auth/signup/resend", { email: EMAIL });
+    const absent = await post(server, "/api/auth/signup/resend", {
+      email: "nobody@example.test",
+    });
+
+    expect(absent.status, "a signup in progress must not be discoverable").toBe(pending.status);
+    expect(absent.body).toEqual(pending.body);
   });
 });
 
@@ -185,8 +451,8 @@ describe("POST /signin/email", () => {
 
   /* KNOWN BUG — this documents a defect rather than a requirement.
    *
-   * handleSignup stores `normalizeEmail(email)` (trimmed, lowercased), but
-   * handleSignin looks the user up with the raw request body:
+   * handleSignupVerify stores `normalizeEmail(email)` (trimmed, lowercased),
+   * but handleSignin looks the user up with the raw request body:
    *
    *     db.select().from(usersTable).where(eq(usersTable.email, email))
    *
@@ -225,8 +491,8 @@ describe("POST /signin/email", () => {
 
 describe("a session", () => {
   async function registerAndSignIn() {
-    const signedUp = await signUp();
-    return cookieValue(signedUp.cookies, "cf_jwt")!;
+    const verified = await signUp();
+    return cookieValue(verified.cookies, "cf_jwt")!;
   }
 
   it("is readable through get-session while it lives", async () => {
@@ -267,7 +533,7 @@ describe("a session", () => {
   });
 
   it("leaves other devices signed in when one signs out", async () => {
-    const first = cookieValue((await signUp()).cookies, "cf_jwt")!;
+    const first = await registerAndSignIn();
 
     const secondResult = await post(server, "/api/auth/signin/email", {
       email: EMAIL,
@@ -284,7 +550,7 @@ describe("a session", () => {
   });
 
   it("is one of several that signout-all removes together", async () => {
-    const first = cookieValue((await signUp()).cookies, "cf_jwt")!;
+    const first = await registerAndSignIn();
     await post(server, "/api/auth/signin/email", { email: EMAIL, password: PASSWORD });
 
     expect(await db.select().from(sessionsTable)).toHaveLength(2);
@@ -316,6 +582,8 @@ describe("password reset", () => {
     return link;
   }
 
+  /* Cleared afterwards so `lastResetLink` cannot pick up the confirmation mail
+   * that creating the account just sent. */
   async function register() {
     await signUp();
     vi.clearAllMocks();

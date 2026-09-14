@@ -12,7 +12,6 @@ import { authRouter } from "@repo/trpc/server/auth";
 import { db, sql } from "@repo/database";
 import { isRedisConfigured, redisReady } from "@repo/redis";
 
-
 import { env } from "./env";
 import { uploadRouter, uploadErrorHandler } from "./routes/upload";
 import { leakyBucketRateLimiter } from "./lib/rate-limiter";
@@ -91,7 +90,6 @@ const authGlobalLimiter = leakyBucketRateLimiter({
   message: { error: "Request rate exceeded for this session." },
 });
 
-
 const PUBLIC_WRITE_PATHS = [
   "/trpc/form.submitForm",
   "/trpc/feedback.submitFeedback",
@@ -106,6 +104,8 @@ const CREDENTIAL_PATHS = [
   "/api/auth/sign-in/email",
   "/api/auth/signup/email",
   "/api/auth/sign-up/email",
+  "/api/auth/signup/verify",
+  "/api/auth/sign-up/verify",
 ];
 
 const loginIpLimiter = leakyBucketRateLimiter({
@@ -139,11 +139,22 @@ const authRouteLimiter = leakyBucketRateLimiter({
 
 app.use(CREDENTIAL_PATHS, express.json({ limit: "16kb" }), loginIpLimiter, loginAccountLimiter);
 
-/* Password reset is the only endpoint that sends mail now that address
- * confirmation is switched off. Each request costs money and can be aimed at
- * an inbox the caller does not own, which is why it is limited harder than the
- * credential endpoints. */
-const EMAIL_SENDING_PATHS = ["/api/auth/forgot-password"];
+/* Every endpoint that sends mail. Each request costs money and can be aimed at
+ * an inbox the caller does not own, which is why these are limited harder than
+ * the credential endpoints.
+ *
+ * Signup is on this list because it now mails a confirmation code, and resend
+ * exists only to send another one. Verify is deliberately absent — it sends
+ * nothing, and it already caps wrong guesses per pending signup; limiting it
+ * per address here would let one attacker lock a real person out of finishing
+ * their own sign-up. It is still covered by the credential limiter below. */
+const EMAIL_SENDING_PATHS = [
+  "/api/auth/forgot-password",
+  "/api/auth/signup/email",
+  "/api/auth/sign-up/email",
+  "/api/auth/signup/resend",
+  "/api/auth/sign-up/resend",
+];
 
 const emailIpLimiter = leakyBucketRateLimiter({
   bucketName: "auth-email-ip",
@@ -174,12 +185,7 @@ const resetRedeemLimiter = leakyBucketRateLimiter({
   message: { error: "Too many attempts. Wait a minute and try again." },
 });
 
-app.use(
-  EMAIL_SENDING_PATHS,
-  express.json({ limit: "16kb" }),
-  emailIpLimiter,
-  emailAccountLimiter,
-);
+app.use(EMAIL_SENDING_PATHS, express.json({ limit: "16kb" }), emailIpLimiter, emailAccountLimiter);
 app.use("/api/auth/reset-password", express.json({ limit: "16kb" }), resetRedeemLimiter);
 
 app.use("/api/auth", authRouteLimiter);

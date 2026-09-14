@@ -10,10 +10,11 @@ import {
   accountsTable,
   sessionsTable,
   verificationsTable,
+  pendingSignupsTable,
   SelectUser,
 } from "@repo/database";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
-import { sendMail, passwordResetMail, isMailConfigured } from "@repo/services/mail";
+import { sendMail, passwordResetMail, signupCodeMail, isMailConfigured } from "@repo/services/mail";
 
 const DEV_ONLY_SECRET = "canvasflow-development-only-insecure-secret";
 const MIN_RECOMMENDED_LENGTH = 32;
@@ -106,14 +107,9 @@ function scryptHash(password: string, salt: Buffer): Promise<Buffer> {
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.randomBytes(16);
   const key = await scryptHash(password, salt);
-  return [
-    "scrypt",
-    SCRYPT_N,
-    SCRYPT_R,
-    SCRYPT_P,
-    salt.toString("hex"),
-    key.toString("hex"),
-  ].join("$");
+  return ["scrypt", SCRYPT_N, SCRYPT_R, SCRYPT_P, salt.toString("hex"), key.toString("hex")].join(
+    "$",
+  );
 }
 
 function digestsMatch(a: string, b: string): boolean {
@@ -244,8 +240,7 @@ function dummyPasswordHash(): Promise<string> {
 async function burnPasswordVerification(password: string): Promise<void> {
   try {
     await verifyPassword(password, await dummyPasswordHash());
-  } catch {
-  }
+  } catch {}
 }
 
 class UnverifiedOAuthEmailError extends Error {
@@ -274,13 +269,16 @@ async function findOrCreateOAuthUser(info: {
     .where(
       and(
         eq(accountsTable.providerId, info.provider),
-        eq(accountsTable.accountId, info.providerAccountId)
-      )
+        eq(accountsTable.accountId, info.providerAccountId),
+      ),
     );
   const existingAccount = existingAccounts[0];
 
   if (existingAccount) {
-    const users = await db.select().from(usersTable).where(eq(usersTable.id, existingAccount.userId));
+    const users = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, existingAccount.userId));
     if (users[0]) return users[0];
   }
 
@@ -297,15 +295,18 @@ async function findOrCreateOAuthUser(info: {
   if (!user) {
     // Create new user
     const userId = crypto.randomUUID();
-    const insertedUsers = await db.insert(usersTable).values({
-      id: userId,
-      email: info.email,
-      name: info.name || "",
-      image: info.image || null,
-      /* Reflects what the provider actually asserted. It used to be hardcoded
-       * true for every OAuth signup regardless. */
-      emailVerified: info.emailVerified,
-    }).returning();
+    const insertedUsers = await db
+      .insert(usersTable)
+      .values({
+        id: userId,
+        email: info.email,
+        name: info.name || "",
+        image: info.image || null,
+        /* Reflects what the provider actually asserted. It used to be hardcoded
+         * true for every OAuth signup regardless. */
+        emailVerified: info.emailVerified,
+      })
+      .returning();
     user = insertedUsers[0];
   }
 
@@ -333,9 +334,7 @@ function trimTrailingSlash(value: string): string {
 }
 
 function apiBaseUrl(): string {
-  return trimTrailingSlash(
-    process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online",
-  );
+  return trimTrailingSlash(process.env.BASE_URL || "https://api.canvasflow.devclubxnst.online");
 }
 
 let warnedAboutWebOrigin = false;
@@ -359,10 +358,7 @@ function defaultWebOrigin(): string {
 }
 
 function allowedRedirectOrigins(): Set<string> {
-  const candidates = [
-    process.env.WEB_URL,
-    ...(process.env.TRUSTED_ORIGINS || "").split(","),
-  ];
+  const candidates = [process.env.WEB_URL, ...(process.env.TRUSTED_ORIGINS || "").split(",")];
 
   const origins = new Set<string>();
 
@@ -470,7 +466,6 @@ function consumeOAuthFlow(
 function oauthFailureRedirect(reason: string): string {
   return `${defaultWebOrigin()}/signIn?error=${encodeURIComponent(reason)}`;
 }
-
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -644,8 +639,7 @@ function normalizeEmail(email: string): string {
 }
 
 function dispatchMail(message: Parameters<typeof sendMail>[0]): void {
-  void sendMail(message).catch(() => {
-  });
+  void sendMail(message).catch(() => {});
 }
 
 export const authRouter = Router();
@@ -699,13 +693,41 @@ const getSessionCookieOptions = () => {
   };
 };
 
-/* Signup — one step: the account is created and signed in immediately.
+/* Signup — two steps, because the address has to be proven before an account
+ * exists for it.
  *
- * Address confirmation is deliberately switched off for now, so every account
- * is created with emailVerified already true rather than being asked to prove
- * the address first. The column, the pending_signups table and the code and
- * confirmation mail templates are all still here, unused, because turning this
- * back on should be a change to this handler and nothing else. */
+ * Step one stores the details in `pending_signups` and mails a code. No row in
+ * `users` is written, so an address someone else owns never gains an account
+ * they did not ask for, and a half-finished signup leaves nothing to clean up
+ * beyond a row that expires on its own.
+ *
+ * Step two (`/signup/verify`) checks the code, creates the user and credential
+ * account, and issues the session. */
+
+const SIGNUP_CODE_TTL_MS = 15 * 60 * 1000;
+/* Six digits is 1e6 possibilities. That is only safe because a pending signup
+ * is abandoned after a handful of wrong guesses and expires in 15 minutes —
+ * the attempt cap is what makes the short code acceptable, not its length. */
+const SIGNUP_CODE_MAX_ATTEMPTS = 5;
+const SIGNUP_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function generateSignupCode(): string {
+  /* randomInt is rejection-sampled, so every code is equally likely; a plain
+   * modulo of random bytes would bias the low digits. */
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function hashSignupCode(code: string): string {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+function normalizeSignupCode(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "");
+  return digits.length === 6 ? digits : null;
+}
+
+/* Step one. */
 const handleSignup = async (req: express.Request, res: express.Response) => {
   const { email, password, name, fullName } = req.body;
   const userName = name || fullName;
@@ -728,6 +750,23 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
     return;
   }
 
+  /* Without a way to send the code there is no way to finish signing up, and
+   * silently creating an unverifiable pending row would strand the person on a
+   * screen asking for a code that will never arrive.
+   *
+   * Only in production, though. With no SMTP host configured the mail service
+   * falls back to its log transport and prints the message — code included —
+   * to the API console, which is exactly how this flow is meant to be exercised
+   * locally. Refusing here too would make the feature untestable without a
+   * relay. */
+  if (!isMailConfigured() && process.env.NODE_ENV === "production") {
+    console.error("[auth] signup blocked: mail transport is not configured");
+    res.status(503).json({
+      error: "Sign-ups are temporarily unavailable. Please try again later.",
+    });
+    return;
+  }
+
   try {
     const existingUsers = await db
       .select({ id: usersTable.id })
@@ -740,13 +779,141 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    const hashedPassword = await hashPassword(password);
+    const code = generateSignupCode();
+    const now = new Date();
+    const passwordHash = await hashPassword(password);
+
+    /* One pending signup per address. Starting again replaces the previous
+     * attempt outright, which also resets the attempt counter — otherwise a
+     * mistyped code could lock someone out of their own address until the row
+     * expired. */
+    await db
+      .insert(pendingSignupsTable)
+      .values({
+        id: crypto.randomUUID(),
+        email: normalizedEmail,
+        name: userName || "",
+        passwordHash,
+        codeHash: hashSignupCode(code),
+        attempts: 0,
+        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+        lastSentAt: now,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: pendingSignupsTable.email,
+        set: {
+          name: userName || "",
+          passwordHash,
+          codeHash: hashSignupCode(code),
+          attempts: 0,
+          expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+          lastSentAt: now,
+        },
+      });
+
+    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
+
+    res.json({
+      status: "pending",
+      email: normalizedEmail,
+      expiresInMinutes: SIGNUP_CODE_TTL_MS / 60_000,
+    });
+  } catch (err: any) {
+    console.error(`[auth] signup failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Failed to start the sign-up" });
+  }
+};
+
+/* Step two — the code is checked and the account is created here. */
+const handleSignupVerify = async (req: express.Request, res: express.Response) => {
+  const rawEmail = req.body?.email;
+  const code = normalizeSignupCode(req.body?.code);
+
+  if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  if (!code) {
+    res.status(400).json({ error: "Enter the 6-digit code from your email" });
+    return;
+  }
+
+  const normalizedEmail = normalizeEmail(rawEmail);
+
+  try {
+    const rows = await db
+      .select()
+      .from(pendingSignupsTable)
+      .where(eq(pendingSignupsTable.email, normalizedEmail))
+      .limit(1);
+
+    const pending = rows[0];
+
+    /* One message for "no pending signup" and "expired". Distinguishing them
+     * would tell an unauthenticated caller whether an address is mid-signup. */
+    if (!pending || pending.expiresAt.getTime() <= Date.now()) {
+      if (pending) {
+        await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      }
+      res.status(400).json({
+        error: "That code has expired or was already used. Start the sign-up again.",
+      });
+      return;
+    }
+
+    if (pending.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) {
+      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      res.status(429).json({
+        error: "Too many incorrect codes. Start the sign-up again.",
+      });
+      return;
+    }
+
+    const supplied = hashSignupCode(code);
+    const expected = pending.codeHash;
+    const matches =
+      supplied.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+
+    if (!matches) {
+      const attempts = pending.attempts + 1;
+      await db
+        .update(pendingSignupsTable)
+        .set({ attempts })
+        .where(eq(pendingSignupsTable.id, pending.id));
+
+      const remaining = SIGNUP_CODE_MAX_ATTEMPTS - attempts;
+      res.status(400).json({
+        error:
+          remaining > 0
+            ? `That code is not right. ${remaining} ${remaining === 1 ? "try" : "tries"} left.`
+            : "Too many incorrect codes. Start the sign-up again.",
+      });
+      return;
+    }
+
+    /* The address could have been claimed by another signup while this one sat
+     * waiting for its code. */
+    const claimed = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
+    if (claimed.length > 0) {
+      await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+      res.status(400).json({ error: "User already exists" });
+      return;
+    }
+
     const userId = crypto.randomUUID();
 
     await db.insert(usersTable).values({
       id: userId,
       email: normalizedEmail,
-      name: userName || "",
+      name: pending.name || "",
+      /* Proven by the code that reached this inbox. */
       emailVerified: true,
     });
 
@@ -755,11 +922,15 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
       userId,
       accountId: normalizedEmail,
       providerId: "credential",
-      password: hashedPassword,
+      /* Hashed at step one and carried across unchanged — the plaintext
+       * password never had to be held anywhere between the two requests. */
+      password: pending.passwordHash,
     });
 
+    await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
+
     const { token } = await issueSession(
-      { id: userId, email: normalizedEmail, name: userName || "" },
+      { id: userId, email: normalizedEmail, name: pending.name || "" },
       req,
     );
 
@@ -768,16 +939,81 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
 
     res.json({
       status: "success",
-      user: { id: userId, email: normalizedEmail, name: userName || "" },
+      user: { id: userId, email: normalizedEmail, name: pending.name || "" },
     });
   } catch (err: any) {
-    console.error(`[auth] signup failed: ${err instanceof Error ? err.message : err}`);
-    res.status(500).json({ error: "Failed to create the account" });
+    console.error(`[auth] signup verify failed: ${err instanceof Error ? err.message : err}`);
+    res.status(500).json({ error: "Failed to confirm the code" });
+  }
+};
+
+/* Resend — a new code for a signup already in progress. */
+const handleSignupResend = async (req: express.Request, res: express.Response) => {
+  const rawEmail = req.body?.email;
+
+  if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  const normalizedEmail = normalizeEmail(rawEmail);
+
+  /* Same answer whether or not a pending signup exists, so this cannot be used
+   * to probe which addresses are mid-signup. */
+  const acknowledge = () =>
+    res.json({
+      status: "success",
+      message: "If that sign-up is still open, a new code is on its way.",
+    });
+
+  try {
+    const rows = await db
+      .select()
+      .from(pendingSignupsTable)
+      .where(eq(pendingSignupsTable.email, normalizedEmail))
+      .limit(1);
+
+    const pending = rows[0];
+    if (!pending || pending.expiresAt.getTime() <= Date.now()) return acknowledge();
+
+    /* Cheap guard against using someone else's inbox as a mailbomb target.
+     * The per-address rate limiter in the API bounds this further. */
+    if (Date.now() - pending.lastSentAt.getTime() < SIGNUP_RESEND_COOLDOWN_MS) {
+      return acknowledge();
+    }
+
+    const code = generateSignupCode();
+    const now = new Date();
+
+    await db
+      .update(pendingSignupsTable)
+      .set({
+        codeHash: hashSignupCode(code),
+        /* A fresh code restarts the clock and the attempt budget; the old code
+         * stops working the moment this one is written. */
+        attempts: 0,
+        expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+        lastSentAt: now,
+      })
+      .where(eq(pendingSignupsTable.id, pending.id));
+
+    dispatchMail(signupCodeMail(normalizedEmail, code, SIGNUP_CODE_TTL_MS / 60_000));
+
+    return acknowledge();
+  } catch (err) {
+    console.error(`[auth] signup resend failed: ${err instanceof Error ? err.message : err}`);
+    return acknowledge();
   }
 };
 
 authRouter.post("/signup/email", handleSignup);
 authRouter.post("/sign-up/email", handleSignup);
+
+authRouter.post("/signup/verify", handleSignupVerify);
+authRouter.post("/sign-up/verify", handleSignupVerify);
+
+authRouter.post("/signup/resend", handleSignupResend);
+authRouter.post("/sign-up/resend", handleSignupResend);
 
 // Signin
 const handleSignin = async (req: express.Request, res: express.Response) => {
@@ -797,12 +1033,10 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
       return;
     }
 
-    const accounts = await db.select().from(accountsTable).where(
-      and(
-        eq(accountsTable.userId, user.id),
-        eq(accountsTable.providerId, "credential")
-      )
-    );
+    const accounts = await db
+      .select()
+      .from(accountsTable)
+      .where(and(eq(accountsTable.userId, user.id), eq(accountsTable.providerId, "credential")));
     const account = accounts[0];
     if (!account || !account.password) {
       await burnPasswordVerification(password);
@@ -830,10 +1064,7 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
       }
     }
 
-    const { token } = await issueSession(
-      { id: user.id, email: user.email, name: user.name },
-      req,
-    );
+    const { token } = await issueSession({ id: user.id, email: user.email, name: user.name }, req);
 
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
@@ -867,9 +1098,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     const accounts = await db
       .select({ id: accountsTable.id })
       .from(accountsTable)
-      .where(
-        and(eq(accountsTable.userId, user.id), eq(accountsTable.providerId, "credential")),
-      );
+      .where(and(eq(accountsTable.userId, user.id), eq(accountsTable.providerId, "credential")));
 
     if (!accounts[0]) return acknowledge();
 
@@ -908,9 +1137,7 @@ authRouter.post("/reset-password", async (req, res) => {
     const accounts = await db
       .select({ id: accountsTable.id })
       .from(accountsTable)
-      .where(
-        and(eq(accountsTable.userId, userId), eq(accountsTable.providerId, "credential")),
-      );
+      .where(and(eq(accountsTable.userId, userId), eq(accountsTable.providerId, "credential")));
 
     const account = accounts[0];
     if (!account) {
@@ -1031,21 +1258,25 @@ const handleSocialLogin = (provider: "google" | "github") => {
     const state = beginOAuthFlow(res, req.query.redirect ?? req.query.callbackURL);
 
     if (provider === "google") {
-      const googleUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        redirect_uri: callbackUrl,
-        response_type: "code",
-        scope: "openid email profile",
-        state,
-      }).toString();
+      const googleUrl =
+        "https://accounts.google.com/o/oauth2/v2/auth?" +
+        new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID!,
+          redirect_uri: callbackUrl,
+          response_type: "code",
+          scope: "openid email profile",
+          state,
+        }).toString();
       res.redirect(googleUrl);
     } else {
-      const githubUrl = "https://github.com/login/oauth/authorize?" + new URLSearchParams({
-        client_id: process.env.GITHUB_CLIENT_ID!,
-        redirect_uri: callbackUrl,
-        scope: "user:email",
-        state,
-      }).toString();
+      const githubUrl =
+        "https://github.com/login/oauth/authorize?" +
+        new URLSearchParams({
+          client_id: process.env.GITHUB_CLIENT_ID!,
+          redirect_uri: callbackUrl,
+          scope: "user:email",
+          state,
+        }).toString();
       res.redirect(githubUrl);
     }
   };
@@ -1063,20 +1294,23 @@ authRouter.get("/login/social", (req, res) => {
 
     const state = beginOAuthFlow(res, req.query.callbackURL ?? req.query.redirect);
 
-    const redirectUrl = provider === "google"
-      ? "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
-          client_id: process.env.GOOGLE_CLIENT_ID!,
-          redirect_uri: callbackUrl,
-          response_type: "code",
-          scope: "openid email profile",
-          state,
-        }).toString()
-      : "https://github.com/login/oauth/authorize?" + new URLSearchParams({
-          client_id: process.env.GITHUB_CLIENT_ID!,
-          redirect_uri: callbackUrl,
-          scope: "user:email",
-          state,
-        }).toString();
+    const redirectUrl =
+      provider === "google"
+        ? "https://accounts.google.com/o/oauth2/v2/auth?" +
+          new URLSearchParams({
+            client_id: process.env.GOOGLE_CLIENT_ID!,
+            redirect_uri: callbackUrl,
+            response_type: "code",
+            scope: "openid email profile",
+            state,
+          }).toString()
+        : "https://github.com/login/oauth/authorize?" +
+          new URLSearchParams({
+            client_id: process.env.GITHUB_CLIENT_ID!,
+            redirect_uri: callbackUrl,
+            scope: "user:email",
+            state,
+          }).toString();
     res.redirect(redirectUrl);
   } else {
     res.status(400).send("Unsupported provider");
@@ -1117,7 +1351,7 @@ authRouter.get("/callback/google", async (req, res) => {
       return;
     }
 
-    const { access_token } = await tokenRes.json() as any;
+    const { access_token } = (await tokenRes.json()) as any;
     const userRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
@@ -1127,7 +1361,7 @@ authRouter.get("/callback/google", async (req, res) => {
       return;
     }
 
-    const googleUser = await userRes.json() as any;
+    const googleUser = (await userRes.json()) as any;
 
     if (!googleUser.email) {
       res.redirect(oauthFailureRedirect("oauth_email_missing"));
@@ -1143,10 +1377,7 @@ authRouter.get("/callback/google", async (req, res) => {
       emailVerified: googleUser.email_verified === true,
     });
 
-    const { token } = await issueSession(
-      { id: user.id, email: user.email, name: user.name },
-      req,
-    );
+    const { token } = await issueSession({ id: user.id, email: user.email, name: user.name }, req);
 
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
@@ -1184,7 +1415,7 @@ authRouter.get("/callback/github", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        Accept: "application/json",
       },
       body: JSON.stringify({
         client_id: process.env.GITHUB_CLIENT_ID!,
@@ -1199,11 +1430,11 @@ authRouter.get("/callback/github", async (req, res) => {
       return;
     }
 
-    const { access_token } = await tokenRes.json() as any;
+    const { access_token } = (await tokenRes.json()) as any;
     const userRes = await fetch("https://api.github.com/user", {
       headers: {
         Authorization: `Bearer ${access_token}`,
-        "User-Agent": "CanvasFlow-API"
+        "User-Agent": "CanvasFlow-API",
       },
     });
 
@@ -1212,7 +1443,7 @@ authRouter.get("/callback/github", async (req, res) => {
       return;
     }
 
-    const githubUser = await userRes.json() as any;
+    const githubUser = (await userRes.json()) as any;
 
     let email: string | undefined;
     let emailVerified = false;
@@ -1220,17 +1451,16 @@ authRouter.get("/callback/github", async (req, res) => {
     const emailsRes = await fetch("https://api.github.com/user/emails", {
       headers: {
         Authorization: `Bearer ${access_token}`,
-        "User-Agent": "CanvasFlow-API"
+        "User-Agent": "CanvasFlow-API",
       },
     });
 
     if (emailsRes.ok) {
-      const emails = await emailsRes.json() as any[];
+      const emails = (await emailsRes.json()) as any[];
 
       /* Prefer the verified primary, then any verified address. */
       const verified =
-        emails.find((e: any) => e.primary && e.verified) ??
-        emails.find((e: any) => e.verified);
+        emails.find((e: any) => e.primary && e.verified) ?? emails.find((e: any) => e.verified);
 
       if (verified) {
         email = verified.email;
@@ -1260,10 +1490,7 @@ authRouter.get("/callback/github", async (req, res) => {
       emailVerified,
     });
 
-    const { token } = await issueSession(
-      { id: user.id, email: user.email, name: user.name },
-      req,
-    );
+    const { token } = await issueSession({ id: user.id, email: user.email, name: user.name }, req);
 
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
@@ -1318,8 +1545,8 @@ export const auth = {
       } catch (err) {
         return null;
       }
-    }
-  }
+    },
+  },
 };
 
 export type Auth = typeof auth;
