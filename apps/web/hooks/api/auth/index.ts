@@ -1,19 +1,35 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+/* Step one no longer creates the account, so it cannot return a user. It
+ * reports that a code is on its way and the caller moves to the code screen. */
+export interface SignUpPendingResult {
+  status: "pending";
+  email: string;
+  expiresInMinutes: number;
+}
+
 export interface SignUpResult {
   status: "success";
   user: { id: string; email: string; name: string };
 }
 
+/** Strips a trailing /trpc so the auth routes resolve from either form. */
+function authBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return raw.endsWith("/trpc") ? raw.replace(/\/trpc$/, "") : raw;
+}
+
 export const useSignUp = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isPending, setIsPending] = useState(false);
-  const queryClient = useQueryClient();
 
   const createUserWithEmailAndPassword = async (
     data: any,
-    options?: { onSuccess?: (result: SignUpResult) => void; onError?: (err: Error) => void },
+    options?: {
+      onSuccess?: (result: SignUpPendingResult) => void;
+      onError?: (err: Error) => void;
+    },
   ) => {
     setIsPending(true);
     setError(null);
@@ -24,13 +40,10 @@ export const useSignUp = () => {
       }
       const res = await fetch(`${apiURL}/api/auth/signup/email`, {
         method: "POST",
-        /* Signup now issues the session itself, so the response's Set-Cookie
-         * has to be accepted — without this the account is created and the
-         * person lands on the dashboard signed out. */
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           email: data.email,
@@ -44,10 +57,9 @@ export const useSignUp = () => {
         throw new Error(resData.error || "Failed to sign up");
       }
 
-      document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
-      await queryClient.invalidateQueries({ queryKey: ["session"] });
-
-      options?.onSuccess?.(resData as SignUpResult);
+      /* No cookie and no session invalidation here: the account does not exist
+       * until the code is confirmed. That happens in useVerifySignup. */
+      options?.onSuccess?.(resData as SignUpPendingResult);
     } catch (err: any) {
       setError(err);
       options?.onError?.(err);
@@ -61,6 +73,81 @@ export const useSignUp = () => {
     error,
     isPending,
   };
+};
+
+/**
+ * Step two — exchange the emailed code for an account and a session.
+ *
+ * This is where the session cookie appears, so it is also where the cached
+ * session query has to be invalidated.
+ */
+export const useVerifySignup = () => {
+  const [error, setError] = useState<Error | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const queryClient = useQueryClient();
+
+  const verifySignup = async (
+    data: { email: string; code: string },
+    options?: { onSuccess?: (result: SignUpResult) => void; onError?: (err: Error) => void },
+  ) => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`${authBaseUrl()}/api/auth/signup/verify`, {
+        method: "POST",
+        /* The account is created and signed in by this request, so its
+         * Set-Cookie has to be accepted. */
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to confirm the code");
+
+      document.cookie = `cf_session=1; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
+
+      options?.onSuccess?.(resData as SignUpResult);
+    } catch (err: any) {
+      setError(err);
+      options?.onError?.(err);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { verifySignup, error, isPending };
+};
+
+/** Ask for a fresh code when the first one did not arrive. */
+export const useResendSignupCode = () => {
+  const [isPending, setIsPending] = useState(false);
+
+  const resendSignupCode = async (
+    email: string,
+    options?: { onSuccess?: () => void; onError?: (err: Error) => void },
+  ) => {
+    setIsPending(true);
+    try {
+      const res = await fetch(`${authBaseUrl()}/api/auth/signup/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "Failed to send a new code");
+
+      options?.onSuccess?.();
+    } catch (err: any) {
+      options?.onError?.(err);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { resendSignupCode, isPending };
 };
 
 export const useSignIn = () => {
@@ -83,7 +170,7 @@ export const useSignIn = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           email: data.email,
@@ -124,7 +211,7 @@ export const useGetLoggedInUserInfo = () => {
       }
       const res = await fetch(`${apiURL}/api/auth/get-session`, {
         headers: {
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         credentials: "include",
       });
