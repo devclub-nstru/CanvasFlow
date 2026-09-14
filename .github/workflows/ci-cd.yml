@@ -122,9 +122,72 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration:only
 
+  build-and-push:
+    name: Build & Push images
+    needs: [verify, integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      REGISTRY_IMAGE_PREFIX: ${{ secrets.DOCKERHUB_USERNAME }}/canvasflow
+
+    strategy:
+      matrix:
+        target:
+          - api
+          - worker
+          - web
+          - migrate
+          - menti
+          - menti-worker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # NEXT_PUBLIC_* values are inlined into the web bundle at build time, so
+      # the production URLs must come from the ENV secret, not from .env.example.
+      - name: Extract build-time web args from production env
+        if: matrix.target == 'web'
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV }}
+        run: |
+          printf '%s\n' "$ENV_FILE_CONTENT" > /tmp/prod.env
+          for key in NEXT_PUBLIC_API_URL NEXT_PUBLIC_MENTI_API_URL NEXT_PUBLIC_API_URLS; do
+            value=$(grep -E "^${key}=" /tmp/prod.env | tail -n1 | cut -d '=' -f2-)
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done
+          rm -f /tmp/prod.env
+
+      - name: Build and push ${{ matrix.target }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_MENTI_API_URL=${{ env.NEXT_PUBLIC_MENTI_API_URL }}
+            NEXT_PUBLIC_API_URLS=${{ env.NEXT_PUBLIC_API_URLS }}
+          tags: |
+            ${{ env.REGISTRY_IMAGE_PREFIX }}-${{ matrix.target }}:latest
+            ${{ env.REGISTRY_IMAGE_PREFIX }}-${{ matrix.target }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE_PREFIX }}-${{ matrix.target }}:latest
+          cache-to: type=inline
+
   deploy:
     name: Deploy
-    needs: [verify, integration]
+    needs: [build-and-push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -134,46 +197,66 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The server only needs docker-compose.prod.yml and .env — no source
+      # checkout, since images are pulled pre-built from Docker Hub.
+      - name: Copy docker-compose.prod.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PASSWORD }}
+          source: docker-compose.prod.yml
+          target: /home/${{ secrets.SSH_USER }}/projects/CanvasFlow
+          strip_components: 0
+
       - name: Deploy to production
         uses: appleboy/ssh-action@v1.2.0
         env:
           ENV_FILE_CONTENT: ${{ secrets.ENV }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          IMAGE_TAG: ${{ github.sha }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          envs: ENV_FILE_CONTENT
+          key: ${{ secrets.SSH_PASSWORD }}
+          envs: ENV_FILE_CONTENT,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,IMAGE_TAG
           command_timeout: 25m
           script: |
             set -euo pipefail
 
             DEPLOY_DIR="$HOME/projects/CanvasFlow"
-
+            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
-
-            echo "==> Updating source"
-            git fetch origin main
-            git reset --hard origin/main
 
             echo "==> Updating environment"
             umask 077
             printf '%s\n' "$ENV_FILE_CONTENT" > .env
-
-            echo "==> Running setup"
-            chmod +x setup.sh
-            ./setup.sh
+            {
+              echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}"
+              echo "IMAGE_TAG=${IMAGE_TAG}"
+            } >> .env
 
             echo "==> Validating Compose configuration"
             docker compose -f docker-compose.prod.yml config -q
+
+            echo "==> Logging in to Docker Hub"
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+            echo "==> Recording currently running images"
+            OLD_IMAGE_IDS=$(docker compose -f docker-compose.prod.yml images -q 2>/dev/null | sort -u || true)
+
+            echo "==> Pulling new images"
+            docker compose -f docker-compose.prod.yml pull api worker web migrate menti menti-worker
 
             echo "==> Starting infrastructure"
             docker compose -f docker-compose.prod.yml up -d postgres redis mongo
 
             echo "==> Waiting for infrastructure"
             docker compose -f docker-compose.prod.yml up -d --wait postgres redis mongo
-
-            echo "==> Building Docker images"
-            docker compose -f docker-compose.prod.yml build api worker web migrate menti menti-worker
 
             echo "==> Running database migrations"
             docker compose -f docker-compose.prod.yml run --rm migrate
@@ -187,7 +270,17 @@ jobs:
             echo "==> Deployment status"
             docker compose -f docker-compose.prod.yml ps
 
-            echo "==> Cleaning unused images"
+            echo "==> Removing superseded images"
+            if [ -n "$OLD_IMAGE_IDS" ]; then
+              NEW_IMAGE_IDS=$(docker compose -f docker-compose.prod.yml images -q 2>/dev/null | sort -u || true)
+              for id in $OLD_IMAGE_IDS; do
+                if ! grep -qx "$id" <<< "$NEW_IMAGE_IDS"; then
+                  docker image rm -f "$id" 2>/dev/null || true
+                fi
+              done
+            fi
+
+            echo "==> Cleaning dangling images"
             docker image prune -f
 
             echo "==> Deployment complete"

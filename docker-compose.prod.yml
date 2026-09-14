@@ -85,6 +85,7 @@ services:
       start_period: 15s
 
   migrate:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-migrate:${IMAGE_TAG:-latest}
     build:
       context: .
       target: migrate
@@ -97,6 +98,7 @@ services:
         condition: service_healthy
 
   api:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-api:${IMAGE_TAG:-latest}
     build:
       context: .
       target: api
@@ -152,6 +154,7 @@ services:
       start_period: 15s
 
   worker:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-worker:${IMAGE_TAG:-latest}
     build:
       context: .
       target: worker
@@ -182,6 +185,7 @@ services:
         condition: service_healthy
 
   web:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-web:${IMAGE_TAG:-latest}
     build:
       context: .
       target: web
@@ -230,6 +234,7 @@ services:
   # ── Menti (live presentations) ────────────────────────────────────────────
 
   menti:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-menti:${IMAGE_TAG:-latest}
     build:
       context: .
       target: menti
@@ -278,6 +283,7 @@ services:
       start_period: 20s
 
   menti-worker:
+    image: ${DOCKERHUB_USERNAME:-}/canvasflow-menti-worker:${IMAGE_TAG:-latest}
     build:
       context: .
       target: menti-worker

@@ -61,13 +61,19 @@ sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapf
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-## 3. Clone and configure
+## 3. Configure the deploy directory
+
+Images are built in CI and pushed to Docker Hub — the instance never clones
+the repo or runs a build. It only needs `docker-compose.prod.yml` and `.env`
+in place, both of which the CI/CD workflow copies in on every deploy (see
+§8). To set the directory up by hand the first time:
 
 ```bash
-mkdir -p ~/projects && cd ~/projects
-git clone <your-repo-url> CanvasFlow && cd CanvasFlow
-cp .env.example .env
+mkdir -p ~/projects/CanvasFlow && cd ~/projects/CanvasFlow
 ```
+
+Copy `docker-compose.prod.yml` from the repo onto the instance (scp, or paste
+it directly), and create `.env` there.
 
 Generate secrets:
 
@@ -106,23 +112,26 @@ MONGO_DB=menti
 MONGO_URI=mongodb://menti:<generated>@mongo:27017/menti?authSource=admin
 
 UPLOAD_TMP_DIR=/var/tmp/canvasflow-uploads
+
+# Resolves the image: line in docker-compose.prod.yml — must match the
+# Docker Hub account CI pushes to.
+DOCKERHUB_USERNAME=<your dockerhub username>
+IMAGE_TAG=latest
 ```
 
 The `tr -d '/+='` above is not cosmetic: those characters are URL syntax and
 would have to be percent-encoded inside `DATABASE_URL` and friends.
 
-Then hard-link the env file into every workspace:
+`setup.sh` and the per-workspace `.env` symlinks are a source-tree concern —
+skip them here, there is no source tree on this box.
+
+## 4. Log in to Docker Hub and start
 
 ```bash
-chmod +x setup.sh && ./setup.sh
-```
-
-## 4. Build and start
-
-```bash
+docker login -u <your dockerhub username>
 docker compose -f docker-compose.prod.yml config -q
+docker compose -f docker-compose.prod.yml pull api worker web migrate menti menti-worker
 docker compose -f docker-compose.prod.yml up -d --wait postgres redis mongo
-docker compose -f docker-compose.prod.yml build api worker web migrate menti menti-worker
 docker compose -f docker-compose.prod.yml run --rm migrate
 docker compose -f docker-compose.prod.yml up -d --wait api worker web menti
 docker compose -f docker-compose.prod.yml up -d menti-worker
@@ -140,10 +149,14 @@ curl -fsSI http://127.0.0.1:3000 | head -1
 ### Rebuilding the web image
 
 `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_MENTI_API_URL` are compiled into the
-browser bundle, not read at runtime — `docker-compose.prod.yml` passes them as
-build args for that reason. Changing either in `.env` does nothing until you
-`build web` again. A deployed page calling `http://localhost:8000` from the
-user's browser is always this.
+browser bundle, not read at runtime — the `web` target's Dockerfile build args
+carry them in for that reason. Since the image is built in CI (see §8), the
+values must be correct in the `ENV` secret *before* pushing to `main`, and CI
+pulls them from there — changing them in the server's `.env` alone does
+nothing; the image was already baked with whatever the secret held at build
+time. A deployed page calling `http://localhost:8000` from the user's browser
+means the `ENV` secret was stale when that image was built — fix the secret
+and push again (or re-run the workflow) to rebuild `web`.
 
 ## 5. nginx
 
@@ -319,25 +332,39 @@ Fine for a first smoke test, not for real users.
 
 ## 8. Automated deploys
 
-`.github/workflows/ci-cd.yml` already does all of the above on every push to
-`main`: it SSHes in, resets to `origin/main`, writes `.env` from the `ENV`
-secret, rebuilds, migrates and restarts. nginx is untouched by it, which is
-one advantage of keeping the proxy on the host. Four repository secrets:
+`.github/workflows/ci-cd.yml` builds and deploys on every push to `main`, in
+two stages:
 
-| Secret         | Value                         |
-| -------------- | ----------------------------- |
-| `SSH_HOST`     | the Elastic IP                |
-| `SSH_USER`     | `ubuntu`                      |
-| `SSH_PASSWORD` | password for that user        |
-| `ENV`          | the entire contents of `.env` |
+1. **`build-and-push`** — builds all six targets (`api`, `worker`, `web`,
+   `migrate`, `menti`, `menti-worker`) and pushes each to Docker Hub as
+   `<DOCKERHUB_USERNAME>/canvasflow-<target>`, tagged both `:latest` and
+   `:<git sha>`. The `web` build's `NEXT_PUBLIC_*` args are read out of the
+   `ENV` secret at this point — see the note in §3.
+2. **`deploy`** — SCPs `docker-compose.prod.yml` onto the instance (the
+   instance holds no source checkout), SSHes in, writes `.env` from the `ENV`
+   secret plus `DOCKERHUB_USERNAME`/`IMAGE_TAG`, logs in to Docker Hub, pulls
+   the images tagged with the current commit SHA, runs migrations, restarts
+   the app services, and removes the image IDs that were replaced.
 
-Two things to fix before relying on it. It authenticates with a password, which
-means enabling `PasswordAuthentication` on an internet-facing box — switch to a
-deploy key (`appleboy/ssh-action` takes `key:`) and use an `SSH_KEY` secret
-instead. And there is no rollback: `git reset --hard origin/main` plus a
-rebuild means a bad commit is live until the next one. Tagging images per
-commit, so you can `up -d --no-build` back onto the previous one, is the cheap
-version of that.
+nginx is untouched by it, which is one advantage of keeping the proxy on the
+host. Six repository secrets:
+
+| Secret               | Value                                                             |
+| -------------------- | ------------------------------------------------------------------ |
+| `SSH_HOST`            | the Elastic IP                                                    |
+| `SSH_USER`            | `ubuntu`                                                          |
+| `SSH_PASSWORD`        | password for that user                                            |
+| `ENV`                 | the entire contents of `.env`                                     |
+| `DOCKERHUB_USERNAME`  | Docker Hub username/org images are pushed to and pulled from      |
+| `DOCKERHUB_TOKEN`     | Docker Hub access token (Account Settings → Security), not the account password |
+
+Two things to fix before relying on it long-term. It authenticates with a
+password, which means enabling `PasswordAuthentication` on an
+internet-facing box — switch to a deploy key (`appleboy/ssh-action` and
+`appleboy/scp-action` both take `key:`) and use an `SSH_KEY` secret instead.
+And rollback today means re-running the workflow for an older commit (or
+manually setting `IMAGE_TAG` in the server's `.env` to a previous SHA and
+re-running the `pull`/`up -d` steps by hand) — there is no one-click revert.
 
 ## 9. Day to day
 
