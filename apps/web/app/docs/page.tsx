@@ -2,15 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import Footer from "~/components/Footer";
+import { JsonLd } from "~/components/seo/JsonLd";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
+import { absoluteUrl } from "~/lib/seo";
+import { breadcrumbSchema, techArticleSchema } from "~/lib/structured-data";
 import { HorizontalScale, VerticalScale } from "~/components/Scale";
 import { DocsSectionNav } from "~/components/docs/DocsSectionNav";
 
 export const metadata: Metadata = {
-  title: "Docs · CanvasFlow",
+  title: "Docs",
   description:
-    "A complete guide to CanvasFlow: building forms, publishing and sharing them, controlling availability, collaborating, and reading the responses.",
+    "The complete CanvasFlow guide: building a form on the canvas, segments and branching, publishing and access control, reading the responses, and running a live Menti presentation.",
+  alternates: { canonical: absoluteUrl("/docs") },
+  openGraph: {
+    type: "website",
+    title: "Docs",
+    url: absoluteUrl("/docs"),
+  },
 };
 
 type Section = { id: string; title: string };
@@ -22,27 +31,32 @@ const SECTIONS: Section[] = [
   { id: "builder", title: "The builder" },
   { id: "field-types", title: "Field types" },
   { id: "field-settings", title: "Field settings" },
+  { id: "segments", title: "Segments & pages" },
+  { id: "branching", title: "Branching" },
+  { id: "layout", title: "Layout" },
   { id: "publishing", title: "Publishing" },
   { id: "sharing", title: "Sharing a form" },
-  { id: "availability", title: "Availability & limits" },
+  { id: "access", title: "Who can respond" },
+  { id: "availability", title: "Availability" },
   { id: "collaborators", title: "Collaborators & roles" },
   { id: "respondents", title: "What respondents see" },
   { id: "closed-states", title: "When a form won't accept" },
   { id: "responses", title: "Responses & export" },
-  { id: "analytics", title: "Analytics" },
   { id: "managing", title: "Managing your forms" },
+  { id: "menti", title: "Menti — live sessions" },
+  { id: "feedback", title: "Feedback & support" },
 ];
 
-/** The twelve types the palette offers, grouped as the sidebar groups them. */
+/** The thirteen types the palette offers, grouped as the sidebar groups them. */
 const FIELD_GROUPS: { group: string; fields: [string, string][] }[] = [
   {
     group: "Text",
     fields: [
       ["Short text", "Single line input."],
       ["Long text", "Multi-line input for paragraph answers."],
-      ["Email", "Email address input, format-checked as it's typed."],
+      ["Email", "Email address input, format-checked before the respondent can move on."],
       ["Phone", "Telephone number input."],
-      ["URL", "Website link input."],
+      ["URL", "Website link input, parsed as a real URL before it is accepted."],
     ],
   },
   { group: "Numbers", fields: [["Number", "Numeric value input."]] },
@@ -67,37 +81,127 @@ const FIELD_GROUPS: { group: string; fields: [string, string][] }[] = [
       ["Time", "Time selection, optionally bounded by a range."],
     ],
   },
+  {
+    group: "Files",
+    fields: [
+      [
+        "File upload",
+        "An attachment. You choose how many files, how large each may be, and which types you accept.",
+      ],
+    ],
+  },
 ];
 
 /** Per-type settings in the inspector, beyond the four every field has. */
 const TYPE_SETTINGS: [string, string][] = [
   ["Single select · Checkbox", "An Options list — add and remove choices as needed."],
-  ["Rating", "Rating scale, set with Max stars."],
-  ["Toggle", "Active label, Inactive label, and Default on."],
-  ["Date", "Date range, bounded by Min date and Max date."],
-  ["Time", "Time range, bounded by Min time and Max time."],
+  ["Rating", "Max stars — 3 (small), 5 (standard), or 10 (detailed)."],
+  ["Toggle", "Active label and Inactive label, so the switch reads in your own words."],
+  ["Date", "Min date and Max date, bounding what the calendar will accept."],
+  ["Time", "Min time and Max time."],
+  [
+    "File upload",
+    "Files per response, Max size per file, and Accepted types — any type, PDF, images, ZIP archives, Word documents, or Excel spreadsheets.",
+  ],
 ];
 
-/** The six states a respondent can hit instead of the form. */
+/** Where a branch can send someone. */
+const LOGIC_ACTIONS: [string, string][] = [
+  ["Go to question", "Jump straight to a specific question, skipping whatever sits between."],
+  ["Go to segment", "Jump to the start of a segment."],
+  ["Finish the form", "End here and submit — useful when later questions no longer apply."],
+  ["Continue in order", "Carry on to the next question, as if no branch had fired."],
+];
+
+/** The four question layouts. */
+const LAYOUTS: [string, string][] = [
+  [
+    "Match the form's shape",
+    "The default. One question at a time until you add a second segment, then one segment per page.",
+  ],
+  ["One question per page", "Focused and conversational. Best for longer forms and for phones."],
+  ["One segment per page", "Each segment's questions together, with Next between them."],
+  ["Everything on one page", "The whole form in a single scroll, like a classic web form."],
+];
+
+/** Access controls under Who can respond. */
+const ACCESS_CONTROLS: [string, string][] = [
+  [
+    "Require sign-in",
+    "Respondents sign in to a CanvasFlow account before answering. Off by default — anyone with the link can reply anonymously.",
+  ],
+  [
+    "Record respondent email",
+    "Saves each respondent's account email alongside their response. Turns on sign-in.",
+  ],
+  [
+    "One response per person",
+    "Caps each signed-in account at a single response. Off by default, so people can answer more than once. Turns on sign-in.",
+  ],
+  [
+    "Restrict to an organisation",
+    "Only accounts on the email domains you list can answer — add them one at a time. Turns on sign-in.",
+  ],
+];
+
+/** The eight states a respondent can hit instead of the form. */
 const LOCKOUTS: [string, string][] = [
-  ["Not found", "The link doesn't match a form."],
-  ["Not live", "This form is still a draft — it hasn't been published yet."],
-  ["Closed", "The author has closed this form to new responses."],
-  ["Expired", "The form passed its expiration date."],
-  ["Limit reached", "The form hit its maximum allowed number of submissions."],
+  ["Not found", "The link doesn't match a form, or the form was deleted."],
+  ["Not live", "This form is still a draft — the author hasn't published it yet."],
+  ["Closed", "The author has closed it to new submissions."],
+  ["Expired", "The form passed its closing date."],
   ["Already submitted", "This visitor has answered once already."],
+  ["Sign in", "The author asked for responses from signed-in accounts."],
+  ["Wrong account", "The signed-in email isn't on a domain the author accepts."],
+  ["Archived", "The form has been archived and is no longer in service."],
 ];
 
-const ANALYTICS_TABS: [string, string][] = [
+const RESPONSE_TABS: [string, string][] = [
   [
     "Summary",
-    "Total views, total responses, completion rate, and average per day across the tracked window.",
+    "Total responses, completion rate, and the average time people spent filling the form in.",
   ],
-  ["Responses", "The submissions table — search, open a single response, or export the set."],
-  ["Drop-off", "Drop-off per question, so you can see which prompt people abandon."],
-  ["Segments", "Device split across desktop, mobile, and tablet, plus where responses came from."],
+  ["Question", "Every answer to one question at a time, so you can read a prompt end to end."],
+  ["Individual", "One submission at a time, in full, with its own values and metadata."],
 ];
 
+/** Menti slide types, grouped as the Add slide picker groups them. */
+const SLIDE_TYPES: { group: string; slides: [string, string][] }[] = [
+  {
+    group: "Interactive questions",
+    slides: [
+      ["Multiple Choice", "A poll that fills in as a bar graph while people answer."],
+      ["Word Cloud", "Free text from the audience, sized by how often each word comes back."],
+      ["Scales", "Rating statements on a scale, averaged across the room."],
+    ],
+  },
+  {
+    group: "Quiz competitions",
+    slides: [
+      [
+        "Select Answer",
+        "A quiz question with a correct answer and a reveal. Adding one also adds a Leaderboard slide straight after it.",
+      ],
+    ],
+  },
+  {
+    group: "Content slides",
+    slides: [
+      ["Text", "A plain slide for a heading, an instruction, or a pause between questions."],
+    ],
+  },
+  {
+    group: "Import slides",
+    slides: [["PowerPoint (.pptx)", "Bring an existing deck in and carry on editing it here."]],
+  },
+];
+
+const FEEDBACK_TYPES: [string, string][] = [
+  ["Feedback", "Share product thoughts."],
+  ["Bug report", "Something is broken."],
+  ["Feature request", "Request an improvement."],
+  ["Complaint", "Escalate an issue."],
+];
 /* ── Small building blocks ─────────────────────────────────────────── */
 
 function Chapter({
@@ -252,8 +356,9 @@ export default function DocsPage() {
             className="mt-6 max-w-2xl text-[16px] leading-relaxed sm:text-[17.5px]"
             style={{ color: "var(--hex-ink-soft)" }}
           >
-            From signing up to exporting your last response. Sixteen sections, in the order
-            you&rsquo;ll meet them.
+            From signing up to exporting your last response — plus segments, branching, access
+            control, and the live Menti sessions. Twenty sections, in the order you&rsquo;ll meet
+            them.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -281,7 +386,7 @@ export default function DocsPage() {
                 id="getting-started"
                 n={1}
                 title="Getting started"
-                lead="You need an account to build a form. Nobody needs one to answer it."
+                lead="You need an account to build a form. Nobody needs one to answer it, unless you ask for it."
               >
                 <Steps
                   items={[
@@ -291,11 +396,16 @@ export default function DocsPage() {
                         Sign up
                       </Link>{" "}
                       and register with your name, email, and a password — or use <UI>Google</UI> or{" "}
-                      <UI>GitHub</UI> to skip the password.
+                      <UI>GitHub</UI> to skip the password entirely.
                     </>,
                     <>
-                      You land on the dashboard, called <strong>Studio</strong>. It&rsquo;s empty
-                      until you make something.
+                      You land straight on the dashboard, called <strong>Studio</strong>. It&rsquo;s
+                      empty until you make something.
+                    </>,
+                    <>
+                      Forgotten your password? <UI>Forgot password</UI> emails you a reset link that
+                      works once and expires after an hour. Accounts created through Google or
+                      GitHub have no password to reset — sign in with the provider instead.
                     </>,
                     <>
                       Sign out from the icon at the top right of the dashboard bar. It asks for
@@ -304,8 +414,9 @@ export default function DocsPage() {
                   ]}
                 />
                 <Note>
-                  Respondents never sign in. Once a form is published, anyone holding the link can
-                  fill it in.
+                  Passwords must be at least 12 characters, and a handful of predictable ones are
+                  refused outright — a password that is one repeated character, or that is built out
+                  of your own email address, won&rsquo;t be accepted. Sessions last seven days.
                 </Note>
               </Chapter>
 
@@ -314,19 +425,31 @@ export default function DocsPage() {
                 id="dashboard"
                 n={2}
                 title="The dashboard"
-                lead="Four destinations in the top bar, plus the button you'll use most."
+                lead="Three destinations in the top bar, your profile, and the button you'll use most."
               >
                 <DefList
                   rows={[
                     [
                       "Studio",
-                      "The overview: total forms, active forms, total responses, average per day, and your peak day, with a response trend chart over a range you pick.",
+                      "The overview: your forms, plus a response trend chart over 7 days, 30 days, or 3 months, with the total in range, the average per day, and your peak day.",
                     ],
                     ["Forms", "Every form you own or collaborate on."],
-                    ["Analytics", "Metrics and responses, one form at a time."],
-                    ["New form", "Opens the create dialog from anywhere in the dashboard."],
+                    ["Menti", "Your live presentations — see Menti below."],
+                    [
+                      "Profile",
+                      "Your identity, avatar, and session, with milestones: forms, published, responses, and this month.",
+                    ],
+                    ["New", "Opens the create dialog from anywhere in the dashboard."],
                   ]}
                 />
+                <Note>
+                  Analytics aren&rsquo;t a separate destination. Every form&rsquo;s numbers live
+                  inside that form, on the <UI>Responses</UI> tab of the builder — see{" "}
+                  <a href="#responses" className="hex-link">
+                    Responses &amp; export
+                  </a>
+                  .
+                </Note>
               </Chapter>
 
               {/* 03 */}
@@ -341,9 +464,9 @@ export default function DocsPage() {
                     ["Title", "What the form is called, for you and for respondents."],
                     [
                       "Slug",
-                      "The URL-safe name. Lowercase words joined by hyphens, like quarterly-feedback.",
+                      "The URL-safe name, filled in from the title as you type. Lowercase words joined by hyphens, like quarterly-feedback.",
                     ],
-                    ["Description", "Optional. A short note for your team."],
+                    ["Description", "Optional. A short note shown to respondents."],
                   ]}
                 />
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
@@ -381,21 +504,25 @@ export default function DocsPage() {
                 />
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                   The palette sits on the left under <strong>Fields</strong>, grouped into Text,
-                  Numbers, Choice, Interactive, and Date &amp; time. There&rsquo;s a{" "}
-                  <UI>Search fields...</UI> box if you&rsquo;d rather type than browse. Selecting a
-                  field opens its settings on the right; with nothing selected you&rsquo;ll see{" "}
-                  <em>No field selected</em>.
+                  Numbers, Choice, Interactive, Date &amp; time, and Files. There&rsquo;s a{" "}
+                  <UI>Search fields...</UI> box if you&rsquo;d rather type than browse. Above it is
+                  the <strong>Segments</strong> panel. Selecting a field opens its settings on the
+                  right; with nothing selected you&rsquo;ll see <em>No field selected</em>.
                 </p>
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
                   The header carries the rest: a <UI>Draft</UI> or <UI>Live</UI> status pill, an{" "}
                   <UI>Unsaved</UI> marker while you have pending edits, then <UI>Save</UI>,{" "}
                   <UI>Preview</UI>, <UI>Share</UI>, <UI>Settings</UI>, <UI>Delete</UI>, and{" "}
-                  <UI>Publish</UI>. <UI>Preview</UI> opens the real public form in a new tab.
+                  <UI>Publish</UI>. <UI>Preview</UI> opens the real public form in a new tab. Two
+                  tabs sit across the top: <UI>Questions</UI> for building and <UI>Responses</UI>{" "}
+                  for reading.
                 </p>
                 <Note>
                   Saving is explicit, not automatic. If you try to leave with unsaved changes the
-                  builder stops you and asks first. The view switcher is desktop-only — the canvas
-                  needs pointer dragging and three panes, so narrow screens get the outline.
+                  builder stops you and asks first. If two people save the same form at once, the
+                  second save is rejected as a conflict rather than quietly overwriting the first.
+                  The view switcher is desktop-only — the canvas needs pointer dragging and three
+                  panes, so narrow screens get the outline.
                 </Note>
               </Chapter>
 
@@ -404,7 +531,7 @@ export default function DocsPage() {
                 id="field-types"
                 n={5}
                 title="Field types"
-                lead="Twelve, in the five groups the palette uses."
+                lead="Thirteen, in the six groups the palette uses."
               >
                 <div className="space-y-7">
                   {FIELD_GROUPS.map((g) => (
@@ -434,26 +561,111 @@ export default function DocsPage() {
                       "Label",
                       "The question itself. Unlabelled fields show as Untitled in the builder.",
                     ],
+                    ["Placeholder", "Hint text inside the input, before anyone types."],
                     [
                       "Help text",
                       "An optional line under the question, for context or an example.",
                     ],
-                    ["Placeholder", "Hint text inside the input, before anyone types."],
                     ["Required", "Forces an answer before the respondent can continue."],
                   ]}
                 />
                 <h3 className="pt-2 text-[17px] font-semibold tracking-[-0.01em]">By type</h3>
                 <DefList rows={TYPE_SETTINGS} />
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  Every field also carries a <strong>This question belongs to</strong> control,
+                  which assigns it to a segment once you have any.
+                </p>
                 <Note>
-                  Renaming a question keeps its existing answers attached, so you can fix wording on
-                  a live form without orphaning the responses you already collected.
+                  Renaming a question keeps its existing answers attached. Each field is given a
+                  permanent key the moment it is created, and answers are filed under that key, not
+                  under the label — so you can fix wording on a live form without orphaning the
+                  responses you already collected.
                 </Note>
               </Chapter>
 
               {/* 07 */}
               <Chapter
-                id="publishing"
+                id="segments"
                 n={7}
+                title="Segments & pages"
+                lead="A segment is a named group of questions. Segments are what a form's pages are made of."
+              >
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  A new form is one continuous list. Press <UI>Split into segments</UI> in the
+                  Segments panel to create the first one, then <UI>Add segment</UI> for each one
+                  after. Segments can be renamed, reordered, and deleted from the same panel.
+                </p>
+                <DefList
+                  rows={[
+                    [
+                      "Assigning a question",
+                      "Pick a segment in the field's settings, under This question belongs to.",
+                    ],
+                    [
+                      "Unassigned questions",
+                      "Questions not in any segment come first, before the first segment. The panel tells you how many there are.",
+                    ],
+                    [
+                      "Why they matter",
+                      "Segments give branching somewhere to jump to, and they decide how the form is paginated.",
+                    ],
+                  ]}
+                />
+              </Chapter>
+
+              {/* 08 */}
+              <Chapter
+                id="branching"
+                n={8}
+                title="Branching"
+                lead="Send people different ways depending on what they've already answered."
+              >
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  Select a question and open its branching editor. A <strong>branch</strong> is one
+                  or more conditions, a place to go when they hold, and optionally another place to
+                  go when they don&rsquo;t. Branches are checked top to bottom after the question is
+                  answered, and the first one that decides wins.
+                </p>
+                <h3 className="pt-2 text-[17px] font-semibold tracking-[-0.01em]">Conditions</h3>
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  A condition reads any earlier answer, not only the one you&rsquo;re branching
+                  from, and the operators on offer follow the field&rsquo;s type — <em>is</em>,{" "}
+                  <em>is not</em>, <em>contains</em>, <em>does not contain</em>,{" "}
+                  <em>starts with</em>, <em>ends with</em>, <em>is more than</em>,{" "}
+                  <em>is less than</em>, <em>is any of</em>, <em>is none of</em>, <em>is blank</em>,
+                  and <em>is answered</em>. Add several conditions to a branch to weigh more than
+                  one answer at a time.
+                </p>
+                <h3 className="pt-2 text-[17px] font-semibold tracking-[-0.01em]">Where it goes</h3>
+                <DefList rows={LOGIC_ACTIONS} />
+                <Note>
+                  A branch carrying an <em>otherwise</em> always decides. One without it steps aside
+                  when its conditions don&rsquo;t hold, and the next branch gets a turn. If no
+                  branch decides, the next question follows in order. The editor flags rules that
+                  can never fire or point nowhere under <em>Worth checking</em>.
+                </Note>
+              </Chapter>
+
+              {/* 09 */}
+              <Chapter
+                id="layout"
+                n={9}
+                title="Layout"
+                lead="How much of the form a respondent sees at once. Set it in Settings, under Layout."
+              >
+                <DefList rows={LAYOUTS} />
+                <Note>
+                  <strong>Everything on one page</strong> is unavailable to a form that branches or
+                  is split into segments — branching needs a next page to send people to, and
+                  segments are the pages. The setting is still saved; the dialog tells you what
+                  respondents get instead.
+                </Note>
+              </Chapter>
+
+              {/* 10 */}
+              <Chapter
+                id="publishing"
+                n={10}
                 title="Publishing"
                 lead="A form is a draft until you publish it. Drafts aren't reachable by link."
               >
@@ -467,23 +679,23 @@ export default function DocsPage() {
                       The status pill flips from <UI>Draft</UI> to <UI>Live</UI> and the button
                       reads <UI>Published</UI>.
                     </>,
-                    <>The public link starts working and the form begins recording views.</>,
+                    <>The public link starts working and the form begins accepting answers.</>,
                   ]}
                 />
                 <Note>
                   Publishing is what makes the link live. To take it offline again, close the form
-                  or set a limit — see{" "}
+                  or give it a closing date — see{" "}
                   <a href="#availability" className="hex-link">
-                    Availability &amp; limits
+                    Availability
                   </a>
                   .
                 </Note>
               </Chapter>
 
-              {/* 08 */}
+              {/* 11 */}
               <Chapter
                 id="sharing"
-                n={8}
+                n={11}
                 title="Sharing a form"
                 lead="Press Share in the builder header, or use the share action on a form in the list."
               >
@@ -500,31 +712,49 @@ export default function DocsPage() {
                   ]}
                 />
                 <Note>
-                  One response per visitor is enforced, and duplicate submits are ignored — a
-                  refresh or a double-click won&rsquo;t inflate your numbers.
+                  A refresh or a double-click won&rsquo;t inflate your numbers: a repeated submit of
+                  the same answers is collapsed into the one record it was meant to be.
                 </Note>
               </Chapter>
 
-              {/* 09 */}
+              {/* 12 */}
+              <Chapter
+                id="access"
+                n={12}
+                title="Who can respond"
+                lead="Four controls in Settings, under Who can respond. All off by default — a published form is open to anyone with the link."
+              >
+                <DefList rows={ACCESS_CONTROLS} />
+                <Note>
+                  The last three each imply sign-in, so switching any of them on turns{" "}
+                  <UI>Require sign-in</UI> on and holds it there until they&rsquo;re all off again.
+                  You can also set a <strong>Thank-you note</strong> here — it&rsquo;s shown below
+                  the standard confirmation, not instead of it.
+                </Note>
+              </Chapter>
+
+              {/* 13 */}
               <Chapter
                 id="availability"
-                n={9}
-                title="Availability & limits"
-                lead="Three independent controls in Settings, under Availability. Owners only."
+                n={13}
+                title="Availability"
+                lead="Two independent controls in Settings, under Availability. Owners only."
               >
                 <DefList
                   rows={[
                     [
                       "Accepting submissions",
-                      "Open or Closed. Manually open or close the form at any time.",
+                      "Open or closed. Manually open or close the form at any time.",
                     ],
-                    ["Expiration date", "Stop accepting after a given time."],
-                    ["Submission limit", "Stop accepting after a total count."],
+                    [
+                      "Expiration date",
+                      "A date and time after which the form stops accepting answers.",
+                    ],
                   ]}
                 />
                 <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
-                  The same dialog edits the form&rsquo;s title and description. Press{" "}
-                  <UI>Save settings</UI> to apply.
+                  The same dialog edits the form&rsquo;s title, description, layout, and thank-you
+                  note. Press <UI>Save settings</UI> to apply.
                 </p>
                 <Note>
                   These stack. Whichever condition trips first closes the form, and each one shows
@@ -536,10 +766,10 @@ export default function DocsPage() {
                 </Note>
               </Chapter>
 
-              {/* 10 */}
+              {/* 14 */}
               <Chapter
                 id="collaborators"
-                n={10}
+                n={14}
                 title="Collaborators & roles"
                 lead="Invite people to a form from the Share dialog, under Access."
               >
@@ -570,98 +800,92 @@ export default function DocsPage() {
                 />
                 <Note>
                   Only owners see <UI>Settings</UI>, and deletion is limited to whoever has the
-                  permission for it. Transferring ownership is not reversible by you afterwards.
-                </Note>
-              </Chapter>
-
-              {/* 11 */}
-              <Chapter
-                id="respondents"
-                n={11}
-                title="What respondents see"
-                lead="One question at a time, and nothing to sign up for."
-              >
-                <DefList
-                  rows={[
-                    [
-                      "A single question",
-                      "One prompt on screen at a time, so a long form doesn't read as long.",
-                    ],
-                    ["A progress bar", "How far through they are, filling to complete on submit."],
-                    [
-                      "Inline validation",
-                      "Email and URL fields are checked as they type — an invalid address is caught before the next step.",
-                    ],
-                    [
-                      "Required answers",
-                      "Marked as required, and enforced before they can continue.",
-                    ],
-                    ["Next and Submit", "Next advances; Submit sends on the last question."],
-                    [
-                      "A confirmation",
-                      "Response received, with an optional How was the experience? rating.",
-                    ],
-                  ]}
-                />
-                <Note>
-                  A form with no fields shows <em>Nothing to fill out yet</em> rather than an empty
-                  screen, so a half-built draft is obvious if you share it early.
-                </Note>
-              </Chapter>
-
-              {/* 12 */}
-              <Chapter
-                id="closed-states"
-                n={12}
-                title="When a form won't accept"
-                lead="Six states, each with its own message, so a respondent always knows why."
-              >
-                <DefList rows={LOCKOUTS} />
-              </Chapter>
-
-              {/* 13 */}
-              <Chapter
-                id="responses"
-                n={13}
-                title="Responses & export"
-                lead="Every submission lands in a table under the Responses tab in Analytics."
-              >
-                <DefList
-                  rows={[
-                    [
-                      "Browse",
-                      "Responses load newest-first, with Load older to page back through them.",
-                    ],
-                    ["Search", "Search responses... filters the table."],
-                    ["Inspect", "View details opens a single submission in full."],
-                    ["Export", "Export downloads the whole set as a CSV named after the form."],
-                  ]}
-                />
-                <Note>
-                  Export needs at least one response — with none, it tells you there&rsquo;s nothing
-                  to export rather than handing you an empty file.
-                </Note>
-              </Chapter>
-
-              {/* 14 */}
-              <Chapter
-                id="analytics"
-                n={14}
-                title="Analytics"
-                lead="Pick a form, then work through four tabs. Numbers start the moment the form is live."
-              >
-                <DefList rows={ANALYTICS_TABS} />
-                <Note>
-                  Views are counted as well as responses, which is what makes completion rate and
-                  drop-off meaningful — you can see how many people looked and left, not just who
-                  finished.
+                  permission for it. Roles are checked on the server for every request, so a
+                  collaborator can&rsquo;t reach past their role by editing a URL. Transferring
+                  ownership is not reversible by you afterwards.
                 </Note>
               </Chapter>
 
               {/* 15 */}
               <Chapter
-                id="managing"
+                id="respondents"
                 n={15}
+                title="What respondents see"
+                lead="However much of the form your layout shows them, and nothing to sign up for unless you asked."
+              >
+                <DefList
+                  rows={[
+                    [
+                      "The questions",
+                      "One at a time, one segment at a time, or the whole form — whichever layout you chose.",
+                    ],
+                    ["A progress bar", "How far through they are, filling to complete on submit."],
+                    [
+                      "Inline validation",
+                      "Email and URL fields are checked before the next step — an invalid address is caught rather than collected.",
+                    ],
+                    [
+                      "Required answers",
+                      "Marked as required, and enforced before they can continue.",
+                    ],
+                    [
+                      "File uploads",
+                      "A file starts uploading the moment it's picked and never blocks the submit — the form shows its progress and attaches it when they send.",
+                    ],
+                    ["Next and Submit", "Next advances; Submit sends on the last page."],
+                    [
+                      "A confirmation",
+                      "Response received, followed by your thank-you note if you wrote one, and an optional How was the experience? rating.",
+                    ],
+                  ]}
+                />
+                <Note>
+                  If the form requires sign-in, a signed-in respondent&rsquo;s answers and page
+                  position are saved as they go, so a half-finished form survives a closed tab —
+                  they pick up where they left off. A form with no fields shows{" "}
+                  <em>Nothing to fill out yet</em> rather than an empty screen, so a half-built
+                  draft is obvious if you share it early.
+                </Note>
+              </Chapter>
+
+              {/* 16 */}
+              <Chapter
+                id="closed-states"
+                n={16}
+                title="When a form won't accept"
+                lead="Eight states, each with its own message, so a respondent always knows why."
+              >
+                <DefList rows={LOCKOUTS} />
+                <Note>
+                  <UI>Wrong account</UI> lists the domains the form does accept, so someone signed
+                  in with the wrong address knows which one to use.
+                </Note>
+              </Chapter>
+
+              {/* 17 */}
+              <Chapter
+                id="responses"
+                n={17}
+                title="Responses & export"
+                lead="Open a form and switch to the Responses tab. Three sub-tabs over the same submissions."
+              >
+                <DefList rows={RESPONSE_TABS} />
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  <UI>CSV Export</UI> sits at the right of the sub-tabs and downloads the whole set,
+                  named after the form. Responses load newest-first.
+                </p>
+                <Note>
+                  Alongside the answers themselves, each submission carries what the form could
+                  observe without tracking anyone: device category, the referring page and any UTM
+                  values on the link, how long the form was open, and — only if you asked for it —
+                  the respondent&rsquo;s account email.
+                </Note>
+              </Chapter>
+
+              {/* 18 */}
+              <Chapter
+                id="managing"
+                n={18}
                 title="Managing your forms"
                 lead="The Forms page lists everything you own or collaborate on."
               >
@@ -675,9 +899,75 @@ export default function DocsPage() {
                   ]}
                 />
                 <Note>
-                  Deleting a form is permanent and takes its responses with it. The confirmation
-                  dialog says so — read it before agreeing.
+                  Deleting a form is permanent and takes its responses, uploads, and collaborator
+                  list with it. The confirmation dialog says so — read it before agreeing.
                 </Note>
+              </Chapter>
+
+              {/* 19 */}
+              <Chapter
+                id="menti"
+                n={19}
+                title="Menti — live sessions"
+                lead="A presentation you run in the room, with the audience answering from their phones."
+              >
+                <Steps
+                  items={[
+                    <>
+                      Open <UI>Menti</UI> in the dashboard and create a presentation, or import an
+                      existing <UI>.pptx</UI> deck.
+                    </>,
+                    <>
+                      Build it in the editor: a slide sidebar on the left, the slide on the canvas,
+                      and its settings on the right. <UI>Add slide</UI> opens the type picker.
+                    </>,
+                    <>
+                      Press present. The intro slide shows a join code and a QR card; the audience
+                      joins at{" "}
+                      <Link href="/menti/join" className="hex-link">
+                        /menti/join
+                      </Link>{" "}
+                      and enters a name.
+                    </>,
+                    <>
+                      Move through the slides and answers appear live. Afterwards, the results view
+                      keeps every slide&rsquo;s outcome.
+                    </>,
+                  ]}
+                />
+                <h3 className="pt-2 text-[17px] font-semibold tracking-[-0.01em]">Slide types</h3>
+                <div className="space-y-7">
+                  {SLIDE_TYPES.map((g) => (
+                    <div key={g.group}>
+                      <h4
+                        className="hex-mono mb-2 text-[11px] font-bold tracking-[0.15em] uppercase"
+                        style={{ color: "var(--hex-ink-muted)" }}
+                      >
+                        {g.group}
+                      </h4>
+                      <DefList rows={g.slides} />
+                    </div>
+                  ))}
+                </div>
+                <Note>
+                  Menti runs on its own service, separate from the rest of CanvasFlow. Where that
+                  service isn&rsquo;t configured, the Menti pages won&rsquo;t load their data — and
+                  forms, responses, and everything else carry on working normally.
+                </Note>
+              </Chapter>
+
+              {/* 20 */}
+              <Chapter
+                id="feedback"
+                n={20}
+                title="Feedback & support"
+                lead="There's a feedback button inside the app. It reaches us directly."
+              >
+                <DefList rows={FEEDBACK_TYPES} />
+                <p className="text-[15px] leading-relaxed" style={{ color: "var(--hex-ink-soft)" }}>
+                  Pick a type, give it a subject and a message, and send. The page you were on and
+                  your browser details go with it — which is usually what makes a bug reproducible.
+                </p>
               </Chapter>
 
               {/* Close */}
@@ -706,6 +996,20 @@ export default function DocsPage() {
         </div>
       </section>
 
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Docs", path: "/docs" },
+        ])}
+      />
+      <JsonLd
+        data={techArticleSchema({
+          headline: "CanvasFlow documentation",
+          description:
+            "A complete reference for building, publishing, and reading a CanvasFlow form.",
+          path: "/docs",
+        })}
+      />
       <Footer />
     </div>
   );

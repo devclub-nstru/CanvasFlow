@@ -188,10 +188,6 @@ function SignInForm() {
         style={{ color: "var(--hex-ink-muted)" }}
       >
         By continuing you agree to our{" "}
-        <Link href="/terms" className="underline underline-offset-2 hover:opacity-70">
-          Terms
-        </Link>{" "}
-        and{" "}
         <Link href="/privacy" className="underline underline-offset-2 hover:opacity-70">
           Privacy Policy
         </Link>
