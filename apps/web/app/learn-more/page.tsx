@@ -4,8 +4,11 @@ import {
   BarChart3,
   FileDown,
   Focus,
+  GitBranch,
   LayoutTemplate,
   Lock,
+  Paperclip,
+  Presentation,
   QrCode,
   Rows3,
   Users,
@@ -13,27 +16,31 @@ import {
 } from "lucide-react";
 
 import Footer from "~/components/Footer";
+import { JsonLd } from "~/components/seo/JsonLd";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
+import { absoluteUrl } from "~/lib/seo";
+import { breadcrumbSchema } from "~/lib/structured-data";
 import { ScrollReveal } from "~/components/landing/ScrollReveal";
 import { HorizontalScale, HorizontalScaleDark, VerticalScale } from "~/components/Scale";
 
 export const metadata: Metadata = {
-  title: "Learn more · CanvasFlow",
+  title: "Learn more",
   description:
-    "How CanvasFlow works: twelve field types, one question at a time, live analytics, and every response exportable.",
+    "How CanvasFlow works: thirteen field types, segments and branching, layouts you choose, access you control, and every response exportable.",
+  alternates: { canonical: absoluteUrl("/learn-more") },
+  openGraph: {
+    type: "website",
+    title: "Learn more",
+    url: absoluteUrl("/learn-more"),
+  },
 };
 
 const CAPABILITIES: { icon: LucideIcon; title: string; desc: string }[] = [
   {
     icon: Rows3,
-    title: "Twelve field types",
-    desc: "Short text, long text, email, phone, URL, number, dropdown, checkboxes, rating, toggle, date, and time. Drag to reorder, mark required, add a placeholder and a description.",
-  },
-  {
-    icon: Focus,
-    title: "One question at a time",
-    desc: "Whoever fills it in sees a single question and a progress bar, so a long form stops feeling long. Email and URL fields are format-checked as people type.",
+    title: "Thirteen field types",
+    desc: "Short text, long text, email, phone, URL, number, dropdown, checkboxes, rating, toggle, date, time, and file upload. Drag to reorder, mark required, add a placeholder and help text.",
   },
   {
     icon: LayoutTemplate,
@@ -41,19 +48,34 @@ const CAPABILITIES: { icon: LucideIcon; title: string; desc: string }[] = [
     desc: "Lay the form out on a freeform canvas or work down an ordered list. Same form, two ways to read it — switch whenever you like.",
   },
   {
+    icon: GitBranch,
+    title: "Segments and branching",
+    desc: "Split a form into named segments, then branch on the answers so far. Weigh several answers at once and send people to a question, to a segment, or straight to the end.",
+  },
+  {
+    icon: Focus,
+    title: "A layout you choose",
+    desc: "One question at a time, one segment per page, or the whole form in a single scroll — or let it follow the form's own shape, which is the default.",
+  },
+  {
+    icon: Paperclip,
+    title: "File uploads that never stall a submit",
+    desc: "A file starts uploading as soon as it's picked and is attached when the form is sent. You set how many files, how large, and which types you accept.",
+  },
+  {
+    icon: Lock,
+    title: "Access you control",
+    desc: "Open to anyone with the link by default. Require sign-in, record the respondent's email, cap it at one response per person, or limit it to your organisation's email domains.",
+  },
+  {
     icon: BarChart3,
-    title: "Analytics that arrive with the answers",
-    desc: "Views as well as responses, completion rate, the hour and day people reply, device split, and the exact question they gave up on.",
+    title: "Answers you can read",
+    desc: "Total responses, completion rate, and average time on the summary; every answer to one question at a time; or any single submission in full.",
   },
   {
     icon: QrCode,
     title: "Share by link or QR",
-    desc: "Publish and hand over a URL, or download a QR code. No account needed on the other end — one response per visitor, duplicate submits ignored.",
-  },
-  {
-    icon: Lock,
-    title: "You decide when it closes",
-    desc: "Close the form with a toggle, give it an expiry date, or cap total submissions. Unpublish to pull the public link offline and drop back to draft.",
+    desc: "Publish and hand over a URL, or download a QR code. No account needed on the other end unless you asked for one, and a double-click never counts twice.",
   },
   {
     icon: FileDown,
@@ -64,6 +86,11 @@ const CAPABILITIES: { icon: LucideIcon; title: string; desc: string }[] = [
     icon: Users,
     title: "Built with your team",
     desc: "Invite collaborators as viewers or editors, change a role later, remove someone, or transfer the form outright to a new owner.",
+  },
+  {
+    icon: Presentation,
+    title: "Live sessions with Menti",
+    desc: "Run a presentation in the room — polls, word clouds, scales, and quizzes with a leaderboard — while the audience answers from their phones. Import an existing .pptx and carry on editing.",
   },
 ];
 
@@ -79,22 +106,22 @@ const STEPS = [
   {
     num: "01",
     title: "Build it",
-    desc: "Drop fields onto the canvas, reorder them, and mark what's required. Sane defaults mean it's publishable straight away.",
+    desc: "Drop fields onto the canvas, group them into segments, branch where the answers diverge, and mark what's required. Sane defaults mean it's publishable straight away.",
   },
   {
     num: "02",
     title: "Share it",
-    desc: "Publish, then pass along the link or the QR code. Nobody needs an account to answer.",
+    desc: "Publish, then pass along the link or the QR code. Open to anyone by default, or locked to signed-in accounts on your own domains.",
   },
   {
     num: "03",
     title: "Collect it",
-    desc: "Answers land one question at a time, validated on the way in and kept to one response per visitor.",
+    desc: "Answers land in whatever layout you chose, validated on the way in, with a half-finished form kept for anyone signed in.",
   },
   {
     num: "04",
     title: "Read it",
-    desc: "Completion rate, drop-off per question, and the full response table — live, with CSV export when you want it elsewhere.",
+    desc: "Completion rate, average time, per-question summaries, and every individual submission — with CSV export when you want it elsewhere.",
   },
 ];
 
@@ -112,22 +139,22 @@ const USE_CASES = [
   {
     tag: "Product",
     title: "User feedback",
-    desc: "Rating scales and open text, with drop-off per question showing you which prompt people stall on.",
+    desc: "Rating scales and open text, with branching that only asks the follow-up when the score deserves one.",
   },
   {
     tag: "Events",
     title: "RSVP & registration",
-    desc: "Sign-ups with a hard cap on submissions and an expiry date, so registration closes itself when it's full or done.",
+    desc: "Sign-ups with a closing date, so registration shuts itself when the deadline passes — and a QR code for the poster.",
   },
   {
     tag: "Hiring",
     title: "Job applications",
-    desc: "Structured applications with a URL field for portfolios, reviewed by teammates you've added as viewers.",
+    desc: "Structured applications with a URL field for portfolios and a file upload for the CV, reviewed by teammates you've added as viewers.",
   },
   {
     tag: "Teaching",
     title: "Course check-ins",
-    desc: "Quick recurring pulse forms — toggles, ratings, a date field — read off the dashboard instead of a spreadsheet.",
+    desc: "Quick recurring pulse forms restricted to your institution's email domain — or a live Menti quiz when you want the room answering together.",
   },
 ];
 
@@ -185,8 +212,8 @@ export default function LearnMorePage() {
               }}
             >
               CanvasFlow is a form builder with the reading half taken as seriously as the writing
-              half. Twelve field types, one question at a time for whoever answers, and real numbers
-              on your side the moment they do.
+              half. Thirteen field types, segments and branching for the forms that need them, and
+              real numbers on your side the moment anybody answers.
             </p>
           </ScrollReveal>
         </div>
@@ -284,8 +311,12 @@ export default function LearnMorePage() {
                       "Two people editing at once get a conflict, not a silent overwrite.",
                     ],
                     [
-                      "One response per visitor",
-                      "A refresh or a double-click won't skew your numbers.",
+                      "Idempotent submits",
+                      "A refresh or a double-click collapses into the one response it meant to be.",
+                    ],
+                    [
+                      "Uploads off the hot path",
+                      "A file is stored in the background and bound to the response at submit time.",
                     ],
                     [
                       "Ordered by design",
@@ -493,6 +524,12 @@ export default function LearnMorePage() {
         </div>
       </section>
 
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Learn more", path: "/learn-more" },
+        ])}
+      />
       <Footer />
     </div>
   );

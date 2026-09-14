@@ -77,18 +77,6 @@ const Footer = () => {
             >
               Privacy Policy
             </Link>
-            <Link
-              href="/terms"
-              className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
-            >
-              Terms of Service
-            </Link>
-            <Link
-              href="/security"
-              className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
-            >
-              Security
-            </Link>
           </div>
 
           <div className="flex flex-col gap-3">
