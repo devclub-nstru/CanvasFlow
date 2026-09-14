@@ -25,16 +25,14 @@ const Footer = () => {
             >
               CANVASFLOW
             </Link>
-            <p className="text-sm font-medium leading-relaxed max-w-xs opacity-80">
+            <p className="text-sm font-medium leading-relaxed max-w-xs">
               The form builder for teams who want a working form in a minute and clean data by
               default.
             </p>
           </div>
 
           <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2 opacity-60">
-              Directory
-            </h4>
+            <h3 className="text-xs font-bold uppercase tracking-widest mb-2">Directory</h3>
             <Link
               href="/docs"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
@@ -45,7 +43,7 @@ const Footer = () => {
               href="/learn-more"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
             >
-              Learn More
+              Every feature
             </Link>
             <Link
               href="/about"
@@ -68,9 +66,7 @@ const Footer = () => {
           </div>
 
           <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2 opacity-60">
-              Protocol
-            </h4>
+            <h3 className="text-xs font-bold uppercase tracking-widest mb-2">Protocol</h3>
             <Link
               href="/privacy"
               className="text-sm font-semibold hover:translate-x-1 transition-transform inline-block w-fit"
@@ -80,7 +76,7 @@ const Footer = () => {
           </div>
 
           <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2 opacity-60">Social</h4>
+            <h3 className="text-xs font-bold uppercase tracking-widest mb-2">Social</h3>
             <a
               href="https://twitter.com/canvasflow"
               target="_blank"

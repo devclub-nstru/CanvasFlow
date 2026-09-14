@@ -8,7 +8,7 @@ import Noise from "~/components/Noise";
 import { HorizontalScale, HorizontalScaleDark, VerticalScaleDark } from "~/components/Scale";
 
 const PANEL_POINTS: [string, string][] = [
-  ["01", "Twelve field types, drag to reorder"],
+  ["01", "Thirteen field types, drag to reorder"],
   ["02", "One question at a time for whoever fills it in"],
   ["03", "Live analytics and drop-off per question"],
   ["04", "Share by link or QR, close it when you're done"],

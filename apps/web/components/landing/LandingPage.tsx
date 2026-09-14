@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,17 +13,35 @@ import Footer from "~/components/Footer";
 import Navbar from "~/components/Navbar";
 import Noise from "~/components/Noise";
 import { HorizontalScale, VerticalScale } from "~/components/Scale";
-import {
-  GeoGlyph,
-  FormBuilderMock,
-  ResponseFeedMock,
-  CanvasEditorMock,
-  AnalyticsMock,
-} from "~/components/landing/CanvasFlowMockup";
+import { GeoGlyph } from "~/components/landing/CanvasFlowMockup";
+
+/* The four product mockups are elaborate fake UI — hundreds of nodes each —
+ * and every one of them sits below the fold. Bundling them with the hero meant
+ * the browser parsed and hydrated all of it before the page was interactive,
+ * which is most of the blocking time on a mid-range phone.
+ *
+ * They keep `ssr: true` (the default) deliberately: the markup still arrives in
+ * the server-rendered HTML, so the boxes are laid out at their real size from
+ * the first paint and nothing shifts when the chunk arrives. Cumulative Layout
+ * Shift is currently 0 and this must not be what breaks it. What changes is
+ * that the hydration JavaScript for each mockup is now its own chunk, loaded
+ * off the critical path instead of ahead of the hero. */
+const FormBuilderMock = dynamic(() =>
+  import("~/components/landing/CanvasFlowMockup").then((m) => m.FormBuilderMock),
+);
+const ResponseFeedMock = dynamic(() =>
+  import("~/components/landing/CanvasFlowMockup").then((m) => m.ResponseFeedMock),
+);
+const CanvasEditorMock = dynamic(() =>
+  import("~/components/landing/CanvasFlowMockup").then((m) => m.CanvasEditorMock),
+);
+const AnalyticsMock = dynamic(() =>
+  import("~/components/landing/CanvasFlowMockup").then((m) => m.AnalyticsMock),
+);
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
 import { useCreateForm } from "~/hooks/api/form";
 import { cn } from "~/lib/utils";
-import { FAQS, FIELD_TYPES } from "~/lib/landing-content";
+import { FAQS } from "~/lib/landing-content";
 
 const STARTERS = ["Customer feedback", "Event registration", "Job application"];
 
@@ -39,6 +58,26 @@ const slugify = (value: string) => {
 };
 
 /* ── Page ──────────────────────────────────────────────────────────── */
+
+/**
+ * Wraps a decorative product mockup.
+ *
+ * The mockups are pictures made of markup, so their fake buttons and disabled
+ * inputs are noise to a screen reader and traps in the tab order. `inert`
+ * removes the subtree from both; the sibling caption supplies the text
+ * alternative an image would have carried. `contents` keeps the wrapper out of
+ * the layout, since the mockups size themselves against the real parent.
+ */
+function DecorativeMock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="contents">
+      <span className="sr-only">{label}</span>
+      <div className="contents" inert aria-hidden="true">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const LandingPage = () => {
   const [title, setTitle] = useState("");
@@ -88,399 +127,414 @@ const LandingPage = () => {
 
       <Navbar />
 
-      {/* ── Hero ───────────────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden border-b hex-line-soft"
-        style={{ borderBottomWidth: 1 }}
-      >
-        {/* Background 1 of 3: tiled crack network, the lightest sheet. */}
-        <div className="hex-hero-paper" aria-hidden />
-        <div
-          className="hex-corner top-4 left-4 hidden sm:block md:top-6 md:left-6"
-          style={{ borderRight: 0, borderBottom: 0 }}
-        />
-        <div
-          className="hex-corner top-4 right-4 hidden sm:block md:top-6 md:right-6"
-          style={{ borderLeft: 0, borderBottom: 0 }}
-        />
+      <main>
+        {/* ── Hero ───────────────────────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden border-b hex-line-soft"
+          style={{ borderBottomWidth: 1 }}
+        >
+          {/* Background 1 of 3: tiled crack network, the lightest sheet. */}
+          <div className="hex-hero-paper" aria-hidden />
+          <div
+            className="hex-corner top-4 left-4 hidden sm:block md:top-6 md:left-6"
+            style={{ borderRight: 0, borderBottom: 0 }}
+          />
+          <div
+            className="hex-corner top-4 right-4 hidden sm:block md:top-6 md:right-6"
+            style={{ borderLeft: 0, borderBottom: 0 }}
+          />
 
-        <div className="relative mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
-          <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-              >
-                <h1 className="text-[34px] leading-[1.06] font-semibold tracking-[-0.03em] text-foreground sm:text-[46px] sm:tracking-[-0.035em] md:text-[64px] md:tracking-[-0.04em] lg:text-[68px] xl:text-[80px]">
-                  Forms, <br />
-                  <span className="relative">
-                    thoughtfully
-                    <svg
-                      className="absolute -bottom-1 left-0 h-2 w-full text-accent/30 sm:-bottom-2 sm:h-3"
-                      viewBox="0 0 100 10"
-                      preserveAspectRatio="none"
-                      aria-hidden
-                    >
-                      <path
-                        d="M0 5 Q 25 0, 50 5 T 100 5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                    </svg>
-                  </span>
-                  <br />
-                  built for teams.
-                </h1>
-
-                <p
-                  className="mt-5 max-w-120 text-[15px] leading-relaxed sm:mt-8 sm:text-[17px]"
-                  style={{ color: "var(--hex-ink-soft)" }}
+          <div className="relative mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
+            <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
+              <div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  Twelve field types, one question at a time for whoever fills it in, and real
-                  numbers on the other side. Publish with a link, close it when you&rsquo;re done.
-                </p>
+                  <h1 className="text-[34px] leading-[1.06] font-semibold tracking-[-0.03em] text-foreground sm:text-[46px] sm:tracking-[-0.035em] md:text-[64px] md:tracking-[-0.04em] lg:text-[68px] xl:text-[80px]">
+                    Forms, <br />
+                    <span className="relative">
+                      thoughtfully
+                      <svg
+                        className="absolute -bottom-1 left-0 h-2 w-full text-accent/30 sm:-bottom-2 sm:h-3"
+                        viewBox="0 0 100 10"
+                        preserveAspectRatio="none"
+                        aria-hidden
+                      >
+                        <path
+                          d="M0 5 Q 25 0, 50 5 T 100 5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                      </svg>
+                    </span>
+                    <br />
+                    built for teams.
+                  </h1>
 
-                <div className="group relative mt-7 max-w-135 sm:mt-9">
-                  <div className="relative z-10 flex flex-col items-stretch rounded-none border hex-line-strong bg-white p-1.5 transition-shadow focus-within:shadow-[4px_4px_0_0_rgba(26,29,41,0.12)] sm:flex-row">
-                    <label htmlFor="hero-title" className="sr-only">
-                      Name your form
-                    </label>
-                    <input
-                      id="hero-title"
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Name your form..."
-                      className="w-full border-none bg-transparent px-4 py-3 text-[15px] placeholder:text-muted-foreground/60 focus:outline-none sm:flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          void handleCreate();
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => void handleCreate()}
-                      disabled={isPending}
-                      className="flex w-full items-center justify-center gap-2 rounded-none bg-foreground px-6 py-2.5 text-[13px] font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50 sm:w-auto"
-                    >
-                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create form"}
-                    </button>
-                  </div>
+                  <p
+                    className="mt-5 max-w-120 text-[15px] leading-relaxed sm:mt-8 sm:text-[17px]"
+                    style={{ color: "var(--hex-ink-soft)" }}
+                  >
+                    Thirteen field types, laid out the way you choose for whoever fills it in, and
+                    real numbers on the other side. Publish with a link, close it when you&rsquo;re
+                    done.
+                  </p>
 
-                  <div className="relative z-10 mt-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="hex-mono mr-2 text-[10px] font-bold tracking-widest uppercase opacity-50">
-                        Start with:
-                      </span>
-                      {STARTERS.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setTitle(s)}
-                          className="rounded-none border hex-line-strong bg-transparent px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-foreground hover:text-background"
-                        >
-                          {s}
-                        </button>
-                      ))}
+                  <div className="group relative mt-7 max-w-135 sm:mt-9">
+                    <div className="relative z-10 flex flex-col items-stretch rounded-none border hex-line-strong bg-white p-1.5 transition-shadow focus-within:shadow-[4px_4px_0_0_rgba(26,29,41,0.12)] sm:flex-row">
+                      <label htmlFor="hero-title" className="sr-only">
+                        Name your form
+                      </label>
+                      <input
+                        id="hero-title"
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Name your form..."
+                        className="w-full border-none bg-transparent px-4 py-3 text-[15px] placeholder:text-muted-foreground/60 focus:outline-none sm:flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void handleCreate();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => void handleCreate()}
+                        disabled={isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-none bg-foreground px-6 py-2.5 text-[13px] font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50 sm:w-auto"
+                      >
+                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create form"}
+                      </button>
+                    </div>
+
+                    <div className="relative z-10 mt-5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="hex-mono mr-2 text-[10px] font-bold tracking-widest uppercase opacity-50">
+                          Start with:
+                        </span>
+                        {STARTERS.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setTitle(s)}
+                            className="rounded-none border hex-line-strong bg-transparent px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-foreground hover:text-background"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="relative hidden lg:block"
+              >
+                <Image
+                  src="https://ik.imagekit.io/yatharth/image%20(10).png"
+                  alt="CanvasFlow form builder interface"
+                  width={1071}
+                  height={1213}
+                  priority
+                  className="pointer-events-none relative h-auto w-full rounded-2xl select-none"
+                />
               </motion.div>
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, x: 20 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative hidden lg:block"
-            >
-              <Image
-                src="https://ik.imagekit.io/yatharth/image%20(10).png"
-                alt="CanvasFlow form builder interface"
-                width={1200}
-                height={1000}
-                priority
-                className="pointer-events-none relative h-auto w-full rounded-2xl select-none"
-              />
-            </motion.div>
-          </div>
-
-          <div className="relative pt-12 sm:pt-16 lg:pt-20">
-            <div className="relative grid items-end gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-5">
-                <ResponseFeedMock />
-              </div>
-              <div className="lg:col-span-7 lg:-mt-12">
-                <FormBuilderMock />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FIG.01 · The canvas ────────────────────────────────────── */}
-      <FeatureBlock
-        id="canvas"
-        glyph="01"
-        title={
-          <>
-            A canvas that <br />
-            stays out of the way.
-          </>
-        }
-        body="Sane defaults. No fifty-tab settings panels. Drop in a field, write the question, mark it required — your form is already publishable, accessible, and fast on mobile."
-        cta="Open the builder"
-        mock={<CanvasEditorMock />}
-        reverse
-      />
-
-      {/* ── FIG.02 · Dashboards ────────────────────────────────────── */}
-      <section
-        id="analytics"
-        className="hex-vignette relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-32"
-        style={{ borderBottomWidth: 1 }}
-      >
-        <div className="hex-section-paper" aria-hidden />
-        <HorizontalScale className="absolute top-0 left-0 h-6 w-full sm:h-10" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid items-start gap-10 sm:gap-14 lg:grid-cols-[1fr_2.5fr] lg:gap-20">
-            <div className="lg:sticky lg:top-32">
-              <div className="mb-4 flex items-center gap-3 sm:mb-6">
-                <GeoGlyph />
-                <span className="hex-fig">FIG.02</span>
-              </div>
-              <h2 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[40px]">
-                Beautiful dashboards,{" "}
-                <em
-                  className="font-normal italic"
-                  style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-                >
-                  for when you want to click around.
-                </em>
-              </h2>
-              <p
-                className="mt-5 text-[15px] leading-relaxed sm:mt-6 sm:text-[16px]"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
-                Views and responses, completion rate, the hour and the day people actually reply,
-                and which question they gave up on. Your form becomes a real dashboard the second
-                answers land — no exports, no spreadsheets.
-              </p>
-              <Link href="/dashboard/sketches" className="hex-btn-ghost mt-6 sm:mt-7">
-                Explore responses →
-              </Link>
-            </div>
-            <div>
-              <AnalyticsMock />
-            </div>
-          </div>
-        </div>
-        <HorizontalScale className="absolute bottom-0 left-0 h-6 w-full sm:h-10" />
-      </section>
-
-      {/* ── FIG.03 · Sharing & access ──────────────────────────────── */}
-      <section
-        id="responses"
-        className="relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-28"
-        style={{ borderBottomWidth: 1 }}
-      >
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid items-center gap-10 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
-            <div className="max-w-lg">
-              <div className="mb-4 flex items-center gap-3 sm:mb-6">
-                <GeoGlyph />
-                <span className="hex-fig">FIG.03</span>
-              </div>
-              <h2 className="text-[30px] leading-[1.07] font-semibold tracking-[-0.03em] sm:text-[36px] sm:leading-[1.04] sm:tracking-[-0.035em] lg:text-[44px]">
-                One link. <br />
-                <em
-                  className="font-normal italic"
-                  style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-                >
-                  You decide when it closes.
-                </em>
-              </h2>
-              <p
-                className="mt-5 text-[15px] leading-relaxed sm:mt-7 sm:text-[17px]"
-                style={{ color: "var(--hex-ink-soft)" }}
-              >
-                Publish and share the link, or hand over a QR code. Close the form with a toggle,
-                give it an expiry date, or cap the number of submissions. Every response is kept to
-                one per visitor.
-              </p>
-              <Link href="/dashboard/sketches" className="hex-btn-ghost mt-7 text-[14px] sm:mt-9">
-                Your forms →
-              </Link>
-            </div>
-            <div className="min-w-0">
-              <ShareAccessMock />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Three steps ────────────────────────────────────────────── */}
-      <section
-        id="how-it-works"
-        className="relative overflow-hidden border-y hex-line-soft py-16 sm:py-20 lg:py-32"
-        style={{ borderTopWidth: 1, borderBottomWidth: 1 }}
-      >
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mb-12 max-w-2xl sm:mb-16 lg:mb-20">
-            <h2 className="text-[30px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[38px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[48px]">
-              Three steps.{" "}
-              <em
-                className="font-normal italic"
-                style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-              >
-                No ceremony.
-              </em>
-            </h2>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-3">
-            <FeatureStepCard
-              n="01"
-              t="Build it"
-              d="Drag fields onto the canvas from twelve types, reorder them, and mark what's required."
-              illustration={<BuildIllustration />}
-            />
-            <FeatureStepCard
-              n="02"
-              t="Share it"
-              d="Publish, then pass along the link or the QR code. Close it, expire it, or cap it."
-              illustration={<ShareIllustration />}
-            />
-            <FeatureStepCard
-              n="03"
-              t="Read it"
-              d="Live charts, the response table, drop-off per question, and CSV export."
-              illustration={<SignalIllustration />}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Collaboration ──────────────────────────────────────────── */}
-      <section
-        id="collaborate"
-        className="relative border-b hex-line-soft py-16 sm:py-20 lg:py-24"
-        style={{ borderBottomWidth: 1 }}
-      >
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="grid gap-8 sm:gap-10 lg:grid-cols-[1fr_1fr] lg:gap-14">
-            <div>
-              <div className="mb-4 flex items-center gap-3 sm:mb-6">
-                <GeoGlyph />
-                <span className="hex-fig">FIG.04</span>
-              </div>
-              <h2 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[40px]">
-                Bring the team,{" "}
-                <em
-                  className="font-normal italic"
-                  style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-                >
-                  not the whole company.
-                </em>
-              </h2>
-            </div>
-            <div className="grid gap-6 sm:grid-cols-2">
-              {[
-                {
-                  h: "Access per area",
-                  d: "Give a collaborator the builder, the analytics, the responses, or the settings — separately.",
-                },
-                {
-                  h: "Roles you can change",
-                  d: "Promote, demote, or remove someone at any time without rebuilding the form.",
-                },
-                {
-                  h: "Hand over ownership",
-                  d: "Transfer a form to someone else outright when it stops being yours to run.",
-                },
-                {
-                  h: "Sign in your way",
-                  d: "Email and password, or Google and GitHub if you'd rather skip another password.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.h}
-                  className="border-t hex-line-strong pt-5"
-                  style={{ borderTopWidth: 1 }}
-                >
-                  <h3 className="text-[15px] font-semibold">{item.h}</h3>
-                  <p
-                    className="mt-2 text-[14px] leading-relaxed"
-                    style={{ color: "var(--hex-ink-soft)" }}
-                  >
-                    {item.d}
-                  </p>
+            <div className="relative pt-12 sm:pt-16 lg:pt-20">
+              <div className="relative grid items-end gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-5">
+                  <DecorativeMock label="Illustration: a feed of recent form responses, each showing the answer and when it arrived.">
+                    <ResponseFeedMock />
+                  </DecorativeMock>
                 </div>
+                <div className="lg:col-span-7 lg:-mt-12">
+                  <DecorativeMock label="Illustration: the CanvasFlow form builder, with a field palette on the left and a question being edited.">
+                    <FormBuilderMock />
+                  </DecorativeMock>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FIG.01 · The canvas ────────────────────────────────────── */}
+        <FeatureBlock
+          id="canvas"
+          glyph="01"
+          title={
+            <>
+              A canvas that <br />
+              stays out of the way.
+            </>
+          }
+          body="Sane defaults. No fifty-tab settings panels. Drop in a field, write the question, mark it required — your form is already publishable, accessible, and fast on mobile."
+          cta="Open the builder"
+          mock={
+            <DecorativeMock label="Illustration: the canvas editor, with form fields laid out as connected nodes.">
+              <CanvasEditorMock />
+            </DecorativeMock>
+          }
+          reverse
+        />
+
+        {/* ── FIG.02 · Dashboards ────────────────────────────────────── */}
+        <section
+          id="analytics"
+          className="hex-vignette relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-32"
+          style={{ borderBottomWidth: 1 }}
+        >
+          <div className="hex-section-paper" aria-hidden />
+          <HorizontalScale className="absolute top-0 left-0 h-6 w-full sm:h-10" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="grid items-start gap-10 sm:gap-14 lg:grid-cols-[1fr_2.5fr] lg:gap-20">
+              <div className="lg:sticky lg:top-32">
+                <div className="mb-4 flex items-center gap-3 sm:mb-6">
+                  <GeoGlyph />
+                  <span className="hex-fig">FIG.02</span>
+                </div>
+                <h2 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[40px]">
+                  Beautiful dashboards,{" "}
+                  <em
+                    className="font-normal italic"
+                    style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+                  >
+                    for when you want to click around.
+                  </em>
+                </h2>
+                <p
+                  className="mt-5 text-[15px] leading-relaxed sm:mt-6 sm:text-[16px]"
+                  style={{ color: "var(--hex-ink-soft)" }}
+                >
+                  Views and responses, completion rate, the hour and the day people actually reply,
+                  and which question they gave up on. Your form becomes a real dashboard the second
+                  answers land — no exports, no spreadsheets.
+                </p>
+                <Link href="/dashboard/sketches" className="hex-btn-ghost mt-6 sm:mt-7">
+                  Explore responses →
+                </Link>
+              </div>
+              <div>
+                <DecorativeMock label="Illustration: the response dashboard, showing totals, a submission trend chart, and a list of recent forms.">
+                  <AnalyticsMock />
+                </DecorativeMock>
+              </div>
+            </div>
+          </div>
+          <HorizontalScale className="absolute bottom-0 left-0 h-6 w-full sm:h-10" />
+        </section>
+
+        {/* ── FIG.03 · Sharing & access ──────────────────────────────── */}
+        <section
+          id="responses"
+          className="relative overflow-hidden border-b hex-line-soft py-16 sm:py-20 lg:py-28"
+          style={{ borderBottomWidth: 1 }}
+        >
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="grid items-center gap-10 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+              <div className="max-w-lg">
+                <div className="mb-4 flex items-center gap-3 sm:mb-6">
+                  <GeoGlyph />
+                  <span className="hex-fig">FIG.03</span>
+                </div>
+                <h2 className="text-[30px] leading-[1.07] font-semibold tracking-[-0.03em] sm:text-[36px] sm:leading-[1.04] sm:tracking-[-0.035em] lg:text-[44px]">
+                  One link. <br />
+                  <em
+                    className="font-normal italic"
+                    style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+                  >
+                    You decide when it closes.
+                  </em>
+                </h2>
+                <p
+                  className="mt-5 text-[15px] leading-relaxed sm:mt-7 sm:text-[17px]"
+                  style={{ color: "var(--hex-ink-soft)" }}
+                >
+                  Publish and share the link, or hand over a QR code. Close the form with a toggle,
+                  give it an expiry date, or cap the number of submissions. Every response is kept
+                  to one per visitor.
+                </p>
+                <Link href="/dashboard/sketches" className="hex-btn-ghost mt-7 text-[14px] sm:mt-9">
+                  Your forms →
+                </Link>
+              </div>
+              <div className="min-w-0">
+                <DecorativeMock label="Illustration: the share dialog, showing a public link, a QR code, and a list of collaborators with their roles.">
+                  <ShareAccessMock />
+                </DecorativeMock>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Three steps ────────────────────────────────────────────── */}
+        <section
+          id="how-it-works"
+          className="relative overflow-hidden border-y hex-line-soft py-16 sm:py-20 lg:py-32"
+          style={{ borderTopWidth: 1, borderBottomWidth: 1 }}
+        >
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="mb-12 max-w-2xl sm:mb-16 lg:mb-20">
+              <h2 className="text-[30px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[38px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[48px]">
+                Three steps.{" "}
+                <em
+                  className="font-normal italic"
+                  style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+                >
+                  No ceremony.
+                </em>
+              </h2>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-3">
+              <FeatureStepCard
+                n="01"
+                t="Build it"
+                d="Drag fields onto the canvas from thirteen types, group them into segments, and mark what's required."
+                illustration={<BuildIllustration />}
+              />
+              <FeatureStepCard
+                n="02"
+                t="Share it"
+                d="Publish, then pass along the link or the QR code. Close it, expire it, or cap it."
+                illustration={<ShareIllustration />}
+              />
+              <FeatureStepCard
+                n="03"
+                t="Read it"
+                d="Live charts, the response table, drop-off per question, and CSV export."
+                illustration={<SignalIllustration />}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Collaboration ──────────────────────────────────────────── */}
+        <section
+          id="collaborate"
+          className="relative border-b hex-line-soft py-16 sm:py-20 lg:py-24"
+          style={{ borderBottomWidth: 1 }}
+        >
+          <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid gap-8 sm:gap-10 lg:grid-cols-[1fr_1fr] lg:gap-14">
+              <div>
+                <div className="mb-4 flex items-center gap-3 sm:mb-6">
+                  <GeoGlyph />
+                  <span className="hex-fig">FIG.04</span>
+                </div>
+                <h2 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[34px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[40px]">
+                  Bring the team,{" "}
+                  <em
+                    className="font-normal italic"
+                    style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+                  >
+                    not the whole company.
+                  </em>
+                </h2>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                {[
+                  {
+                    h: "Access per area",
+                    d: "Give a collaborator the builder, the analytics, the responses, or the settings — separately.",
+                  },
+                  {
+                    h: "Roles you can change",
+                    d: "Promote, demote, or remove someone at any time without rebuilding the form.",
+                  },
+                  {
+                    h: "Hand over ownership",
+                    d: "Transfer a form to someone else outright when it stops being yours to run.",
+                  },
+                  {
+                    h: "Sign in your way",
+                    d: "Email and password, or Google and GitHub if you'd rather skip another password.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.h}
+                    className="border-t hex-line-strong pt-5"
+                    style={{ borderTopWidth: 1 }}
+                  >
+                    <h3 className="text-[15px] font-semibold">{item.h}</h3>
+                    <p
+                      className="mt-2 text-[14px] leading-relaxed"
+                      style={{ color: "var(--hex-ink-soft)" }}
+                    >
+                      {item.d}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ────────────────────────────────────────────────────── */}
+        <section
+          id="faq"
+          className="hex-vignette relative border-b hex-line-soft py-16 sm:py-20 lg:py-28"
+          style={{ borderBottomWidth: 1 }}
+        >
+          <HorizontalScale className="absolute top-0 left-0 h-6 w-full sm:h-10" />
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:gap-12 sm:px-6 lg:grid-cols-[360px_1fr] lg:gap-16">
+            <div>
+              <h2 className="text-[29px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[35px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[42px]">
+                Questions,{" "}
+                <em
+                  className="font-normal italic"
+                  style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+                >
+                  answered.
+                </em>
+              </h2>
+              <p
+                className="mt-5 text-[15px] leading-relaxed"
+                style={{ color: "var(--hex-ink-soft)" }}
+              >
+                The short version of what teams ask us most. Want the long one?
+              </p>
+              <Link href="/signUp" className="hex-link mt-5 inline-flex text-[14px]">
+                Talk to the team →
+              </Link>
+            </div>
+            <div className="border-t hex-line-soft" style={{ borderTopWidth: 1 }}>
+              {FAQS.map((f, i) => (
+                <details
+                  key={f.q}
+                  className="hex-faq-row border-b hex-line-soft px-1"
+                  style={{ borderBottomWidth: 1 }}
+                >
+                  <summary>
+                    <span className="flex items-baseline gap-4">
+                      <span
+                        className="hex-mono text-[11px] tracking-wider"
+                        style={{ color: "var(--hex-ink-muted)" }}
+                      >
+                        0{i + 1}
+                      </span>
+                      <span className="text-[16px] leading-snug font-medium sm:text-[18px]">
+                        {f.q}
+                      </span>
+                    </span>
+                    <span className="hex-faq-icon">+</span>
+                  </summary>
+                  <div className="hex-faq-body" style={{ paddingLeft: "calc(11px + 1rem)" }}>
+                    {f.a}
+                  </div>
+                </details>
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ────────────────────────────────────────────────────── */}
-      <section
-        id="faq"
-        className="hex-vignette relative border-b hex-line-soft py-16 sm:py-20 lg:py-28"
-        style={{ borderBottomWidth: 1 }}
-      >
-        <HorizontalScale className="absolute top-0 left-0 h-6 w-full sm:h-10" />
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:gap-12 sm:px-6 lg:grid-cols-[360px_1fr] lg:gap-16">
-          <div>
-            <h2 className="text-[29px] leading-[1.08] font-semibold tracking-[-0.03em] sm:text-[35px] sm:leading-[1.05] sm:tracking-[-0.035em] lg:text-[42px]">
-              Questions,{" "}
-              <em
-                className="font-normal italic"
-                style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-              >
-                answered.
-              </em>
-            </h2>
-            <p
-              className="mt-5 text-[15px] leading-relaxed"
-              style={{ color: "var(--hex-ink-soft)" }}
-            >
-              The short version of what teams ask us most. Want the long one?
-            </p>
-            <Link href="/signUp" className="hex-link mt-5 inline-flex text-[14px]">
-              Talk to the team →
-            </Link>
-          </div>
-          <div className="border-t hex-line-soft" style={{ borderTopWidth: 1 }}>
-            {FAQS.map((f, i) => (
-              <details
-                key={f.q}
-                className="hex-faq-row border-b hex-line-soft px-1"
-                style={{ borderBottomWidth: 1 }}
-              >
-                <summary>
-                  <span className="flex items-baseline gap-4">
-                    <span
-                      className="hex-mono text-[11px] tracking-wider"
-                      style={{ color: "var(--hex-ink-muted)" }}
-                    >
-                      0{i + 1}
-                    </span>
-                    <span className="text-[16px] leading-snug font-medium sm:text-[18px]">
-                      {f.q}
-                    </span>
-                  </span>
-                  <span className="hex-faq-icon">+</span>
-                </summary>
-                <div className="hex-faq-body" style={{ paddingLeft: "calc(11px + 1rem)" }}>
-                  {f.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>

@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import { GlobalProviders } from "~/providers/global";
 import { JsonLd } from "~/components/seo/JsonLd";
 import { organizationSchema, websiteSchema } from "~/lib/structured-data";
@@ -112,6 +115,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://ik.imagekit.io" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${jbMono.variable} ${instrumentSerif.variable}`}
       >
@@ -121,6 +128,18 @@ export default function RootLayout({
         </GlobalProviders>
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />
+
+        {/* SpeedInsights reports field Core Web Vitals (LCP, CLS, INP) from
+         * real visits; Analytics counts page views. Both load their script and
+         * send their beacons under /_vercel/ on this same origin, so the
+         * existing `script-src 'self'` and `connect-src 'self'` in
+         * next.config.js already cover them — no CSP change is needed.
+         *
+         * They report only when the app is served by Vercel. Anywhere else the
+         * /_vercel/ routes don't exist, the script 404s, and the components sit
+         * inert rather than erroring. */}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
