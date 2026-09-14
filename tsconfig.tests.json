@@ -25,6 +25,8 @@
       "@repo/database": ["./packages/database/index.ts"],
       "@repo/database/*": ["./packages/database/*"],
       "@repo/logger": ["./packages/logger/index.ts"],
+      "@repo/observability": ["./packages/observability/index.ts"],
+      "@repo/observability/*": ["./packages/observability/*"],
       "@repo/queue": ["./packages/queue/index.ts"],
       "@repo/redis": ["./packages/redis/index.ts"],
       "@repo/redis/*": ["./packages/redis/*"],
@@ -41,6 +43,7 @@
     "apps/api/tests/**/*.ts",
     "apps/worker/tests/**/*.ts",
     "packages/services/tests/**/*.ts",
+    "packages/observability/tests/**/*.ts",
     "packages/trpc/tests/**/*.ts"
   ]
 }

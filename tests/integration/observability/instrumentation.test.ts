@@ -175,7 +175,7 @@ describe("form.submitForm", () => {
 
     const total = (
       await register.getSingleMetric("canvasflow_form_submissions_total")?.get()
-    )?.values.reduce((sum, v) => sum + v.value, 0);
+    )?.values.reduce((sum: number, v: { value: number }) => sum + v.value, 0);
 
     expect(total).toBe(1);
   });
