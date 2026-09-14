@@ -5,11 +5,30 @@
  */
 
 /* The public origin. Falls back to localhost so a dev build still produces
- * absolute URLs instead of throwing — production sets the real value. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
-  /\/$/,
-  "",
-);
+ * absolute URLs instead of throwing — production sets the real value.
+ *
+ * `||`, not `??`, and trimmed first. A Docker build arg that is declared but
+ * passed no value arrives as an empty string rather than undefined, so `??`
+ * lets "" through — and `new URL("")` in layout.tsx's metadataBase throws
+ * ERR_INVALID_URL during page collection, failing the whole build. That is a
+ * deploy whose only fault is an environment variable nobody filled in yet, so
+ * it has to degrade to the fallback instead of exploding. */
+const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+export const SITE_URL = (configuredSiteUrl || "http://localhost:3000").replace(/\/$/, "");
+
+/* Degrading quietly is the wrong half of the trade: the build survives, and
+ * every canonical, sitemap entry and OG tag then tells crawlers the site lives
+ * at localhost. Server-side only, so it lands in the build log where whoever
+ * ran the deploy will see it, rather than in visitors' consoles. */
+if (!configuredSiteUrl && process.env.NODE_ENV === "production" && typeof window === "undefined") {
+  console.warn(
+    "[seo] NEXT_PUBLIC_SITE_URL is not set. Canonical URLs, the sitemap, OG tags and " +
+      `JSON-LD will all be built from ${SITE_URL}. Set it in the deployment environment ` +
+      "and rebuild the web image — it is inlined at build time, so a runtime value is " +
+      "too late.",
+  );
+}
 
 export const SITE_NAME = "CanvasFlow";
 

@@ -157,8 +157,13 @@ jobs:
 
       # NEXT_PUBLIC_* values are inlined into the web bundle at build time, so
       # the production URLs must come from the ENV secret, not from .env.example.
+      #
+      # Runs for EVERY target, not just web. All six images derive from the one
+      # `build` stage, and that stage runs `pnpm build` for the whole monorepo
+      # — `next build` included. Extracting only for web meant the other five
+      # jobs built the web app with these values empty, which is how an empty
+      # NEXT_PUBLIC_SITE_URL failed the `menti` image rather than the web one.
       - name: Extract build-time web args from production env
-        if: matrix.target == 'web'
         env:
           ENV_FILE_CONTENT: ${{ secrets.ENV }}
         run: |
