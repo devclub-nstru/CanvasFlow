@@ -19,6 +19,8 @@
     "@tanstack/react-query": "^5.90.16",
     "@tanstack/react-virtual": "^3.14.4",
     "@trpc/react-query": "^11.8.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "@xyflow/react": "^12.11.0",
     "better-auth": "^1.6.20",
     "class-variance-authority": "^0.7.1",

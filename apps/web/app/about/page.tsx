@@ -84,6 +84,8 @@ export default function AboutPage() {
 
       <Navbar />
 
+      <main>
+
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b hex-line-soft"
@@ -321,6 +323,8 @@ export default function AboutPage() {
           { name: "About", path: "/about" },
         ])}
       />
+      </main>
+
       <Footer />
     </div>
   );

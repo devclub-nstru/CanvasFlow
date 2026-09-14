@@ -170,6 +170,8 @@ export default function LearnMorePage() {
 
       <Navbar />
 
+      <main>
+
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b hex-line-soft"
@@ -530,6 +532,8 @@ export default function LearnMorePage() {
           { name: "Learn more", path: "/learn-more" },
         ])}
       />
+      </main>
+
       <Footer />
     </div>
   );

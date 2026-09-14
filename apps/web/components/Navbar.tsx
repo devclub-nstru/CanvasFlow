@@ -15,8 +15,8 @@ const PLATFORM_GROUPS: { heading: string; items: NavLinkItem[] }[] = [
     items: [
       {
         title: "Field library",
-        desc: "Twelve field types, drag to reorder, edit inline",
-        href: "/#fields",
+        desc: "Thirteen field types, drag to reorder, edit inline",
+        href: "/docs#field-types",
       },
       {
         title: "Visual form canvas",

@@ -488,7 +488,6 @@
   }
 }
 
-
 .cf-dialog {
   position: relative;
   display: flex;
@@ -888,7 +887,11 @@
   z-index: 0;
   pointer-events: none;
   opacity: 0.3;
-  background-image: url("https://ik.imagekit.io/yatharth/ChatGPT%20Image%20Apr%2030,%202026,%2007_52_59%20PM.png");
+  /* w-420 matches the tile actually painted; f-png is deliberate. ImageKit
+   * auto-converts to WebP for browsers that accept it, and for this 4-bit
+   * palette PNG with transparency that is three times LARGER (63 KB vs 22 KB).
+   * Forcing png keeps the small file and the alpha channel. */
+  background-image: url("https://ik.imagekit.io/yatharth/ChatGPT%20Image%20Apr%2030,%202026,%2007_52_59%20PM.png?tr=w-420,f-png");
   background-size: min(420px, 45vw) auto;
   background-repeat: repeat;
 }
@@ -899,7 +902,7 @@
   z-index: 0;
   pointer-events: none;
   opacity: 0.1;
-  background-image: url("https://ik.imagekit.io/yatharth/BG-SECTION-.png");
+  background-image: url("https://ik.imagekit.io/yatharth/BG-SECTION-.png?tr=w-1400,f-webp,q-60");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

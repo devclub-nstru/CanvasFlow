@@ -29,7 +29,7 @@ export function ScrollReveal({
 }: ScrollRevealProps) {
   const { ref, isVisible } = useScrollReveal(0.15);
 
-  return (
+  const reveal = (
     <div
       ref={ref}
       className={cn(
@@ -44,4 +44,8 @@ export function ScrollReveal({
       {children}
     </div>
   );
+
+  if (direction !== "left" && direction !== "right") return reveal;
+
+  return <div className="overflow-x-clip">{reveal}</div>;
 }

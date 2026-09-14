@@ -195,6 +195,8 @@ export default function PrivacyPage() {
 
       <Navbar />
 
+      <main>
+
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b hex-line-soft"
@@ -687,6 +689,8 @@ export default function PrivacyPage() {
           { name: "Privacy", path: "/privacy" },
         ])}
       />
+      </main>
+
       <Footer />
     </div>
   );

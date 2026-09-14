@@ -326,6 +326,8 @@ export default function DocsPage() {
 
       <Navbar />
 
+      <main>
+
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b hex-line-soft"
@@ -1010,6 +1012,8 @@ export default function DocsPage() {
           path: "/docs",
         })}
       />
+      </main>
+
       <Footer />
     </div>
   );
