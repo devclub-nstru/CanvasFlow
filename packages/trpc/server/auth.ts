@@ -63,8 +63,6 @@ export function authSecret(): string {
   return cachedSecret;
 }
 
-/* Called from the API's boot path so a production process with no secret dies
- * on startup instead of on the first sign-in attempt. */
 export function assertAuthSecret(): void {
   authSecret();
 }
@@ -216,8 +214,6 @@ export function validatePassword(password: unknown, email?: unknown): string | n
     return "That password is too common — choose something less predictable";
   }
 
-  /* A single repeated character reaches any length requirement without adding
-   * any real difficulty. */
   if (new Set(password).size <= 2) {
     return "Password must use more than a couple of distinct characters";
   }
@@ -256,6 +252,16 @@ class UnverifiedOAuthEmailError extends Error {
   }
 }
 
+class SuspendedAccountError extends Error {
+  readonly reason: string | null;
+
+  constructor(reason: string | null) {
+    super("This account is suspended.");
+    this.name = "SuspendedAccountError";
+    this.reason = reason;
+  }
+}
+
 async function findOrCreateOAuthUser(info: {
   email: string;
   name: string;
@@ -281,6 +287,7 @@ async function findOrCreateOAuthUser(info: {
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, existingAccount.userId));
+    if (users[0]?.suspendedAt) throw new SuspendedAccountError(users[0].suspendedReason);
     if (users[0]) return users[0];
   }
 
@@ -288,9 +295,9 @@ async function findOrCreateOAuthUser(info: {
   const usersByEmail = await db.select().from(usersTable).where(eq(usersTable.email, info.email));
   let user = usersByEmail[0];
 
+  if (user?.suspendedAt) throw new SuspendedAccountError(user.suspendedReason);
+
   if (user && !info.emailVerified) {
-    /* The dangerous case: an unverified address matching an existing account.
-     * Refuse rather than link. */
     throw new UnverifiedOAuthEmailError(info.provider);
   }
 
@@ -304,8 +311,6 @@ async function findOrCreateOAuthUser(info: {
         email: info.email,
         name: info.name || "",
         image: info.image || null,
-        /* Reflects what the provider actually asserted. It used to be hardcoded
-         * true for every OAuth signup regardless. */
         emailVerified: info.emailVerified,
       })
       .returning();
@@ -465,6 +470,18 @@ function consumeOAuthFlow(
   return safeRedirectTarget(storedRedirect);
 }
 
+const AUTH_NOTICE_MAX_AGE_MS = 2 * 60 * 1000;
+
+function setAuthNotice(res: express.Response, message: string): void {
+  const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+  res.cookie("cf_auth_notice", message, {
+    maxAge: AUTH_NOTICE_MAX_AGE_MS,
+    secure: true,
+    sameSite: "none" as const,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  });
+}
+
 function oauthFailureRedirect(reason: string): string {
   return `${defaultWebOrigin()}/signIn?error=${encodeURIComponent(reason)}`;
 }
@@ -530,13 +547,27 @@ async function issueSession(
   return { token, sessionId, expiresAt };
 }
 
-/* The live session plus the role the account holds *right now*.
+/* How stale `last_seen_at` is allowed to get before it is rewritten.
  *
- * Role is read from `users` on every check rather than carried as a JWT claim.
- * A claim would be cheaper, but it would also mean a demoted admin keeps their
- * access until the token expires — up to seven days of /admin for someone who
- * was removed this morning. Joining `users` here costs nothing extra: the
- * session row had to be fetched anyway. */
+ * resolveActiveSession runs on every authenticated request, so writing each
+ * time would add a row update to every API call in the app just to move a
+ * timestamp by milliseconds. An hour is plenty for daily/weekly/monthly counts
+ * and turns this into roughly one write per active user per hour. */
+const LAST_SEEN_REFRESH_MS = 60 * 60 * 1000;
+
+function touchLastSeen(userId: string, current: Date | null): void {
+  if (current && Date.now() - current.getTime() < LAST_SEEN_REFRESH_MS) return;
+
+  /* Not awaited: whether a session is valid does not depend on this, and a
+   * failed bookkeeping write must never turn into a failed request. */
+  db.update(usersTable)
+    .set({ lastSeenAt: new Date() })
+    .where(eq(usersTable.id, userId))
+    .catch(() => {
+      /* Best effort — a missed tick costs one user one hour of presence. */
+    });
+}
+
 async function resolveActiveSession(
   sessionId: unknown,
 ): Promise<{ userId: string; role: UserRole } | null> {
@@ -547,6 +578,8 @@ async function resolveActiveSession(
       expiresAt: sessionsTable.expiresAt,
       userId: sessionsTable.userId,
       role: usersTable.role,
+      suspendedAt: usersTable.suspendedAt,
+      lastSeenAt: usersTable.lastSeenAt,
     })
     .from(sessionsTable)
     .innerJoin(usersTable, eq(sessionsTable.userId, usersTable.id))
@@ -556,6 +589,10 @@ async function resolveActiveSession(
   const row = rows[0];
   if (!row) return null;
   if (row.expiresAt.getTime() <= Date.now()) return null;
+
+  if (row.suspendedAt) return null;
+
+  touchLastSeen(row.userId, row.lastSeenAt);
 
   return { userId: row.userId, role: row.role };
 }
@@ -571,7 +608,7 @@ async function revokeSession(sessionId: string): Promise<void> {
   if (row) await publishRevocation(sessionId, row.expiresAt);
 }
 
-async function revokeAllSessionsForUser(userId: string): Promise<number> {
+export async function revokeAllSessionsForUser(userId: string): Promise<number> {
   const rows = await db
     .delete(sessionsTable)
     .where(eq(sessionsTable.userId, userId))
@@ -582,9 +619,6 @@ async function revokeAllSessionsForUser(userId: string): Promise<number> {
   return rows.length;
 }
 
-/* Only one purpose remains now that address confirmation is off. The type is
- * kept as a union of one so the identifier prefixes stay namespaced — a reset
- * token must never be redeemable as anything else. */
 type VerificationPurpose = "password-reset";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
@@ -709,27 +743,12 @@ const getSessionCookieOptions = () => {
   };
 };
 
-/* Signup — two steps, because the address has to be proven before an account
- * exists for it.
- *
- * Step one stores the details in `pending_signups` and mails a code. No row in
- * `users` is written, so an address someone else owns never gains an account
- * they did not ask for, and a half-finished signup leaves nothing to clean up
- * beyond a row that expires on its own.
- *
- * Step two (`/signup/verify`) checks the code, creates the user and credential
- * account, and issues the session. */
 
 const SIGNUP_CODE_TTL_MS = 15 * 60 * 1000;
-/* Six digits is 1e6 possibilities. That is only safe because a pending signup
- * is abandoned after a handful of wrong guesses and expires in 15 minutes —
- * the attempt cap is what makes the short code acceptable, not its length. */
 const SIGNUP_CODE_MAX_ATTEMPTS = 5;
 const SIGNUP_RESEND_COOLDOWN_MS = 60 * 1000;
 
 function generateSignupCode(): string {
-  /* randomInt is rejection-sampled, so every code is equally likely; a plain
-   * modulo of random bytes would bias the low digits. */
   return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
@@ -766,15 +785,6 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
     return;
   }
 
-  /* Without a way to send the code there is no way to finish signing up, and
-   * silently creating an unverifiable pending row would strand the person on a
-   * screen asking for a code that will never arrive.
-   *
-   * Only in production, though. With no SMTP host configured the mail service
-   * falls back to its log transport and prints the message — code included —
-   * to the API console, which is exactly how this flow is meant to be exercised
-   * locally. Refusing here too would make the feature untestable without a
-   * relay. */
   if (!isMailConfigured() && process.env.NODE_ENV === "production") {
     console.error("[auth] signup blocked: mail transport is not configured");
     res.status(503).json({
@@ -799,10 +809,6 @@ const handleSignup = async (req: express.Request, res: express.Response) => {
     const now = new Date();
     const passwordHash = await hashPassword(password);
 
-    /* One pending signup per address. Starting again replaces the previous
-     * attempt outright, which also resets the attempt counter — otherwise a
-     * mistyped code could lock someone out of their own address until the row
-     * expired. */
     await db
       .insert(pendingSignupsTable)
       .values({
@@ -867,8 +873,6 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
 
     const pending = rows[0];
 
-    /* One message for "no pending signup" and "expired". Distinguishing them
-     * would tell an unauthenticated caller whether an address is mid-signup. */
     if (!pending || pending.expiresAt.getTime() <= Date.now()) {
       if (pending) {
         await db.delete(pendingSignupsTable).where(eq(pendingSignupsTable.id, pending.id));
@@ -912,8 +916,6 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
       return;
     }
 
-    /* The address could have been claimed by another signup while this one sat
-     * waiting for its code. */
     const claimed = await db
       .select({ id: usersTable.id })
       .from(usersTable)
@@ -932,7 +934,6 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
       id: userId,
       email: normalizedEmail,
       name: pending.name || "",
-      /* Proven by the code that reached this inbox. */
       emailVerified: true,
     });
 
@@ -941,8 +942,6 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
       userId,
       accountId: normalizedEmail,
       providerId: "credential",
-      /* Hashed at step one and carried across unchanged — the plaintext
-       * password never had to be held anywhere between the two requests. */
       password: pending.passwordHash,
     });
 
@@ -956,9 +955,6 @@ const handleSignupVerify = async (req: express.Request, res: express.Response) =
     res.cookie("cf_jwt", token, getCookieOptions());
     res.cookie("cf_session", "1", getSessionCookieOptions());
 
-    /* Counted here rather than at step one: an account exists only once the
-     * code has been redeemed. The gap between started and verified is the
-     * signal — codes going out and not coming back is an inbox problem. */
     recordSignup("verified");
 
     res.json({
@@ -982,8 +978,6 @@ const handleSignupResend = async (req: express.Request, res: express.Response) =
 
   const normalizedEmail = normalizeEmail(rawEmail);
 
-  /* Same answer whether or not a pending signup exists, so this cannot be used
-   * to probe which addresses are mid-signup. */
   const acknowledge = () =>
     res.json({
       status: "success",
@@ -1000,8 +994,6 @@ const handleSignupResend = async (req: express.Request, res: express.Response) =
     const pending = rows[0];
     if (!pending || pending.expiresAt.getTime() <= Date.now()) return acknowledge();
 
-    /* Cheap guard against using someone else's inbox as a mailbomb target.
-     * The per-address rate limiter in the API bounds this further. */
     if (Date.now() - pending.lastSentAt.getTime() < SIGNUP_RESEND_COOLDOWN_MS) {
       return acknowledge();
     }
@@ -1013,8 +1005,6 @@ const handleSignupResend = async (req: express.Request, res: express.Response) =
       .update(pendingSignupsTable)
       .set({
         codeHash: hashSignupCode(code),
-        /* A fresh code restarts the clock and the attempt budget; the old code
-         * stops working the moment this one is written. */
         attempts: 0,
         expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
         lastSentAt: now,
@@ -1029,6 +1019,51 @@ const handleSignupResend = async (req: express.Request, res: express.Response) =
     return acknowledge();
   }
 };
+
+export async function resendSignupCodeFor(
+  pendingId: string,
+): Promise<{ sent: boolean; reason: string | null; email: string | null }> {
+  const rows = await db
+    .select()
+    .from(pendingSignupsTable)
+    .where(eq(pendingSignupsTable.id, pendingId))
+    .limit(1);
+
+  const pending = rows[0];
+  if (!pending) return { sent: false, reason: "That signup is no longer pending.", email: null };
+
+  if (pending.expiresAt.getTime() <= Date.now()) {
+    return {
+      sent: false,
+      reason: "That signup already expired — delete it so they can start again.",
+      email: pending.email,
+    };
+  }
+
+  if (Date.now() - pending.lastSentAt.getTime() < SIGNUP_RESEND_COOLDOWN_MS) {
+    const wait = Math.ceil(
+      (SIGNUP_RESEND_COOLDOWN_MS - (Date.now() - pending.lastSentAt.getTime())) / 1000,
+    );
+    return { sent: false, reason: `A code went out moments ago — try again in ${wait}s.`, email: pending.email };
+  }
+
+  const code = generateSignupCode();
+  const now = new Date();
+
+  await db
+    .update(pendingSignupsTable)
+    .set({
+      codeHash: hashSignupCode(code),
+      attempts: 0,
+      expiresAt: new Date(now.getTime() + SIGNUP_CODE_TTL_MS),
+      lastSentAt: now,
+    })
+    .where(eq(pendingSignupsTable.id, pending.id));
+
+  dispatchMail(signupCodeMail(pending.email, code, SIGNUP_CODE_TTL_MS / 60_000));
+
+  return { sent: true, reason: null, email: pending.email };
+}
 
 authRouter.post("/signup/email", handleSignup);
 authRouter.post("/sign-up/email", handleSignup);
@@ -1074,6 +1109,16 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
       return;
     }
 
+    if (user.suspendedAt) {
+      res.status(403).json({
+        error: user.suspendedReason
+          ? `This account is suspended: ${user.suspendedReason}`
+          : "This account is suspended.",
+        reason: user.suspendedReason ?? null,
+      });
+      return;
+    }
+
     if (needsRehash) {
       try {
         await db
@@ -1099,17 +1144,45 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
   }
 };
 
-/* There is no separate admin sign-in.
- *
- * An admin is an ordinary account whose `role` was raised, so whatever door
- * they already came through — password, Google, GitHub — is the door that
- * admits them to /admin. A password-only admin login would have locked out
- * every OAuth account, which is exactly the trap this replaced.
- *
- * The role check lives in the web app's /admin layout, reading the role that
- * `resolveActiveSession` attaches to every session. */
 authRouter.post("/signin/email", handleSignin);
 authRouter.post("/sign-in/email", handleSignin);
+
+export async function triggerPasswordReset(
+  userId: string,
+): Promise<{ sent: boolean; reason: string | null }> {
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      suspendedAt: usersTable.suspendedAt,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!user) return { sent: false, reason: "No such account." };
+  if (user.suspendedAt) {
+    return { sent: false, reason: "That account is suspended — lift the suspension first." };
+  }
+
+  const credentials = await db
+    .select({ id: accountsTable.id })
+    .from(accountsTable)
+    .where(and(eq(accountsTable.userId, user.id), eq(accountsTable.providerId, "credential")));
+
+  if (!credentials[0]) {
+    return {
+      sent: false,
+      reason: "They sign in with Google or GitHub — there is no password to reset.",
+    };
+  }
+
+  const token = await issueVerificationToken("password-reset", user.id, RESET_TTL_MS);
+  const link = `${defaultWebOrigin()}/resetPassword?token=${encodeURIComponent(token)}`;
+  dispatchMail(passwordResetMail(user.email, link, RESET_TTL_MS / 60_000));
+
+  return { sent: true, reason: null };
+}
 
 authRouter.post("/forgot-password", async (req, res) => {
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
@@ -1128,6 +1201,8 @@ authRouter.post("/forgot-password", async (req, res) => {
     const user = users[0];
     if (!user) return acknowledge();
 
+    if (user.suspendedAt) return acknowledge();
+
     const accounts = await db
       .select({ id: accountsTable.id })
       .from(accountsTable)
@@ -1142,8 +1217,6 @@ authRouter.post("/forgot-password", async (req, res) => {
 
     return acknowledge();
   } catch (err) {
-    /* Even a failure answers the same way — a 500 here would itself be a
-     * signal. Logged so the operator sees it. */
     console.error(`[auth] forgot-password failed: ${err instanceof Error ? err.message : err}`);
     return acknowledge();
   }
@@ -1419,10 +1492,13 @@ authRouter.get("/callback/google", async (req, res) => {
 
     res.redirect(redirectTo);
   } catch (err: any) {
-    /* A refused link is a user-facing outcome, not a server fault: send them
-     * back to sign-in with a reason the page can explain. */
     if (err instanceof UnverifiedOAuthEmailError) {
       res.redirect(oauthFailureRedirect("oauth_email_unverified"));
+      return;
+    }
+    if (err instanceof SuspendedAccountError) {
+      if (err.reason) setAuthNotice(res, `This account is suspended: ${err.reason}`);
+      res.redirect(oauthFailureRedirect("account_suspended"));
       return;
     }
     res.status(500).send(err.message || "Failed to process Google OAuth callback");
@@ -1501,9 +1577,6 @@ authRouter.get("/callback/github", async (req, res) => {
         email = verified.email;
         emailVerified = true;
       } else {
-        /* Nothing verified. Still usable for a brand-new account, which
-         * findOrCreateOAuthUser allows, but it will refuse to attach to an
-         * existing one. */
         const fallback = emails.find((e: any) => e.primary) ?? emails[0];
         email = fallback?.email ?? githubUser.email ?? undefined;
       }
@@ -1532,10 +1605,13 @@ authRouter.get("/callback/github", async (req, res) => {
 
     res.redirect(redirectTo);
   } catch (err: any) {
-    /* A refused link is a user-facing outcome, not a server fault: send them
-     * back to sign-in with a reason the page can explain. */
     if (err instanceof UnverifiedOAuthEmailError) {
       res.redirect(oauthFailureRedirect("oauth_email_unverified"));
+      return;
+    }
+    if (err instanceof SuspendedAccountError) {
+      if (err.reason) setAuthNotice(res, `This account is suspended: ${err.reason}`);
+      res.redirect(oauthFailureRedirect("account_suspended"));
       return;
     }
     res.status(500).send(err.message || "Failed to process GitHub OAuth callback");

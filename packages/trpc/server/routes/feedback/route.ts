@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { adminProcedure, publicProcedure, router } from "../../trpc";
 import { auth } from "../../auth";
-import { feedbackService } from "../../services";
+import { adminService, feedbackService } from "../../services";
 import { generatePath } from "../../utils/path-generator";
 import {
   getFeedbackInput,
@@ -110,13 +110,34 @@ export const feedbackRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { claim, ...rest } = input;
 
-      /* The assignee is the session's own user, or nobody. The request never
-       * gets to name one, so "assign this to someone else" is not a request
-       * that can be expressed — not merely one the UI declines to send. */
       const assignedTo = claim === undefined ? undefined : claim ? ctx.user.id : null;
 
       try {
-        return await feedbackService.updateFeedback({ ...rest, assignedTo });
+        const before = await feedbackService.getFeedback({ id: input.id });
+        const updated = await feedbackService.updateFeedback({ ...rest, assignedTo });
+
+        const audit = {
+          actorId: ctx.user.id,
+          actorEmail: ctx.user.email,
+          targetLabel: updated.subject.slice(0, 255),
+        };
+
+        if (claim !== undefined) {
+          await adminService.recordAudit({
+            ...audit,
+            action: claim ? "feedback.claimed" : "feedback.released",
+          });
+        }
+
+        if (rest.status !== undefined && rest.status !== before.status) {
+          await adminService.recordAudit({
+            ...audit,
+            action: "feedback.status_changed",
+            detail: { from: before.status, to: rest.status },
+          });
+        }
+
+        return updated;
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",

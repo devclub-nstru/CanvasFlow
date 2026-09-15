@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Gauge, Inbox, Shield, Users } from "lucide-react";
+import { ArrowLeft, Gauge, Inbox, ScrollText, Shield, UserCog, Users } from "lucide-react";
 
 import { isAdminRole, useGetLoggedInUserInfo } from "~/hooks/api/auth";
 
@@ -63,6 +63,8 @@ function AdminShell({ children, role }: { children: React.ReactNode; role?: stri
   const tabs = [
     { href: "/admin", label: "Overview", icon: Gauge },
     { href: "/admin/reports", label: "Reports", icon: Inbox },
+    { href: "/admin/users", label: "Users", icon: UserCog },
+    { href: "/admin/audit", label: "Audit", icon: ScrollText },
     ...(isSuperAdmin ? [{ href: "/admin/admins", label: "Admins", icon: Users }] : []),
   ];
 

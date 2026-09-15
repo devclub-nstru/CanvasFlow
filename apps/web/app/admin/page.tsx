@@ -13,9 +13,11 @@ import {
 } from "recharts";
 import {
   ArrowUpRight,
+  Activity,
   FileText,
-  HardDrive,
+  Flame,
   Inbox,
+  ListTree,
   Layers,
   ShieldCheck,
   TriangleAlert,
@@ -24,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { usePlatformStats, type StatsRange } from "~/hooks/api/admin";
+import { InfoHint } from "~/components/admin/InfoHint";
 
 const RANGES: Array<{ id: StatsRange; label: string }> = [
   { id: 7, label: "7 days" },
@@ -31,20 +34,19 @@ const RANGES: Array<{ id: StatsRange; label: string }> = [
   { id: 90, label: "90 days" },
 ];
 
-/* Bytes are stored exactly; people read them in units. */
-function formatBytes(bytes: number): string {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / Math.pow(1024, i);
-  return `${value >= 10 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`;
-}
-
 export default function AdminOverviewPage() {
   const [range, setRange] = React.useState<StatsRange>(30);
   const { stats, isLoading } = usePlatformStats(range);
 
   const num = (v: number | undefined) => (isLoading ? "—" : String(v ?? 0));
+
+  const fieldTypes = stats?.fieldTypes ?? [];
+  /* Denominator for the bars; never zero, so the width maths is safe on an
+     empty list. */
+  const topFieldCount = Math.max(1, ...fieldTypes.map((f) => f.count));
+  /* Monthly is the widest window, so it doubles as "how many accounts we have
+     seen at all" while the column is still filling up. */
+  const seenCount = stats?.active.monthly ?? 0;
 
   const HEADLINE = [
     {
@@ -70,6 +72,12 @@ export default function AdminOverviewPage() {
       value: num(stats?.forms.total),
       sub: `${stats?.forms.published ?? 0} published`,
       icon: FileText,
+    },
+    {
+      label: "Activated",
+      value: isLoading ? "—" : `${stats?.activation.rate ?? 0}%`,
+      sub: `${stats?.activation.creators ?? 0} have made a form`,
+      icon: Flame,
     },
   ];
 
@@ -104,7 +112,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* ── headline numbers ── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {HEADLINE.map((s) => {
           const Icon = s.icon;
           return (
@@ -122,6 +130,44 @@ export default function AdminOverviewPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* ── active users ── */}
+      <div className="cf-panel cf-raised p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4" style={{ color: "var(--cf-orange)" }} />
+            <p className="cf-meta">Active users</p>
+            <InfoHint label="About active users">
+              Counted from each account&apos;s last visit to the app, refreshed at most once an
+              hour. Tracking is new, so anyone who hasn&apos;t returned since it started
+              won&apos;t appear here yet.
+            </InfoHint>
+          </div>
+          <p className="text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
+            {seenCount === 0
+              ? "Nobody has used the app since tracking started."
+              : `${seenCount} of ${stats?.users.total ?? 0} accounts seen so far`}
+          </p>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-4">
+          {[
+            { label: "Today", value: stats?.active.daily },
+            { label: "This week", value: stats?.active.weekly },
+            { label: "This month", value: stats?.active.monthly },
+          ].map((a) => (
+            <div key={a.label}>
+              <p className="cf-display text-[28px] leading-none tabular-nums sm:text-[36px]">
+                {isLoading ? "—" : (a.value ?? 0)}
+              </p>
+              <p className="mt-2 text-[12px]" style={{ color: "var(--cf-ink-soft)" }}>
+                {a.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
       </div>
 
       {/* ── trends ── */}
@@ -143,30 +189,34 @@ export default function AdminOverviewPage() {
       {/* ── breakdowns ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="cf-panel cf-raised p-5">
-          <p className="cf-meta">How people sign in</p>
-          {/* Deliberately not a percentage of all users: one account can hold
-              both a password and a Google login, so these overlap. */}
+          <div className="flex items-center gap-2">
+            <p className="cf-meta">How people sign in</p>
+            {/* Deliberately not a percentage of all users: one account can hold
+                both a password and a Google login, so these overlap. */}
+            <InfoHint label="About sign-in methods">
+              How many accounts can sign in each way. An account can have more than one — a
+              password and Google, say — so these overlap and won&apos;t add up to your total.
+            </InfoHint>
+          </div>
           <dl className="mt-4 space-y-3">
             <Row label="Password" value={num(stats?.providers.credential)} />
             <Row label="Google" value={num(stats?.providers.google)} />
             <Row label="GitHub" value={num(stats?.providers.github)} />
           </dl>
-          <p className="mt-4 text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
-            An account can have more than one, so these overlap.
-          </p>
         </div>
 
         <div className="cf-panel cf-raised p-5">
-          <p className="cf-meta">Forms &amp; storage</p>
+          <div className="flex items-center gap-2">
+            <p className="cf-meta">Forms &amp; uploads</p>
+            <InfoHint label="About forms and uploads">
+              Counts across every account. Uploads are files attached to responses; failed ones
+              only appear when there are any.
+            </InfoHint>
+          </div>
           <dl className="mt-4 space-y-3">
             <Row label="Published" value={num(stats?.forms.published)} />
             <Row label="Archived" value={num(stats?.forms.archived)} />
             <Row label="Uploads" value={num(stats?.uploads.total)} />
-            <Row
-              label="Storage used"
-              value={isLoading ? "—" : formatBytes(stats?.uploads.storageBytes ?? 0)}
-              icon={HardDrive}
-            />
             {!isLoading && (stats?.uploads.failed ?? 0) > 0 && (
               <Row
                 label="Failed uploads"
@@ -179,7 +229,13 @@ export default function AdminOverviewPage() {
         </div>
 
         <div className="cf-panel cf-raised p-5">
-          <p className="cf-meta">Access &amp; reports</p>
+          <div className="flex items-center gap-2">
+            <p className="cf-meta">Access &amp; reports</p>
+            <InfoHint label="About access and reports">
+              Admins are accounts that can reach this panel. Reports are the bug and feedback
+              messages people send from inside the app.
+            </InfoHint>
+          </div>
           <dl className="mt-4 space-y-3">
             <Row label="Admins" value={num(stats?.users.admins)} icon={ShieldCheck} />
             <Row label="Open reports" value={num(stats?.feedback.open)} icon={Inbox} />
@@ -194,8 +250,91 @@ export default function AdminOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── what people build, and what carries traffic ── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="cf-panel cf-raised p-5">
+          <div className="flex items-center gap-2">
+            <ListTree className="size-4" style={{ color: "var(--cf-orange)" }} />
+            <p className="cf-meta">Field types in use</p>
+            <InfoHint label="About field types">
+              How many fields of each type exist across every form. Bars are scaled to the
+              commonest type. Types nobody has placed don&apos;t appear at all.
+            </InfoHint>
+          </div>
+
+          {fieldTypes.length === 0 ? (
+            <p className="mt-4 text-[13px]" style={{ color: "var(--cf-ink-soft)" }}>
+              {isLoading ? "Loading…" : "No fields placed yet."}
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {fieldTypes.map((f) => (
+                <li key={f.type} className="flex items-center gap-3">
+                  <span className="w-28 shrink-0 text-[12px]">{prettyFieldType(f.type)}</span>
+                  {/* Bar widths are relative to the commonest type, not to the
+                      total — the question is which types lead, and a share-of-
+                      total bar makes everything past the first unreadable. */}
+                  <span className="h-2 flex-1" style={{ background: "var(--cf-line)" }}>
+                    <span
+                      className="block h-full"
+                      style={{
+                        width: `${Math.max(4, Math.round((f.count / topFieldCount) * 100))}%`,
+                        background: "var(--cf-orange)",
+                      }}
+                    />
+                  </span>
+                  <span className="w-8 shrink-0 text-right text-[12px] tabular-nums">
+                    {f.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+        </div>
+
+        <div className="cf-panel cf-raised p-5">
+          <div className="flex items-center gap-2">
+            <Flame className="size-4" style={{ color: "var(--cf-orange)" }} />
+            <p className="cf-meta">Busiest forms</p>
+            <InfoHint label="About busiest forms">
+              The five forms with the most responses of all time, across every account, with
+              their owner.
+            </InfoHint>
+          </div>
+
+          {(stats?.topForms.length ?? 0) === 0 ? (
+            <p className="mt-4 text-[13px]" style={{ color: "var(--cf-ink-soft)" }}>
+              {isLoading ? "Loading…" : "No forms yet."}
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-2.5">
+              {stats?.topForms.map((f) => (
+                <li key={f.id} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-medium">{f.title}</p>
+                    <p className="truncate text-[11px]" style={{ color: "var(--cf-ink-soft)" }}>
+                      {f.ownerEmail ?? "no owner"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+                    {f.submissionCount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
+}
+
+/* TEXTAREA → Textarea, FILE_UPLOAD → File upload. */
+function prettyFieldType(type: string): string {
+  const words = type.toLowerCase().split("_");
+  return words.map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
 }
 
 function Row({

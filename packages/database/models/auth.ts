@@ -14,20 +14,31 @@ export const userRoleEnum = pgEnum("user_role", ["user", "admin", "superadmin"])
 
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
 
-export const usersTable = pgTable("users", {
-  id: text("id").primaryKey(),
+export const usersTable = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
 
-  name: text("name").default("").notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  role: userRoleEnum("role").default("user").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+    name: text("name").default("").notNull(),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    role: userRoleEnum("role").default("user").notNull(),
+    lastSeenAt: timestamp("last_seen_at"),
+
+    suspendedAt: timestamp("suspended_at"),
+    suspendedReason: varchar("suspended_reason", { length: 300 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    /* The active-user counts are range scans over this column. */
+    lastSeenIdx: index("users_last_seen_idx").on(table.lastSeenAt),
+  }),
+);
 
 export const sessionsTable = pgTable(
   "sessions",

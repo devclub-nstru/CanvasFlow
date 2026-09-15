@@ -20,6 +20,29 @@ const SignInUserWithEmailAndPasswordInputModel = z.object({
 
 type SignInValues = z.infer<typeof SignInUserWithEmailAndPasswordInputModel>;
 
+function readAuthNotice(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)cf_auth_notice=([^;]*)/);
+  if (!match?.[1]) return null;
+
+  document.cookie = "cf_auth_notice=; path=/; max-age=0";
+
+  try {
+    const value = decodeURIComponent(match[1]).trim();
+    return value ? value.slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+
+const OAUTH_ERROR_MESSAGE: Record<string, string> = {
+  account_suspended: "That account is suspended. Contact support if you think that's wrong.",
+  oauth_email_unverified:
+    "That provider hasn't verified the email address, and an account already exists for it. Verify it with them, or sign in with your password.",
+  oauth_email_missing: "That provider didn't share an email address, so there's nothing to sign in with.",
+  oauth_state_mismatch: "That sign-in attempt expired or didn't match. Please try again.",
+  oauth_code_missing: "The provider didn't complete the sign-in. Please try again.",
+};
+
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,7 +67,21 @@ function SignInForm() {
     }
   }, [switchAccount]);
 
-  const redirectTo = safeRedirect(searchParams.get("redirect"));
+    const redirectTo = safeRedirect(searchParams.get("redirect"));
+
+  const oauthError = searchParams.get("error");
+  React.useEffect(() => {
+    if (!oauthError) return;
+
+    const notice = readAuthNotice();
+    toast.error(
+      notice ?? OAUTH_ERROR_MESSAGE[oauthError] ?? "That sign-in didn't work. Please try again.",
+    );
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("error");
+    window.history.replaceState({}, "", url.toString());
+  }, [oauthError]);
 
   const {
     register,

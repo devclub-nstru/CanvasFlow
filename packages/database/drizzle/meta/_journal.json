@@ -190,6 +190,34 @@
       "when": 1789453200106,
       "tag": "0026_quiet_ben_urich",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789459572050,
+      "tag": "0027_green_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789460600932,
+      "tag": "0028_narrow_doctor_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789462562935,
+      "tag": "0029_cool_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1789469205571,
+      "tag": "0030_outstanding_komodo",
+      "breakpoints": true
     }
   ]
 }

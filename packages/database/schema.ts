@@ -8,3 +8,4 @@ export * from "./models/form-upload";
 export * from "./models/form-draft";
 export * from "./models/form-collaborator";
 export * from "./models/feedback";
+export * from "./models/admin-audit";

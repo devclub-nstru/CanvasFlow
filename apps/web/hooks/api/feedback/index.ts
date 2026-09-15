@@ -23,12 +23,12 @@ export interface FeedbackFilters {
   unassigned?: boolean;
 }
 
-export const useListFeedback = (filters: FeedbackFilters = {}) => {
+export const REPORTS_PER_PAGE = 25;
+
+export const useListFeedback = (filters: FeedbackFilters = {}, page = 0) => {
   const { data, isLoading, error, refetch } = trpc.feedback.listFeedback.useQuery(
-    { ...filters, limit: 50, offset: 0 },
-    /* The inbox is a work queue — someone else may be triaging the same list,
-     * so don't serve a stale page from cache on every tab switch. */
-    { refetchOnWindowFocus: true, staleTime: 15_000 },
+    { ...filters, limit: REPORTS_PER_PAGE, offset: page * REPORTS_PER_PAGE },
+    { refetchOnWindowFocus: true, staleTime: 15_000, placeholderData: (prev) => prev },
   );
 
   return {
@@ -37,6 +37,7 @@ export const useListFeedback = (filters: FeedbackFilters = {}) => {
     isLoading,
     error,
     refetch,
+    pageCount: Math.max(1, Math.ceil((data?.total ?? 0) / REPORTS_PER_PAGE)),
   };
 };
 
@@ -52,10 +53,9 @@ export const useUpdateFeedback = () => {
 
   const { mutateAsync, isPending } = trpc.feedback.updateFeedback.useMutation({
     onSuccess: () => {
-      /* A status or assignee change moves the row between every filtered view
-       * and shifts the counts, so both are invalidated rather than patched. */
       void utils.feedback.listFeedback.invalidate();
       void utils.feedback.feedbackStats.invalidate();
+      void utils.admin.listAudit.invalidate();
     },
   });
 

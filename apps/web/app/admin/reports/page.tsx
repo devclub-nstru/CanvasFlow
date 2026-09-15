@@ -5,6 +5,7 @@ import { Bug, Check, Circle, Inbox, Lightbulb, MessageSquare, Play, User, X } fr
 import { toast } from "sonner";
 
 import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
+import { Pager } from "~/components/admin/Pager";
 import {
   useFeedbackStats,
   useListFeedback,
@@ -64,6 +65,7 @@ export default function AdminFeedbackPage() {
   const [typeTab, setTypeTab] = React.useState("all");
   const [mineOnly, setMineOnly] = React.useState(false);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [page, setPage] = React.useState(0);
 
   const filters: FeedbackFilters = {
     status: STATUS_TABS.find((t) => t.id === statusTab)?.status,
@@ -71,7 +73,15 @@ export default function AdminFeedbackPage() {
     assignedToMe: mineOnly || undefined,
   };
 
-  const { items, total, isLoading } = useListFeedback(filters);
+  /* Narrowing the filters can leave the current page past the end of the new
+   * result set, which reads as "no reports" rather than "you are on page 3".
+   * Every filter control resets to the first page. */
+  const changeFilter = (apply: () => void) => {
+    apply();
+    setPage(0);
+  };
+
+  const { items, total, isLoading, pageCount } = useListFeedback(filters, page);
   const { stats } = useFeedbackStats();
   const { updateFeedbackAsync, isPending: isUpdating } = useUpdateFeedback();
 
@@ -120,7 +130,7 @@ export default function AdminFeedbackPage() {
         {STATUS_TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setStatusTab(t.id)}
+            onClick={() => changeFilter(() => setStatusTab(t.id))}
             className="cf-btn-outline h-8 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
             style={
               statusTab === t.id
@@ -137,7 +147,7 @@ export default function AdminFeedbackPage() {
         {TYPE_TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTypeTab(t.id)}
+            onClick={() => changeFilter(() => setTypeTab(t.id))}
             className="cf-btn-outline h-8 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
             style={
               typeTab === t.id
@@ -152,7 +162,7 @@ export default function AdminFeedbackPage() {
         <span className="mx-1 h-5 w-px" style={{ background: "var(--cf-line)" }} />
 
         <button
-          onClick={() => setMineOnly((v) => !v)}
+          onClick={() => changeFilter(() => setMineOnly((v) => !v))}
           className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
           style={mineOnly ? { background: "var(--cf-ink)", color: "var(--cf-cream)" } : undefined}
         >
@@ -222,6 +232,14 @@ export default function AdminFeedbackPage() {
               );
             })}
           </ul>
+
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            noun="report"
+            onChange={setPage}
+          />
         </div>
 
         {/* ── detail ── */}

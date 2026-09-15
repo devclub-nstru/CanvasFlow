@@ -1,4 +1,4 @@
-import { aliasedTable, and, count, db, desc, eq, gte, isNull, sql } from "@repo/database";
+import { aliasedTable, and, asc, count, db, desc, eq, gte, isNull, sql } from "@repo/database";
 import { usersTable } from "@repo/database/models/auth";
 import { feedbackTable } from "@repo/database/models/feedback";
 
@@ -46,12 +46,10 @@ const feedbackSelection = {
 // Per-reporter hourly limit
 const MAX_PER_IDENTITY_PER_HOUR = 10;
 
-// Bugs jump the queue; everything else lands at the default.
 const priorityForType = (type: SubmitFeedbackInputType["type"]) =>
   type === "bug" || type === "complaint" ? ("high" as const) : ("medium" as const);
 
 class FeedbackService {
-  // File a feedback report
   public async submitFeedback(
     payload: SubmitFeedbackInputType & {
       identity?: { userId?: string | null; email?: string | null };
@@ -117,7 +115,7 @@ class FeedbackService {
       .leftJoin(reporterUsers, eq(feedbackTable.userId, reporterUsers.id))
       .leftJoin(assigneeUsers, eq(feedbackTable.assignedTo, assigneeUsers.id))
       .where(where)
-      .orderBy(desc(feedbackTable.createdAt))
+      .orderBy(desc(feedbackTable.createdAt), asc(feedbackTable.id))
       .limit(input.limit)
       .offset(input.offset);
 
@@ -142,23 +140,15 @@ class FeedbackService {
     return row;
   }
 
-  /* `assignedTo` is resolved by the route from `claim` plus the session — it is
-   * never read off the request body, so there is no shape of request that
-   * assigns a report to somebody else. See updateFeedbackInput. */
   public async updateFeedback(
     payload: Omit<UpdateFeedbackInputType, "claim"> & { assignedTo?: string | null },
   ): Promise<UpdateFeedbackOutputType> {
     const input = await updateFeedbackInput.parseAsync(payload);
 
-    /* Only the fields actually supplied are written. Spreading the whole input
-     * would blank a status every time someone merely claimed a report. */
     const patch: Record<string, unknown> = {};
     if (input.status !== undefined) patch.status = input.status;
     if (payload.assignedTo !== undefined) patch.assignedTo = payload.assignedTo;
 
-    /* Guarded here rather than as a schema refinement — see the note on
-     * updateFeedbackInput. An empty patch would otherwise reach Drizzle as
-     * `set({})`, which is a syntax error, not a no-op. */
     if (Object.keys(patch).length === 0) throw new Error("Nothing to update");
 
     const [updated] = await db
