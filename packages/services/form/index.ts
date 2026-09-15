@@ -511,26 +511,31 @@ class FormService {
       trends: Array<{ created_at: string }> | null;
     };
     const rows = await db.execute<DashboardRow>(sql`
-      with owned as (
-        select id, title, is_published, created_at
-        from ${formsTable}
-        where ${formsTable.ownerId} = ${userId}
+      with accessible as (
+        select f.id, f.title, f.is_published, f.created_at
+        from ${formsTable} f
+        where f.owner_id = ${userId}
+           or exists (
+             select 1
+             from ${formCollaboratorsTable} c
+             where c.form_id = f.id and c.user_id = ${userId}
+           )
       )
       select
-        (select coalesce(json_agg(owned), '[]'::json) from owned) as forms,
+        (select coalesce(json_agg(accessible), '[]'::json) from accessible) as forms,
         (
           select json_build_object(
             'total', count(*),
             'month', count(*) filter (where s.created_at >= ${startOfMonth})
           )
           from ${formSubmissionsTable} s
-          join owned o on s.form_id = o.id
+          join accessible o on s.form_id = o.id
         ) as agg,
         (
           select coalesce(json_agg(t), '[]'::json) from (
             select s.form_id, count(*)::int as cnt
             from ${formSubmissionsTable} s
-            join owned o on s.form_id = o.id
+            join accessible o on s.form_id = o.id
             group by s.form_id
           ) t
         ) as per_form,
@@ -538,7 +543,7 @@ class FormService {
           select coalesce(json_agg(t), '[]'::json) from (
             select s.created_at
             from ${formSubmissionsTable} s
-            join owned o on s.form_id = o.id
+            join accessible o on s.form_id = o.id
             where s.created_at >= ${ninetyDaysAgo}
           ) t
         ) as trends

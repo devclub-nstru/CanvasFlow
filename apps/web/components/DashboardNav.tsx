@@ -4,10 +4,19 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Compass, Menu, PencilRuler, Plus, Presentation, X } from "lucide-react";
+import {
+  ChevronRight,
+  Compass,
+  Menu,
+  PencilRuler,
+  Plus,
+  Presentation,
+  Shield,
+  X,
+} from "lucide-react";
 
 import { useDashboard } from "~/providers/dashboard-provider";
-import { useGetLoggedInUserInfo } from "~/hooks/api/auth";
+import { isAdminRole, useGetLoggedInUserInfo } from "~/hooks/api/auth";
 import { useGetMe } from "~/hooks/api/user";
 import { avatarSeed, GlyphAvatar, resolvePreset } from "~/components/profile/GlyphAvatar";
 
@@ -22,6 +31,10 @@ export default function DashboardNav() {
   const { openCreateFormModal, openCreateMentiModal } = useDashboard();
   const { userInfo } = useGetLoggedInUserInfo();
   const { me } = useGetMe();
+  /* Only admins are shown the way in. The link is a convenience, not the
+   * gate — /admin checks the role itself, so typing the URL gets a
+   * non-admin nowhere. */
+  const showAdminLink = isAdminRole(userInfo?.role);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hasScrim, setHasScrim] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -87,6 +100,22 @@ export default function DashboardNav() {
                 </Link>
               );
             })}
+
+            {showAdminLink && (
+              <Link
+                href="/admin"
+                aria-current={isActive("/admin") ? "page" : undefined}
+                className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
+                style={
+                  isActive("/admin")
+                    ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
+                    : { color: "var(--cf-orange)" }
+                }
+              >
+                <Shield className="size-3.5" />
+                Admin
+              </Link>
+            )}
 
             <div className="relative ml-1">
               <button
@@ -206,6 +235,23 @@ export default function DashboardNav() {
                   </Link>
                 );
               })}
+
+              {showAdminLink && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={isActive("/admin") ? "page" : undefined}
+                  className="cf-btn-outline h-10 w-full justify-start gap-2.5 px-3 text-[11px] font-bold tracking-[0.14em] uppercase"
+                  style={
+                    isActive("/admin")
+                      ? { background: "var(--cf-ink)", color: "var(--cf-cream)" }
+                      : { color: "var(--cf-orange)" }
+                  }
+                >
+                  <Shield className="size-4" />
+                  Admin
+                </Link>
+              )}
 
               <div className="mt-4 border-t pt-4" style={{ borderTopColor: "var(--cf-line)" }}>
                 <Link

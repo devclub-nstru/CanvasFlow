@@ -75,6 +75,15 @@ export const useSignUp = () => {
   };
 };
 
+export type UserRole = "user" | "admin" | "superadmin";
+
+/** Roles that may reach /admin. */
+export const ADMIN_ROLES: readonly UserRole[] = ["admin", "superadmin"];
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return ADMIN_ROLES.includes(role as UserRole);
+}
+
 /**
  * Step two — exchange the emailed code for an account and a session.
  *
@@ -168,6 +177,13 @@ export const useSignIn = () => {
       }
       const res = await fetch(`${apiURL}/api/auth/signin/email`, {
         method: "POST",
+        /* Without this the browser drops the Set-Cookie on a cross-origin
+         * response, so `cf_jwt` — the cookie that actually carries the session
+         * — is never stored. The `cf_session=1` marker set just below is only
+         * a hint for the middleware, which is why signing in *looked* like it
+         * worked: the middleware let you through while the API still saw an
+         * anonymous caller. */
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -232,6 +248,7 @@ export const useGetLoggedInUserInfo = () => {
           id: data.user.id,
           email: data.user.email,
           fullName: data.user.name,
+          role: (data.user.role ?? "user") as UserRole,
         }
       : null,
     error: error instanceof Error ? error : error ? new Error(String(error)) : null,

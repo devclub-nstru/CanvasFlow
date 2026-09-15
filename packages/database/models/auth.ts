@@ -1,4 +1,5 @@
 import {
+  pgEnum,
   pgTable,
   varchar,
   timestamp,
@@ -9,6 +10,10 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "superadmin"]);
+
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
+
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
 
@@ -16,6 +21,7 @@ export const usersTable = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  role: userRoleEnum("role").default("user").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

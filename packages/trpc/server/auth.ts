@@ -13,6 +13,7 @@ import {
   pendingSignupsTable,
   SelectUser,
 } from "@repo/database";
+import type { UserRole } from "@repo/database/models/auth";
 import { isRedisConfigured, redisKey, redisReady } from "@repo/redis";
 import { sendMail, passwordResetMail, signupCodeMail, isMailConfigured } from "@repo/services/mail";
 import { recordSignup } from "@repo/observability";
@@ -529,20 +530,34 @@ async function issueSession(
   return { token, sessionId, expiresAt };
 }
 
-/* True when the session behind this token is still live. */
-async function sessionIsActive(sessionId: unknown): Promise<boolean> {
-  if (typeof sessionId !== "string" || !sessionId) return false;
+/* The live session plus the role the account holds *right now*.
+ *
+ * Role is read from `users` on every check rather than carried as a JWT claim.
+ * A claim would be cheaper, but it would also mean a demoted admin keeps their
+ * access until the token expires — up to seven days of /admin for someone who
+ * was removed this morning. Joining `users` here costs nothing extra: the
+ * session row had to be fetched anyway. */
+async function resolveActiveSession(
+  sessionId: unknown,
+): Promise<{ userId: string; role: UserRole } | null> {
+  if (typeof sessionId !== "string" || !sessionId) return null;
 
   const rows = await db
-    .select({ expiresAt: sessionsTable.expiresAt })
+    .select({
+      expiresAt: sessionsTable.expiresAt,
+      userId: sessionsTable.userId,
+      role: usersTable.role,
+    })
     .from(sessionsTable)
+    .innerJoin(usersTable, eq(sessionsTable.userId, usersTable.id))
     .where(eq(sessionsTable.id, sessionId))
     .limit(1);
 
   const row = rows[0];
-  if (!row) return false;
+  if (!row) return null;
+  if (row.expiresAt.getTime() <= Date.now()) return null;
 
-  return row.expiresAt.getTime() > Date.now();
+  return { userId: row.userId, role: row.role };
 }
 
 /* Revokes one session. */
@@ -1084,6 +1099,15 @@ const handleSignin = async (req: express.Request, res: express.Response) => {
   }
 };
 
+/* There is no separate admin sign-in.
+ *
+ * An admin is an ordinary account whose `role` was raised, so whatever door
+ * they already came through — password, Google, GitHub — is the door that
+ * admits them to /admin. A password-only admin login would have locked out
+ * every OAuth account, which is exactly the trap this replaced.
+ *
+ * The role check lives in the web app's /admin layout, reading the role that
+ * `resolveActiveSession` attaches to every session. */
 authRouter.post("/signin/email", handleSignin);
 authRouter.post("/sign-in/email", handleSignin);
 
@@ -1228,7 +1252,8 @@ authRouter.get("/get-session", async (req, res) => {
     const secret = authSecret();
     const decoded = jwt.verify(token, secret) as any;
 
-    if (!(await sessionIsActive(decoded.sid))) {
+    const active = await resolveActiveSession(decoded.sid);
+    if (!active) {
       res.json({ session: null, user: null });
       return;
     }
@@ -1244,6 +1269,7 @@ authRouter.get("/get-session", async (req, res) => {
         email: decoded.email,
         name: decoded.name,
         image: decoded.image || null,
+        role: active.role,
       },
     });
   } catch (err) {
@@ -1536,7 +1562,8 @@ export const auth = {
         const decoded = jwt.verify(token, secret) as any;
         if (!decoded || !decoded.id) return null;
 
-        if (!(await sessionIsActive(decoded.sid))) return null;
+        const active = await resolveActiveSession(decoded.sid);
+        if (!active) return null;
 
         return {
           session: {
@@ -1549,6 +1576,7 @@ export const auth = {
             email: decoded.email,
             name: decoded.name,
             image: decoded.image || null,
+            role: active.role,
           },
         };
       } catch (err) {

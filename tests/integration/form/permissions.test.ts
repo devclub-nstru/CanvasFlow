@@ -5,7 +5,7 @@ import { formCollaboratorsTable } from "@repo/database/models/form-collaborator"
 import { db, resetDatabase, teardownDatabase } from "../helpers/db";
 import { closeRedis, resetRedis } from "../helpers/redis";
 import { anonymousCaller, callerFor, expectRejection } from "../helpers/caller";
-import { makeCast, makeForm, makeUser } from "../helpers/factories";
+import { makeCast, makeCollaborator, makeForm, makeUser } from "../helpers/factories";
 
 /* The permission layer, against real rows.
  *
@@ -523,5 +523,29 @@ describe("two unrelated accounts", () => {
 
     const stats = await (await callerFor(alice)).form.getDashboardStats();
     expect(stats.totalSketches).toBe(1);
+  });
+
+  /* The listing counts a shared form and the dashboard used to not — the form
+   * showed up under Forms while Overview claimed the user had none. The two
+   * tallies have to agree. */
+  it("get dashboard statistics that include forms shared with them", async () => {
+    const alice = await makeUser({ name: "Alice" });
+    const bob = await makeUser({ name: "Bob" });
+
+    await makeForm(alice, { title: "Alice's own form" });
+    const shared = await makeForm(bob, { title: "Bob's shared form" });
+    await makeCollaborator(shared, alice, "viewer", bob);
+    await makeForm(bob, { title: "Bob's private form" });
+
+    const caller = await callerFor(alice);
+    const stats = await caller.form.getDashboardStats();
+    const listed = await caller.form.listFormsByUserId();
+
+    expect(stats.totalSketches).toBe(2);
+    expect(stats.totalSketches).toBe(listed.length);
+    expect(stats.recentForms.map((f) => f.title).sort()).toEqual([
+      "Alice's own form",
+      "Bob's shared form",
+    ]);
   });
 });
