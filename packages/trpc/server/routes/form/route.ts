@@ -26,6 +26,8 @@ import {
   submitFormInputModel,
   submitFormOutputModel,
   getSubmissionsOutputModel,
+  deleteSubmissionInputModel,
+  deleteSubmissionOutputModel,
   listFormFieldsInputModel,
   listFormFieldsOutputModel,
   getDashboardStatsOutputModel,
@@ -78,27 +80,7 @@ import {
 const TAGS = ["Forms"];
 const getPath = generatePath("/forms");
 
-/* Maps a thrown error to one of a fixed set of label values.
- *
- * Deliberately not the error message itself: messages embed form names and
- * ids, and a label with unbounded values is how a metrics backend runs out of
- * memory. What happens here is the opposite — a handful of *known* messages
- * are recognised and collapsed into a closed set, and anything unrecognised
- * becomes "unknown" rather than leaking through.
- *
- * The matching is on messages rather than error codes because the submission
- * service throws plain Errors. tRPC wraps them into a TRPCError with code
- * INTERNAL_SERVER_ERROR, but only *after* this catch runs — so at this point
- * there is no code to read, and a classifier written against TRPCError codes
- * silently labels every single rejection "unknown". The two identity strings
- * are imported rather than retyped, so renaming one is a type error here
- * instead of a quietly mislabelled panel.
- *
- * Not counted at all: input that fails the Zod model. tRPC rejects that before
- * the resolver body runs, so it never reaches this function — those show up as
- * 4xx on the request metrics instead. */
 function submissionFailureReason(err: unknown): SubmissionReason {
-  /* Anything that genuinely is a TRPCError still classifies by code. */
   const code = (err as { code?: unknown })?.code;
   if (typeof code === "string") {
     switch (code) {
@@ -368,10 +350,6 @@ export const formRouter = router({
 
       const respondent = session?.user ? { id: session.user.id, email: session.user.email } : null;
 
-      /* A failed submission is a respondent who filled in a form and lost it.
-       * It surfaces to them as an error toast and to us, until now, as
-       * nothing — this is the one failure in the product with no second
-       * chance, since the answers are gone with the page. */
       try {
         const result = await formSubmissionService.submitForm({ ...input, respondent });
         recordFormSubmission("accepted", "ok");
@@ -698,5 +676,20 @@ export const formRouter = router({
         cursor: input.cursor,
         limit: input.limit,
       });
+    }),
+
+  deleteSubmission: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/deleteSubmission"),
+        tags: TAGS,
+        protect: true,
+      },
+    })
+    .input(deleteSubmissionInputModel)
+    .output(deleteSubmissionOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      return formSubmissionService.deleteSubmission({ ...input, requesterId: ctx.user.id });
     }),
 });

@@ -28,7 +28,8 @@ export default function MentiLiveAudiencePage({ params }: Props) {
   const [token, setToken] = useState<string>(
     queryToken || (typeof window !== "undefined" ? sessionStorage.getItem("cf_participant_token") || "" : "")
   );
-  const [participantName, setParticipantName] = useState<string>(
+  /* Read once on mount; nothing on this page renames a participant. */
+  const [participantName] = useState<string>(
     queryName || (typeof window !== "undefined" ? sessionStorage.getItem("menti_participant_name") || sessionStorage.getItem("cf_voter_nickname") || "Participant" : "Participant")
   );
   const [participantId, setParticipantId] = useState<string>(

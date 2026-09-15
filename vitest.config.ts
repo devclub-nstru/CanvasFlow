@@ -4,10 +4,6 @@ import path from "node:path";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-/* Workspace packages declare no `main` or `exports`, so Vite cannot resolve
- * `@repo/*` on its own the way tsx does. One regex alias covers every form the
- * codebase uses: the bare package, a nested directory (resolved to its
- * index.ts) and a direct file. */
 const repoAlias = [
   {
     find: /^@repo\/([^/]+)(\/.*)?$/,
@@ -115,14 +111,12 @@ export default defineConfig({
       provider: "v8",
       reportsDirectory: path.join(root, "coverage"),
       reporter: ["text", "html", "lcov"],
-      /* Only what the unit suite actually claims to cover. Service classes and
-       * React components are deliberately absent: adding them would report a
-       * low number that says nothing about whether the tested units are
-       * tested well. */
       include: [
         "apps/web/lib/form-flow.ts",
         "apps/web/lib/form-logic.ts",
         "apps/web/lib/form-access.ts",
+        "apps/web/lib/csv.ts",
+        "apps/web/lib/pagination.ts",
         "apps/web/lib/fractional-index.ts",
         "apps/web/lib/upload.ts",
         "apps/web/lib/utils.ts",

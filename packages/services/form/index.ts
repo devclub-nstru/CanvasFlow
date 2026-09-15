@@ -870,7 +870,7 @@ class FormService {
     } = await updateFormSettingsInput.parseAsync(payload);
     const { requesterId } = payload;
 
-    await requireOwner(id, requesterId);
+    await requireEditor(id, requesterId);
 
     const domains =
       allowedEmailDomains === undefined

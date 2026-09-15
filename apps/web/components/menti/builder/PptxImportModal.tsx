@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   X,
   Upload,
@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileSpreadsheet,
   ArrowRight,
   Layers,
 } from "lucide-react";
@@ -63,21 +62,9 @@ export function PptxImportModal({
     },
   });
 
-  // Handle escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isUploading && !isProcessing) {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isUploading, isProcessing]);
-
-  if (!isOpen) return null;
-
-  const handleClose = () => {
+  /* Memoised so the escape-key effect can depend on it rather than going stale
+   * on a render where an import is in flight. */
+  const handleClose = useCallback(() => {
     if (isUploading || isProcessing) {
       if (confirm("An import is currently in progress. Do you want to cancel it?")) {
         cancelImport();
@@ -90,7 +77,21 @@ export function PptxImportModal({
     reset();
     setSelectedFile(null);
     onClose();
-  };
+  }, [isUploading, isProcessing, cancelImport, reset, onClose]);
+
+  // Handle escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isUploading && !isProcessing) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isUploading, isProcessing, handleClose]);
+
+  if (!isOpen) return null;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

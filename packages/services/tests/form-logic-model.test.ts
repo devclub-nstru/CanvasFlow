@@ -40,20 +40,21 @@ describe("logic enums", () => {
     ]);
   });
 
-  it("lists both match modes and all four actions", () => {
+  it("lists both match modes and every action", () => {
     expect(logicMatchZodEnum.options).toEqual(["ALL", "ANY"]);
     expect(logicActionZodEnum.options).toEqual([
       "JUMP_TO_FIELD",
       "JUMP_TO_SEGMENT",
       "SUBMIT",
       "CONTINUE",
+      "REPEAT",
     ]);
   });
 
   it("classifies the special operators and actions", () => {
     expect([...VALUELESS_OPERATORS]).toEqual(["IS_EMPTY", "IS_NOT_EMPTY"]);
     expect([...MULTI_VALUE_OPERATORS]).toEqual(["IS_ANY_OF", "IS_NONE_OF"]);
-    expect([...TARGETLESS_ACTIONS]).toEqual(["SUBMIT", "CONTINUE"]);
+    expect([...TARGETLESS_ACTIONS]).toEqual(["SUBMIT", "CONTINUE", "REPEAT"]);
   });
 
   it("only classifies operators that actually exist", () => {
@@ -185,7 +186,7 @@ describe("assertRuleShape — the matching branch", () => {
 
   it.each(TARGETLESS_ACTIONS)("rejects %s carrying a stale target", (action) => {
     expect(() => assertRuleShape({ action, targetFieldId: UUID })).toThrow(
-      /ends the flow, so it cannot also have a jump target/,
+      /does not go anywhere, so it cannot also have a jump target/,
     );
     expect(() => assertRuleShape({ action, targetSegmentId: UUID })).toThrow();
   });
@@ -209,7 +210,7 @@ describe("assertRuleShape — the otherwise branch", () => {
     );
     expect(() =>
       assertRuleShape({ ...then, elseAction: "SUBMIT", elseTargetFieldId: UUID }),
-    ).toThrow(/the otherwise branch ends the flow/);
+    ).toThrow(/the otherwise branch does not go anywhere/);
   });
 
   it("rejects an else target with no else action", () => {

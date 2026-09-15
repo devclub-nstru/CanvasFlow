@@ -30,6 +30,7 @@ export const ACTION_LABELS: Record<LogicAction, string> = {
   JUMP_TO_SEGMENT: "Go to segment",
   SUBMIT: "Finish the form",
   CONTINUE: "Continue in order",
+  REPEAT: "Answer again",
 };
 
 export function operatorsForFieldType(type: string | undefined): LogicOperator[] {
@@ -114,6 +115,8 @@ function describeSide(
       return "finish the form";
     case "CONTINUE":
       return "continue in order";
+    case "REPEAT":
+      return "ask it again";
     case "JUMP_TO_FIELD":
       return targetFieldId ? `go to ${labels.fieldLabel(targetFieldId)}` : "go to …";
     case "JUMP_TO_SEGMENT":
@@ -244,6 +247,14 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
       });
     }
 
+    if (rule.action === "REPEAT" && rule.elseAction === "REPEAT") {
+      issues.push({
+        level: "error",
+        ruleId: rule.id,
+        message: `A branch on ${where} asks again whatever the answer is, so the respondent can never move on.`,
+      });
+    }
+
     const from = flow.positionById.get(rule.fieldId);
     for (const target of [rule.targetFieldId, rule.elseTargetFieldId]) {
       if (!target) continue;
@@ -285,7 +296,8 @@ export function lintFlow(flow: Flow, labels: FlowLabels): FlowIssue[] {
     const alwaysDecided =
       rules.length > 0 && rules.some((r) => !!r.elseAction && isRuleComplete(r));
     const anyContinue = rules.some((r) => r.action === "CONTINUE" || r.elseAction === "CONTINUE");
-    if (!alwaysDecided || anyContinue) addEdge(field.id, next);
+    const anyRepeat = rules.some((r) => r.action === "REPEAT" || r.elseAction === "REPEAT");
+    if (!alwaysDecided || anyContinue || anyRepeat) addEdge(field.id, next);
 
     for (const rule of rules) {
       addEdge(field.id, rule.targetFieldId);

@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import {
   Bar,
@@ -27,10 +28,12 @@ import {
   Pie,
   PieChart,
 } from "recharts";
-import { useGetSubmissions } from "~/hooks/api/analytics";
+import { useGetSubmissions, useDeleteSubmission } from "~/hooks/api/analytics";
 import { getFieldOptionsArray } from "~/components/builder/FormFieldNode";
 import { apiOrigin, downloadUrlFor } from "~/lib/upload";
+import { buildResponsesCsv, downloadCsv, responsesCsvFilename } from "~/lib/csv";
 import { useUnarchiveForm } from "~/hooks/api/form";
+import { ConfirmDialog } from "~/components/admin/ConfirmDialog";
 import { toast } from "sonner";
 
 // Helper to resolve absolute API URL if path is relative
@@ -133,9 +136,26 @@ export function ResponsesView({
   isArchived = false,
   role,
 }: ResponsesViewProps) {
-  const { submissions, isLoading } = useGetSubmissions(formId);
+  const { submissions, fetchAllSubmissions, isLoading } = useGetSubmissions(formId);
   const { unarchiveFormAsync, isPending: isUnarchiving } = useUnarchiveForm();
+  const { deleteSubmissionAsync, isPending: isDeleting } = useDeleteSubmission();
   const [subTab, setSubTab] = useState<"summary" | "question" | "responses">("summary");
+
+  const canDeleteResponses = (role === "owner" || role === "editor") && !isArchived;
+  const [pendingDelete, setPendingDelete] = useState<any>(null);
+
+  const handleDeleteSubmission = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteSubmissionAsync({ formId, submissionId: pendingDelete.id });
+      /* The details modal may be showing the row that just went away. */
+      setViewingSub((current: any) => (current?.id === pendingDelete.id ? null : current));
+      setPendingDelete(null);
+      toast.success("Response deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete that response");
+    }
+  };
 
   // Selected question for the Question sub-tab
   const [selectedFieldId, setSelectedFieldId] = useState<string>("");
@@ -149,37 +169,19 @@ export function ResponsesView({
   }, [fields, selectedFieldId]);
 
   // Export CSV
-  const handleExportCsv = () => {
-    if (submissions.length === 0) return;
-    const headers = ["Submission ID", "Submitted At", "Respondent Email", "Device Type"];
-    fields.forEach((f) => headers.push(f.label || "Untitled Question"));
+  const [isExporting, setIsExporting] = useState(false);
 
-    const rows = submissions.map((sub) => {
-      const metadata = [
-        sub.id,
-        new Date(sub.createdAt).toLocaleString(),
-        sub.respondentEmail || "Anonymous",
-        sub.deviceType || "Unknown",
-      ];
-      const fieldValues = fields.map((f) => {
-        const valObj = sub.values.find((v: any) => v.formFieldId === f.id);
-        const val = valObj ? valObj.value : "";
-        if (Array.isArray(val)) return `"${val.join(", ")}"`;
-        if (typeof val === "object" && val !== null) return `"${JSON.stringify(val)}"`;
-        return `"${String(val ?? "").replace(/"/g, '""')}"`;
-      });
-      return [...metadata, ...fieldValues];
-    });
-
-    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `responses_${formId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportCsv = async () => {
+    if (submissions.length === 0 || isExporting) return;
+    setIsExporting(true);
+    try {
+      const all = await fetchAllSubmissions();
+      downloadCsv(responsesCsvFilename(formTitle), buildResponsesCsv(fields, all));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not export responses");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // General summary metrics
@@ -424,11 +426,12 @@ export function ResponsesView({
 
           <button
             onClick={handleExportCsv}
-            className="cf-btn-outline h-7 px-2.5 text-[11px] font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5"
+            disabled={isExporting || submissions.length === 0}
+            className="cf-btn-outline h-7 px-2.5 text-[11px] font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5 disabled:opacity-40"
             title="Export responses to CSV"
           >
             <Download className="size-3" />
-            CSV Export
+            {isExporting ? "Exporting…" : "CSV Export"}
           </button>
         </div>
 
@@ -757,13 +760,25 @@ export function ResponsesView({
                         <span className="capitalize">{sub.deviceType || "Desktop"}</span>
                       </p>
                     </div>
-                    <button
-                      onClick={() => setViewingSub(sub)}
-                      title="View response details"
-                      className="cf-btn-outline size-8 shrink-0 ml-3 flex items-center justify-center"
-                    >
-                      <Eye className="size-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                      <button
+                        onClick={() => setViewingSub(sub)}
+                        title="View response details"
+                        className="cf-btn-outline size-8 flex items-center justify-center"
+                      >
+                        <Eye className="size-4" />
+                      </button>
+                      {canDeleteResponses && (
+                        <button
+                          onClick={() => setPendingDelete(sub)}
+                          title="Delete this response"
+                          aria-label="Delete this response"
+                          className="cf-btn-outline size-8 flex items-center justify-center text-(--cf-danger) hover:bg-red-50"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -787,13 +802,25 @@ export function ResponsesView({
                   {new Date(viewingSub.createdAt).toLocaleString()}
                 </p>
               </div>
-              <button
-                onClick={() => setViewingSub(null)}
-                className="cf-btn-outline size-8 flex items-center justify-center"
-                title="Close"
-              >
-                <X className="size-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                {canDeleteResponses && (
+                  <button
+                    onClick={() => setPendingDelete(viewingSub)}
+                    className="cf-btn-outline size-8 flex items-center justify-center text-(--cf-danger) hover:bg-red-50"
+                    title="Delete this response"
+                    aria-label="Delete this response"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewingSub(null)}
+                  className="cf-btn-outline size-8 flex items-center justify-center"
+                  title="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
@@ -832,6 +859,28 @@ export function ResponsesView({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete response"
+        message={
+          <>
+            This permanently deletes the response from{" "}
+            <strong>{pendingDelete?.respondentEmail || "Anonymous"}</strong>
+            {pendingDelete?.createdAt
+              ? `, submitted ${new Date(pendingDelete.createdAt).toLocaleString()}`
+              : ""}
+            . Any files uploaded with it go too. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        danger
+        busy={isDeleting}
+        onConfirm={handleDeleteSubmission}
+        onCancel={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      />
     </div>
   );
 }

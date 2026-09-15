@@ -1,4 +1,5 @@
 import { trpc } from "~/trpc/client";
+import { drainPages } from "~/lib/pagination";
 
 export const useGetSubmissions = (formId: string) => {
   const PAGE_SIZE = 200;
@@ -21,8 +22,17 @@ export const useGetSubmissions = (formId: string) => {
 
   const submissions = result.data?.pages.flatMap((p) => p.submissions) ?? [];
 
+  const fetchAllSubmissions = async () => {
+    if (!result.hasNextPage) return submissions;
+
+    const page = await drainPages(await result.fetchNextPage());
+
+    return page.data?.pages.flatMap((p) => p.submissions) ?? submissions;
+  };
+
   return {
     submissions,
+    fetchAllSubmissions,
     error: result.error,
     isLoading: result.isLoading,
     isError: result.isError,
@@ -31,5 +41,25 @@ export const useGetSubmissions = (formId: string) => {
     fetchNextPage: result.fetchNextPage,
     hasNextPage: !!result.hasNextPage,
     isFetchingNextPage: result.isFetchingNextPage,
+  };
+};
+
+export const useDeleteSubmission = () => {
+  const utils = trpc.useUtils();
+  const {
+    mutateAsync: deleteSubmissionAsync,
+    isPending,
+    error,
+  } = trpc.form.deleteSubmission.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.form.getSubmissions.invalidate({ formId: variables.formId });
+      void utils.form.getForm.invalidate({ id: variables.formId });
+    },
+  });
+
+  return {
+    deleteSubmissionAsync,
+    isPending,
+    error,
   };
 };

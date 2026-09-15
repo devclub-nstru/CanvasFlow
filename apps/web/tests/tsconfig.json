@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  /* Editors resolve a file against the NEAREST tsconfig.json, and the package
+   * configs next door deliberately leave their tests out. Without this the test
+   * files land in no project at all: no "~/*" aliases, no strict flags, and a
+   * screenful of phantom errors that `pnpm check-types` never sees. The real
+   * settings live in tsconfig.tests.json, which is what CI runs. */
+  "extends": "../../../tsconfig.tests.json",
+  "include": ["**/*.ts"]
+}

@@ -33,13 +33,13 @@ export type LogicOperator =
 
 export type LogicMatch = "ALL" | "ANY";
 
-export type LogicAction = "JUMP_TO_FIELD" | "JUMP_TO_SEGMENT" | "SUBMIT" | "CONTINUE";
+export type LogicAction = "JUMP_TO_FIELD" | "JUMP_TO_SEGMENT" | "SUBMIT" | "CONTINUE" | "REPEAT";
 
 export const VALUELESS_OPERATORS: readonly LogicOperator[] = ["IS_EMPTY", "IS_NOT_EMPTY"];
 
 export const MULTI_VALUE_OPERATORS: readonly LogicOperator[] = ["IS_ANY_OF", "IS_NONE_OF"];
 
-export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE"];
+export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE", "REPEAT"];
 
 export interface FlowCondition {
   id: string;
@@ -68,7 +68,10 @@ export interface FlowRule {
 
 export type Answers = Record<string, unknown>;
 
-export type NextStep = { kind: "field"; fieldId: string } | { kind: "end" };
+export type NextStep =
+  | { kind: "field"; fieldId: string }
+  | { kind: "repeat"; fieldId: string }
+  | { kind: "end" };
 export interface Flow {
   order: FlowField[];
   positionById: Map<string, number>;
@@ -324,6 +327,8 @@ export function resolveRuleDecision(args: {
         return { kind: "end" };
       case "CONTINUE":
         return guardStep(flow, linearNext(flow, fromFieldId), visited);
+      case "REPEAT":
+        return { kind: "repeat", fieldId: fromFieldId };
       case "JUMP_TO_FIELD":
         return guardStep(flow, targetFieldId, visited);
       case "JUMP_TO_SEGMENT":
@@ -372,7 +377,9 @@ export function estimateRemaining(args: {
 
   for (let hops = 0; hops < flow.order.length; hops++) {
     const step = resolveNextStep({ flow, answers, fromFieldId: cursor, visited: path });
-    if (step.kind === "end") break;
+    /* A repeat does not move anyone forward, so it counts as the end of the
+     * path for the purpose of estimating what is left. */
+    if (step.kind !== "field") break;
     remaining++;
     path.push(cursor);
     cursor = step.fieldId;
@@ -477,7 +484,7 @@ export function reachablePath(flow: Flow, answers: Answers): string[] {
 
   for (let hops = 0; hops < flow.order.length; hops++) {
     const step = resolveNextStep({ flow, answers, fromFieldId: cursor, visited: path });
-    if (step.kind === "end") break;
+    if (step.kind !== "field") break;
     path.push(step.fieldId);
     cursor = step.fieldId;
   }
@@ -489,7 +496,10 @@ export function pageIndexOfField(pages: readonly FlowPage[], fieldId: string): n
   return pages.findIndex((page) => page.fieldIds.includes(fieldId));
 }
 
-export type NextPage = { kind: "page"; pageIndex: number } | { kind: "end" };
+export type NextPage =
+  | { kind: "page"; pageIndex: number }
+  | { kind: "repeat"; pageIndex: number; fieldId: string }
+  | { kind: "end" };
 
 export function resolveNextPage(args: {
   flow: Flow;
@@ -516,6 +526,9 @@ export function resolveNextPage(args: {
     if (!decision) continue;
 
     if (decision.kind === "end") return { kind: "end" };
+    if (decision.kind === "repeat") {
+      return { kind: "repeat", pageIndex: currentPageIndex, fieldId: decision.fieldId };
+    }
 
     const targetPage = pageIndexOfField(pages, decision.fieldId);
     if (targetPage === -1) return { kind: "end" };
@@ -548,7 +561,7 @@ export function estimateRemainingPages(args: {
       currentPageIndex: cursor,
       visitedPageIndexes: path,
     });
-    if (step.kind === "end") break;
+    if (step.kind !== "page") break;
     remaining++;
     path.push(cursor);
     cursor = step.pageIndex;

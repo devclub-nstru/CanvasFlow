@@ -67,6 +67,7 @@ describe("label maps", () => {
       "CONTINUE",
       "JUMP_TO_FIELD",
       "JUMP_TO_SEGMENT",
+      "REPEAT",
       "SUBMIT",
     ]);
   });
@@ -542,5 +543,80 @@ describe("lintFlow — a segment jump that leads nowhere", () => {
       }),
     ]);
     expect(() => lintFlow(flow, labels)).not.toThrow();
+  });
+});
+
+/* ─── Answer again ─────────────────────────────────────────────────────── */
+
+describe("the REPEAT action", () => {
+  it("reads as asking the question again", () => {
+    const r = rule("r", "a", {
+      conditions: [condition("a", "CONTAINS", "@company.com")],
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+    });
+
+    expect(describeRule(r, labels)).toBe(
+      "If «a» contains “@company.com” → continue in order, otherwise ask it again",
+    );
+  });
+
+  it("needs no target to be a complete rule", () => {
+    const r = rule("r", "a", {
+      conditions: [condition("a", "IS_NOT_EMPTY")],
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+    });
+
+    expect(isRuleComplete(r)).toBe(true);
+  });
+
+  it("flags a rule that repeats whatever the answer is, since nobody could pass it", () => {
+    const flow = buildFlow(
+      [field("a", 1), field("b", 2)],
+      [],
+      [
+        rule("r", "a", {
+          conditions: [condition("a", "IS_NOT_EMPTY")],
+          action: "REPEAT",
+          elseAction: "REPEAT",
+        }),
+      ],
+    );
+
+    const issue = lintFlow(flow, labels).find((i) => i.message.includes("never move on"));
+    expect(issue?.level).toBe("error");
+  });
+
+  it("does not flag the ordinary gate, where one side still moves on", () => {
+    const flow = buildFlow(
+      [field("a", 1), field("b", 2)],
+      [],
+      [
+        rule("r", "a", {
+          conditions: [condition("a", "CONTAINS", "@company.com")],
+          action: "CONTINUE",
+          elseAction: "REPEAT",
+        }),
+      ],
+    );
+
+    expect(lintFlow(flow, labels)).toEqual([]);
+  });
+
+  it("leaves the following question reachable, unlike a branch that always jumps away", () => {
+    const flow = buildFlow(
+      [field("a", 1), field("b", 2)],
+      [],
+      [
+        rule("r", "a", {
+          conditions: [condition("a", "IS_NOT_EMPTY")],
+          action: "REPEAT",
+          elseAction: "REPEAT",
+        }),
+      ],
+    );
+
+    expect(lintFlow(flow, labels).some((i) => i.message.includes("can't be reached"))).toBe(false);
   });
 });

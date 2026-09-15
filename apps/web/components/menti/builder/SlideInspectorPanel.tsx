@@ -16,7 +16,6 @@ import {
   Cloud,
   Star,
   Type,
-  Sparkles,
 } from "lucide-react";
 
 interface Props {

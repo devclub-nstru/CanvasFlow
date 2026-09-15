@@ -910,3 +910,141 @@ describe("resolveRuleDecision — a rule the engine cannot act on", () => {
     });
   });
 });
+
+/* ─── Answer again ─────────────────────────────────────────────────────── */
+
+describe("the REPEAT action", () => {
+  const fields = [field("a", 1), field("b", 2), field("c", 3)];
+
+  function emailGate(extra: Partial<FlowRule> = {}): FlowRule {
+    return rule("r", "a", {
+      conditions: [condition("a", "CONTAINS", "@company.com")],
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+      ...extra,
+    });
+  }
+
+  it("parks the respondent on the same question when the conditions fail", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+
+    const step = resolveNextStep({
+      flow,
+      answers: { a: "someone@gmail.com" },
+      fromFieldId: "a",
+    });
+
+    expect(step).toEqual({ kind: "repeat", fieldId: "a" });
+  });
+
+  it("lets a matching answer move on", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+
+    const step = resolveNextStep({
+      flow,
+      answers: { a: "someone@company.com" },
+      fromFieldId: "a",
+    });
+
+    expect(step).toEqual({ kind: "field", fieldId: "b" });
+  });
+
+  it("repeats from the matching side too", () => {
+    const flow = buildFlow(fields, [], [emailGate({ action: "REPEAT", elseAction: "CONTINUE" })]);
+
+    const step = resolveNextStep({
+      flow,
+      answers: { a: "someone@company.com" },
+      fromFieldId: "a",
+    });
+
+    expect(step).toEqual({ kind: "repeat", fieldId: "a" });
+  });
+
+  it("does not end the form the way a backwards jump to itself would", () => {
+    /* The visited guard turns a self-jump into an end; repeat must not go
+     * through that path. */
+    const flow = buildFlow(fields, [], [emailGate()]);
+
+    const step = resolveNextStep({
+      flow,
+      answers: { a: "nope" },
+      fromFieldId: "a",
+      visited: ["a"],
+    });
+
+    expect(step).toEqual({ kind: "repeat", fieldId: "a" });
+  });
+
+  it("stops the remaining-questions estimate rather than counting forever", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+
+    expect(estimateRemaining({ flow, answers: { a: "nope" }, fromFieldId: "a" })).toBe(0);
+    expect(estimateRemaining({ flow, answers: { a: "x@company.com" }, fromFieldId: "a" })).toBe(2);
+  });
+
+  it("keeps the reachable path short while the answer is still wrong", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+
+    expect(reachablePath(flow, { a: "nope" })).toEqual(["a"]);
+    expect(reachablePath(flow, { a: "x@company.com" })).toEqual(["a", "b", "c"]);
+  });
+
+  it("reports a repeat as a page decision, on the page the respondent is on", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+    const pages = buildPages(flow, "ONE_PER_PAGE");
+
+    expect(resolveNextPage({ flow, pages, answers: { a: "nope" }, currentPageIndex: 0 })).toEqual({
+      kind: "repeat",
+      pageIndex: 0,
+      fieldId: "a",
+    });
+  });
+
+  it("advances the page once the answer passes", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+    const pages = buildPages(flow, "ONE_PER_PAGE");
+
+    expect(
+      resolveNextPage({ flow, pages, answers: { a: "x@company.com" }, currentPageIndex: 0 }),
+    ).toEqual({ kind: "page", pageIndex: 1 });
+  });
+
+  it("does not inflate the remaining-pages estimate while parked", () => {
+    const flow = buildFlow(fields, [], [emailGate()]);
+    const pages = buildPages(flow, "ONE_PER_PAGE");
+
+    expect(
+      estimateRemainingPages({ flow, pages, answers: { a: "nope" }, currentPageIndex: 0 }),
+    ).toBe(0);
+  });
+
+  it("takes no jump target, so a later branch still gets its turn", () => {
+    const flow = buildFlow(
+      fields,
+      [],
+      [
+        rule("r1", "a", {
+          conditions: [condition("a", "EQUALS", "skip")],
+          action: "JUMP_TO_FIELD",
+          targetFieldId: "c",
+          index: 0,
+        }),
+        rule("r2", "a", {
+          conditions: [condition("a", "IS_EMPTY")],
+          action: "REPEAT",
+          index: 1,
+        }),
+      ],
+    );
+
+    expect(resolveRuleDecision({ flow, answers: { a: "skip" }, fromFieldId: "a" })).toEqual({
+      kind: "field",
+      fieldId: "c",
+    });
+    expect(resolveRuleDecision({ flow, answers: {}, fromFieldId: "a" })).toEqual({
+      kind: "repeat",
+      fieldId: "a",
+    });
+  });
+});

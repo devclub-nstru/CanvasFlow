@@ -1,6 +1,6 @@
 import { db, eq, and, desc, lt } from "@repo/database";
 import { formsTable } from "@repo/database/models/form";
-import { getFormBundle, invalidateFormCount, requireViewer } from "../form";
+import { getFormBundle, invalidateFormCount, requireEditor, requireViewer } from "../form";
 import FormUploadService from "../form-upload";
 import { assertRespondentAllowed, ALREADY_RESPONDED_ERROR, type Respondent } from "./access";
 export * from "./access";
@@ -10,6 +10,8 @@ import {
   type SubmitFormInputType,
   getSubmissionsInput,
   type GetSubmissionsInputType,
+  deleteSubmissionInput,
+  type DeleteSubmissionInputType,
 } from "./model";
 
 export const ALREADY_SUBMITTED_ERROR = "ALREADY_SUBMITTED";
@@ -212,6 +214,26 @@ class FormSubmissionService {
       : null;
 
     return { submissions, nextCursor };
+  }
+
+  public async deleteSubmission(payload: DeleteSubmissionInputType & { requesterId: string }) {
+    const { formId, submissionId } = await deleteSubmissionInput.parseAsync(payload);
+    const { requesterId } = payload;
+
+    await requireEditor(formId, requesterId);
+
+    const result = await db
+      .delete(formSubmissionsTable)
+      .where(
+        and(eq(formSubmissionsTable.id, submissionId), eq(formSubmissionsTable.formId, formId)),
+      )
+      .returning({ id: formSubmissionsTable.id });
+
+    if (!result[0]) throw new Error("Submission not found");
+
+    await invalidateFormCount(formId);
+
+    return { success: true };
   }
 }
 

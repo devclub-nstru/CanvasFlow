@@ -17,6 +17,7 @@ import {
   VALUELESS_OPERATORS,
   assertConditionShape,
   assertRuleShape,
+  TARGETLESS_ACTIONS,
   type LogicAction,
   type LogicMatch,
 } from "./model";
@@ -221,13 +222,13 @@ class FormLogicService {
 
     if (nextAction === "JUMP_TO_FIELD") nextTargetSegmentId = null;
     if (nextAction === "JUMP_TO_SEGMENT") nextTargetFieldId = null;
-    if (nextAction === "SUBMIT" || nextAction === "CONTINUE") {
+    if (TARGETLESS_ACTIONS.includes(nextAction)) {
       nextTargetFieldId = null;
       nextTargetSegmentId = null;
     }
     if (nextElseAction === "JUMP_TO_FIELD") nextElseTargetSegmentId = null;
     if (nextElseAction === "JUMP_TO_SEGMENT") nextElseTargetFieldId = null;
-    if (!nextElseAction || nextElseAction === "SUBMIT" || nextElseAction === "CONTINUE") {
+    if (!nextElseAction || TARGETLESS_ACTIONS.includes(nextElseAction)) {
       nextElseTargetFieldId = null;
       nextElseTargetSegmentId = null;
     }

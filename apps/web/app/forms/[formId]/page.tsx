@@ -36,6 +36,9 @@ import { FormHeader } from "~/components/forms/FormHeader";
 import { FormFooter } from "~/components/forms/FormFooter";
 import Noise from "~/components/Noise";
 
+/* Shown under a question a branch has sent back for another go. */
+const RETRY_MESSAGE = "That answer can't be accepted — please answer again.";
+
 type DeviceType = "desktop" | "mobile" | "tablet";
 
 function detectDeviceType(): DeviceType {
@@ -216,7 +219,10 @@ export default function PublicFormPage() {
     flush: flushDraftSave,
     cancel: cancelDraftSave,
   } = useDebouncedCallback(persistDraft, 1200);
+  const [retryFieldId, setRetryFieldId] = useState<string | null>(null);
+
   const handleFieldChange = (fieldId: string, value: any) => {
+    setRetryFieldId((current) => (current === fieldId ? null : current));
     setAnswers((prev) => {
       const next = { ...prev, [fieldId]: value };
       queueDraftSave(next, pagePath);
@@ -305,7 +311,8 @@ export default function PublicFormPage() {
         currentPageIndex: cursor,
         visitedPageIndexes: path,
       });
-      if (step.kind === "end") break;
+
+      if (step.kind !== "page") break;
       const nextPage = pages[step.pageIndex];
       if (nextPage) {
         remainingFields.push(...nextPage.fieldIds);
@@ -345,7 +352,15 @@ export default function PublicFormPage() {
     }).length;
 
     return Math.min(99, Math.round((answeredCount / totalFields) * 100));
-  }, [pages.length, layout, currentFields, answers, visitedFieldIds, estimatedRemainingFieldIds, flow]);
+  }, [
+    pages.length,
+    layout,
+    currentFields,
+    answers,
+    visitedFieldIds,
+    estimatedRemainingFieldIds,
+    flow,
+  ]);
 
   const answeredPathFields = useMemo(
     () =>
@@ -358,7 +373,7 @@ export default function PublicFormPage() {
   const segmentLabel = useMemo(() => {
     if (!currentPage?.segment) return null;
     const activeSegments = flow.segments.filter((s) =>
-      flow.order.some((f) => f.segmentId === s.id)
+      flow.order.some((f) => f.segmentId === s.id),
     );
     const position = activeSegments.findIndex((s) => s.id === currentPage.segment?.id);
     if (position === -1) return null;
@@ -424,6 +439,14 @@ export default function PublicFormPage() {
         return;
       }
     }
+
+    if (nextPage.kind === "repeat") {
+      setRetryFieldId(nextPage.fieldId);
+      document.getElementById(`field-${nextPage.fieldId}`)?.focus();
+      return;
+    }
+
+    setRetryFieldId(null);
 
     if (nextPage.kind === "page") {
       const advanced = [...pagePath, nextPage.pageIndex];
@@ -674,6 +697,7 @@ export default function PublicFormPage() {
                 totalQuestions={totalQuestions}
                 answers={answers}
                 isPending={isPending}
+                fieldErrors={retryFieldId ? { [retryFieldId]: RETRY_MESSAGE } : undefined}
                 handleFieldChange={handleFieldChange}
                 handleNext={handleNext}
                 handleBack={handleBack}

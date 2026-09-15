@@ -36,6 +36,7 @@ export const logicActionEnum = pgEnum("logic_action", [
   "JUMP_TO_SEGMENT",
   "SUBMIT",
   "CONTINUE",
+  "REPEAT",
 ]);
 
 export const formLogicRulesTable = pgTable(

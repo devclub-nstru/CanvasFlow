@@ -24,12 +24,13 @@ export const logicActionZodEnum = z.enum([
   "JUMP_TO_SEGMENT",
   "SUBMIT",
   "CONTINUE",
+  "REPEAT",
 ]);
 export type LogicAction = z.infer<typeof logicActionZodEnum>;
 
 export const VALUELESS_OPERATORS: readonly LogicOperator[] = ["IS_EMPTY", "IS_NOT_EMPTY"];
 export const MULTI_VALUE_OPERATORS: readonly LogicOperator[] = ["IS_ANY_OF", "IS_NONE_OF"];
-export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE"];
+export const TARGETLESS_ACTIONS: readonly LogicAction[] = ["SUBMIT", "CONTINUE", "REPEAT"];
 
 // Conditions
 export const logicConditionInput = z.object({
@@ -130,7 +131,7 @@ export function assertRuleShape(rule: {
       return;
     }
     if (fieldTarget || segmentTarget) {
-      throw new Error(`${label} ends the flow, so it cannot also have a jump target`);
+      throw new Error(`${label} does not go anywhere, so it cannot also have a jump target`);
     }
   };
 

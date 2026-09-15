@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Check, Clock, Send, Trophy, X, CheckCircle2 } from "lucide-react";
+import { Check, Clock, Send, Trophy, X } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
 import type { QuizResponseResult, QuizSessionState } from "~/hooks/useMentiRealtime";
 

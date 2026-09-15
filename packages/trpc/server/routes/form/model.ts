@@ -106,6 +106,8 @@ export {
   submitFormOutput as submitFormOutputModel,
   getSubmissionsInput as getSubmissionsInputModel,
   getSubmissionsOutput as getSubmissionsOutputModel,
+  deleteSubmissionInput as deleteSubmissionInputModel,
+  deleteSubmissionOutput as deleteSubmissionOutputModel,
 } from "@repo/services/form-submission/model";
 
 export {

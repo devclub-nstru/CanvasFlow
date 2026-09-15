@@ -3,7 +3,14 @@ import { eq } from "@repo/database";
 import { formLogicRulesTable, formLogicConditionsTable } from "@repo/database/models/form-logic";
 import { db, resetDatabase, teardownDatabase } from "../helpers/db";
 import { closeRedis, resetRedis } from "../helpers/redis";
-import { callerFor, expectRejection, type Caller } from "../helpers/caller";
+import { anonymousCaller, callerFor, expectRejection, type Caller } from "../helpers/caller";
+import {
+  buildFlow,
+  resolveNextStep,
+  type FlowField,
+  type FlowRule,
+  type FlowSegment,
+} from "~/lib/form-flow";
 import {
   makeCollaborator,
   makeField,
@@ -13,14 +20,6 @@ import {
   type TestForm,
   type TestUser,
 } from "../helpers/factories";
-
-/* Branching rules against real rows.
- *
- * The flow engine that *evaluates* rules is pure and exhaustively unit tested.
- * This is the other half: storing them. The part that cannot be faked is
- * `assertReferencesBelongToForm` — the check that a rule cannot point at a
- * question or segment belonging to somebody else's form, which is a
- * cross-tenant boundary sitting in an ordinary-looking validation helper. */
 
 let owner: TestUser;
 
@@ -108,7 +107,11 @@ describe("form.createLogicRule", () => {
     const fixture = await formWithQuestions();
 
     await fixture.caller.form.createLogicRule(jumpRule(fixture));
-    await fixture.caller.form.createLogicRule({ ...jumpRule(fixture), action: "SUBMIT", targetFieldId: null });
+    await fixture.caller.form.createLogicRule({
+      ...jumpRule(fixture),
+      action: "SUBMIT",
+      targetFieldId: null,
+    });
 
     const rules = await db
       .select()
@@ -152,6 +155,41 @@ describe("form.createLogicRule", () => {
       .from(formLogicRulesTable)
       .where(eq(formLogicRulesTable.id, id));
     expect(rule?.targetSegmentId).toBe(fixture.segment);
+  });
+
+  it("stores an answer-again branch, which the enum and the check constraint both have to allow", async () => {
+    const fixture = await formWithQuestions();
+
+    const { id } = await fixture.caller.form.createLogicRule({
+      formId: fixture.form.id,
+      fieldId: fixture.first,
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+      conditions: [{ fieldId: fixture.first, operator: "CONTAINS", value: "@company.com" }],
+    });
+
+    const [rule] = await db
+      .select()
+      .from(formLogicRulesTable)
+      .where(eq(formLogicRulesTable.id, id));
+
+    expect(rule?.elseAction).toBe("REPEAT");
+    expect(rule?.elseTargetFieldId, "an answer-again branch goes nowhere").toBeNull();
+    expect(rule?.elseTargetSegmentId).toBeNull();
+  });
+
+  it("refuses an answer-again branch carrying a jump target", async () => {
+    const fixture = await formWithQuestions();
+
+    await expectRejection(
+      fixture.caller.form.createLogicRule({
+        formId: fixture.form.id,
+        fieldId: fixture.first,
+        action: "REPEAT",
+        targetFieldId: fixture.second,
+        conditions: [{ fieldId: fixture.first, operator: "IS_NOT_EMPTY" }],
+      }),
+    );
   });
 });
 
@@ -273,6 +311,21 @@ describe("form.updateLogicRule", () => {
     expect(rule?.targetSegmentId).toBeNull();
   });
 
+  it("clears a stale target when switching to answer-again", async () => {
+    const fixture = await formWithQuestions();
+    const { id } = await fixture.caller.form.createLogicRule(jumpRule(fixture));
+
+    await fixture.caller.form.updateLogicRule({ id, action: "REPEAT" });
+
+    const [rule] = await db
+      .select()
+      .from(formLogicRulesTable)
+      .where(eq(formLogicRulesTable.id, id));
+    expect(rule?.action).toBe("REPEAT");
+    expect(rule?.targetFieldId).toBeNull();
+    expect(rule?.targetSegmentId).toBeNull();
+  });
+
   it("clears the field target when switching to a segment jump", async () => {
     const fixture = await formWithQuestions();
     const { id } = await fixture.caller.form.createLogicRule(jumpRule(fixture));
@@ -379,6 +432,28 @@ describe("form.listLogicRules", () => {
     expect(rules[0]?.conditions).toHaveLength(2);
   });
 
+  it("hands an answer-again branch back the way the flow engine expects it", async () => {
+    /* The renderer builds its flow from this payload, so REPEAT has to survive
+     * the round trip with both targets null — the engine reads a target on a
+     * targetless action as a jump. */
+    const fixture = await formWithQuestions();
+    await fixture.caller.form.createLogicRule({
+      formId: fixture.form.id,
+      fieldId: fixture.first,
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+      conditions: [{ fieldId: fixture.first, operator: "CONTAINS", value: "@company.com" }],
+    });
+
+    const [rule] = await fixture.caller.form.listLogicRules({ formId: fixture.form.id });
+
+    expect(rule?.action).toBe("CONTINUE");
+    expect(rule?.elseAction).toBe("REPEAT");
+    expect(rule?.elseTargetFieldId).toBeNull();
+    expect(rule?.elseTargetSegmentId).toBeNull();
+    expect(rule?.conditions).toHaveLength(1);
+  });
+
   it("never returns another form's rules", async () => {
     const mine = await formWithQuestions();
     const theirs = await formWithQuestions(await makeUser({ name: "Someone else" }));
@@ -466,5 +541,67 @@ describe("who may change branching", () => {
 
     const error = await expectRejection(fixture.caller.form.createLogicRule(jumpRule(fixture)));
     expect(error.message).toMatch(/archived/i);
+  });
+});
+
+/* ─── The rule as a respondent meets it ────────────────────────────────── */
+
+describe("a stored branch, run by the flow engine", () => {
+  async function publishedWithGate() {
+    const form = await makeForm(owner, { isPublished: true });
+    const email = await makeField(form, { label: "Work email", type: "EMAIL" });
+    const role = await makeField(form, { label: "Your role", type: "TEXT" });
+    const caller = await callerFor(owner);
+
+    await caller.form.createLogicRule({
+      formId: form.id,
+      fieldId: email.id,
+      action: "CONTINUE",
+      elseAction: "REPEAT",
+      conditions: [{ fieldId: email.id, operator: "CONTAINS", value: "@company.com" }],
+    });
+
+    const bundle = await anonymousCaller().form.getFormById({ id: form.id });
+
+    return {
+      email: email.id,
+      role: role.id,
+      flow: buildFlow(
+        bundle.fields as FlowField[],
+        (bundle.segments ?? []) as FlowSegment[],
+        (bundle.logicRules ?? []) as FlowRule[],
+      ),
+    };
+  }
+
+  it("sends a wrong answer back to the same question", async () => {
+    const { email, flow } = await publishedWithGate();
+
+    expect(
+      resolveNextStep({ flow, answers: { [email]: "someone@gmail.com" }, fromFieldId: email }),
+    ).toEqual({ kind: "repeat", fieldId: email });
+  });
+
+  it("lets a right answer through to the next question", async () => {
+    const { email, role, flow } = await publishedWithGate();
+
+    expect(
+      resolveNextStep({ flow, answers: { [email]: "someone@company.com" }, fromFieldId: email }),
+    ).toEqual({ kind: "field", fieldId: role });
+  });
+
+  it("keeps asking rather than ending the form on a second wrong attempt", async () => {
+    /* The visited guard ends the form for a backwards jump. A repeat must not
+     * go through it, or a second bad answer would silently submit. */
+    const { email, flow } = await publishedWithGate();
+
+    expect(
+      resolveNextStep({
+        flow,
+        answers: { [email]: "still-wrong" },
+        fromFieldId: email,
+        visited: [email],
+      }),
+    ).toEqual({ kind: "repeat", fieldId: email });
   });
 });

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."logic_action" ADD VALUE 'REPEAT';

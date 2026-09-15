@@ -5,17 +5,8 @@ import { formCollaboratorsTable } from "@repo/database/models/form-collaborator"
 import { db, resetDatabase, teardownDatabase } from "../helpers/db";
 import { closeRedis, resetRedis } from "../helpers/redis";
 import { anonymousCaller, callerFor, expectRejection } from "../helpers/caller";
-import { makeCast, makeCollaborator, makeForm, makeUser } from "../helpers/factories";
+import { makeCast, makeCollaborator, makeField, makeForm, makeUser } from "../helpers/factories";
 
-/* The permission layer, against real rows.
- *
- * packages/services/tests/form-access-control.test.ts already covers the same
- * decisions with a fake query builder: queue a row, assert the verdict. That
- * proves the logic and nothing about the LEFT JOIN it depends on — point the
- * join at the wrong column and every one of those 37 tests still passes.
- *
- * Here the collaborator rows are real, the join runs, and the calls go through
- * the actual tRPC procedures. */
 
 beforeEach(async () => {
   await resetDatabase();
@@ -168,6 +159,128 @@ describe("editor-only operations", () => {
     );
     expect(error.message).toMatch(/editor access required/i);
   });
+
+  it("let an editor change the form's settings", async () => {
+    const { editor, form } = await makeCast();
+    const caller = await callerFor(editor);
+
+    await caller.form.updateFormSettings({
+      id: form.id,
+      title: "Renamed by an editor",
+      isOpen: true,
+    });
+
+    const [row] = await db.select().from(formsTable).where(eq(formsTable.id, form.id));
+    expect(row?.title).toBe("Renamed by an editor");
+  });
+
+  it("refuse a viewer changing the settings", async () => {
+    const { viewer, form } = await makeCast();
+    const caller = await callerFor(viewer);
+
+    const error = await expectRejection(
+      caller.form.updateFormSettings({ id: form.id, title: "Nope", isOpen: true }),
+    );
+    expect(error.message).toMatch(/editor access required/i);
+  });
+});
+
+/* ─── Deleting a response ──────────────────────────────────────────────── */
+
+describe("form.deleteSubmission", () => {
+  /* A published form with one answer sitting in it, ready to be deleted. */
+  async function castWithOneResponse() {
+    const cast = await makeCast({ isPublished: true });
+    const field = await makeField(cast.form, { label: "How was it?" });
+
+    const { id: submissionId } = await anonymousCaller().form.submitForm({
+      formId: cast.form.id,
+      values: [{ formFieldId: field.id, value: "Good" }],
+    });
+
+    return { ...cast, submissionId };
+  }
+
+  it("lets the owner delete a response", async () => {
+    const { owner, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(owner);
+
+    await caller.form.deleteSubmission({ formId: form.id, submissionId });
+
+    const { submissions } = await caller.form.getSubmissions({ formId: form.id });
+    expect(submissions).toHaveLength(0);
+  });
+
+  it("lets an editor delete a response", async () => {
+    const { editor, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(editor);
+
+    await expect(caller.form.deleteSubmission({ formId: form.id, submissionId })).resolves.toEqual({
+      success: true,
+    });
+  });
+
+  it("refuses a viewer", async () => {
+    const { viewer, owner, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(viewer);
+
+    const error = await expectRejection(
+      caller.form.deleteSubmission({ formId: form.id, submissionId }),
+    );
+    expect(error.message).toMatch(/editor access required/i);
+
+    const ownerCaller = await callerFor(owner);
+    const { submissions } = await ownerCaller.form.getSubmissions({ formId: form.id });
+    expect(submissions, "a refused delete must leave the response in place").toHaveLength(1);
+  });
+
+  it("refuses a stranger", async () => {
+    const { stranger, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(stranger);
+
+    await expectRejection(caller.form.deleteSubmission({ formId: form.id, submissionId }));
+  });
+
+  it("will not delete a response that belongs to someone else's form", async () => {
+    const { submissionId } = await castWithOneResponse();
+    const outsider = await makeUser({ name: "Outsider" });
+    const theirForm = await makeForm(outsider);
+    const caller = await callerFor(outsider);
+
+    /* Owner of `theirForm`, but the submission id is from another form — the
+     * formId in the call must not be enough to reach it. */
+    const error = await expectRejection(
+      caller.form.deleteSubmission({ formId: theirForm.id, submissionId }),
+    );
+    expect(error.message).toMatch(/not found/i);
+  });
+
+  it("refuses once the form is archived", async () => {
+    const { owner, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(owner);
+
+    await caller.form.archiveForm({ id: form.id });
+
+    const error = await expectRejection(
+      caller.form.deleteSubmission({ formId: form.id, submissionId }),
+    );
+    expect(error.message).toMatch(/archived/i);
+  });
+
+  it("drops the cached submission count so the dashboard does not lag", async () => {
+    const { owner, form, submissionId } = await castWithOneResponse();
+    const caller = await callerFor(owner);
+
+    /* getFormById is the payload that carries the cached count. Warming it
+     * first is the point: a stale count is the bug this guards. */
+    const before = await caller.form.getFormById({ id: form.id });
+    expect(before.submissionsCount).toBe(1);
+
+    await caller.form.deleteSubmission({ formId: form.id, submissionId });
+
+    const after = await caller.form.getFormById({ id: form.id });
+    expect(after.submissionsCount).toBe(0);
+  });
 });
 
 /* ─── Owner-only operations ────────────────────────────────────────────── */
@@ -241,9 +354,7 @@ describe("an archived form", () => {
 
   it("refuses publishing", async () => {
     const { owner, form } = await makeCast({ isArchived: true });
-    const error = await expectRejection(
-      (await callerFor(owner)).form.publishForm({ id: form.id }),
-    );
+    const error = await expectRejection((await callerFor(owner)).form.publishForm({ id: form.id }));
     expect(error.message).toMatch(/archived/i);
   });
 
@@ -361,19 +472,25 @@ describe("collaborators", () => {
     );
     expect(before.message).toMatch(/editor access required/i);
 
-    await (await callerFor(owner)).form.updateCollaboratorRole({
+    await (
+      await callerFor(owner)
+    ).form.updateCollaboratorRole({
       formId: form.id,
       userId: viewer.id,
       role: "editor",
     });
 
-    await expect((await callerFor(viewer)).form.publishForm({ id: form.id })).resolves.toBeDefined();
+    await expect(
+      (await callerFor(viewer)).form.publishForm({ id: form.id }),
+    ).resolves.toBeDefined();
   });
 
   it("lose access the moment they are removed", async () => {
     const { owner, editor, form } = await makeCast();
 
-    await (await callerFor(owner)).form.removeCollaborator({
+    await (
+      await callerFor(owner)
+    ).form.removeCollaborator({
       formId: form.id,
       userId: editor.id,
     });
@@ -408,7 +525,9 @@ describe("transferring ownership", () => {
   it("moves the form and leaves the old owner without owner rights", async () => {
     const { owner, editor, form } = await makeCast();
 
-    await (await callerFor(owner)).form.transferOwnership({
+    await (
+      await callerFor(owner)
+    ).form.transferOwnership({
       formId: form.id,
       targetUserId: editor.id,
     });
@@ -426,7 +545,9 @@ describe("transferring ownership", () => {
   it("demotes the outgoing owner to editor rather than locking them out", async () => {
     const { owner, editor, form } = await makeCast();
 
-    await (await callerFor(owner)).form.transferOwnership({
+    await (
+      await callerFor(owner)
+    ).form.transferOwnership({
       formId: form.id,
       targetUserId: editor.id,
     });
@@ -439,7 +560,9 @@ describe("transferring ownership", () => {
   it("clears the new owner's old collaborator row, so they are not both", async () => {
     const { owner, editor, form } = await makeCast();
 
-    await (await callerFor(owner)).form.transferOwnership({
+    await (
+      await callerFor(owner)
+    ).form.transferOwnership({
       formId: form.id,
       targetUserId: editor.id,
     });
@@ -506,9 +629,6 @@ describe("two unrelated accounts", () => {
     const bob = await makeUser({ name: "Bob" });
     await makeForm(bob, { title: "Bob's form" });
 
-    /* The procedure takes no input at all — the owner comes from the session —
-     * so there is nothing for a caller to forge. Worth pinning: an earlier
-     * shape took a userId, and moving it to the session is what closed it. */
     const result = await (await callerFor(alice)).form.listFormsByUserId();
     expect(result).toEqual([]);
   });
@@ -525,9 +645,6 @@ describe("two unrelated accounts", () => {
     expect(stats.totalSketches).toBe(1);
   });
 
-  /* The listing counts a shared form and the dashboard used to not — the form
-   * showed up under Forms while Overview claimed the user had none. The two
-   * tallies have to agree. */
   it("get dashboard statistics that include forms shared with them", async () => {
     const alice = await makeUser({ name: "Alice" });
     const bob = await makeUser({ name: "Bob" });

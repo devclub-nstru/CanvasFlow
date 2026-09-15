@@ -70,3 +70,14 @@ export const getSubmissionsOutput = z.object({
   nextCursor: z.string().nullable(),
 });
 export type GetSubmissionsOutputType = z.infer<typeof getSubmissionsOutput>;
+
+export const deleteSubmissionInput = z.object({
+  formId: z.string().uuid().describe("Form the submission belongs to"),
+  submissionId: z.string().uuid().describe("ID of the submission to delete"),
+});
+export type DeleteSubmissionInputType = z.infer<typeof deleteSubmissionInput>;
+
+export const deleteSubmissionOutput = z.object({
+  success: z.boolean(),
+});
+export type DeleteSubmissionOutputType = z.infer<typeof deleteSubmissionOutput>;

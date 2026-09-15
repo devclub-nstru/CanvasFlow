@@ -9,10 +9,6 @@ import { PresenterIntroStage } from "./PresenterIntroStage";
 import { PresenterFloatingDock } from "./PresenterFloatingDock";
 import Noise from "~/components/Noise";
 import {
-  X,
-  Maximize2,
-  Minimize2,
-  LayoutGrid,
   AlertTriangle,
   Copy,
   Check,
@@ -263,12 +259,6 @@ export function PresenterLayout({ presentation, sessionId = "", displayToken }: 
                 {currentSlide && (
                   <SlideQuestionViewer
                     slide={currentSlide}
-                    /* Keyed strictly by slide id, with no fallback to the most
-                     * recent analytics frame. The fallback meant that advancing
-                     * to a slide with no tallies yet rendered the PREVIOUS
-                     * slide's results for a moment, until the first vote on the
-                     * new one arrived. Undefined is correct here — the viewers
-                     * render their own empty state for it. */
                     analytics={slideAnalyticsMap[currentSlide.id]}
                     leaderboard={leaderboard || sessionState?.leaderboard}
                     quizState={sessionState?.session?.quizState}

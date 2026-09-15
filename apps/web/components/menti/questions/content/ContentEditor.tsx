@@ -13,7 +13,6 @@ import {
   AlignRight,
   FileSpreadsheet,
   ExternalLink,
-  Layers,
 } from "lucide-react";
 import { MentiSlide } from "~/lib/menti";
 
@@ -44,7 +43,6 @@ const ACCENT_COLORS = [
 
 export function ContentEditor({ slide, onChange, variant = "panel" }: Props) {
   const contentImageUrl = slide.designSettings?.contentImageUrl;
-  const isPptxImport = slide.metadata?.source === "pptx_import" || Boolean(contentImageUrl);
   const title = slide.question || "";
   const description = slide.description || "";
   const eyebrow = slide.designSettings?.eyebrow || "";

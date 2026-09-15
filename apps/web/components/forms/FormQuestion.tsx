@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, ArrowUpRight, Calendar, Clock, Star } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowUpRight, Calendar, Clock, Star } from "lucide-react";
 
 import { FileUploadField } from "./FileUploadField";
 
@@ -20,6 +20,7 @@ interface FormQuestionProps {
   questionNumbers: Record<string, number>;
   totalQuestions: number;
   answers: Record<string, any>;
+  fieldErrors?: Record<string, string>;
   isPending: boolean;
   handleFieldChange: (fieldId: string, value: any) => void;
   handleNext: () => void;
@@ -46,6 +47,7 @@ export function FormQuestion({
   questionNumbers,
   totalQuestions,
   answers,
+  fieldErrors,
   isPending,
   handleFieldChange,
   handleNext,
@@ -82,6 +84,8 @@ export function FormQuestion({
 
         const value = answers[currentField.id];
         const inputId = `field-${currentField.id}`;
+        const error = fieldErrors?.[currentField.id];
+        const errorId = `${inputId}-error`;
         const questionNumber = questionNumbers[currentField.id] ?? indexOnPage + 1;
 
         /** Selected/unselected treatment shared by every choice control. */
@@ -142,7 +146,10 @@ export function FormQuestion({
                 </div>
 
                 {/* ── input ── */}
-                <div>
+                <div
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? errorId : undefined}
+                >
                   {currentField.type === "TEXT" && (
                     <input
                       id={inputId}
@@ -393,6 +400,18 @@ export function FormQuestion({
                     </div>
                   )}
                 </div>
+
+                {error && (
+                  <p
+                    id={errorId}
+                    role="alert"
+                    className="flex items-start gap-2 text-[13.5px] leading-relaxed font-medium"
+                    style={{ color: "var(--cf-danger)" }}
+                  >
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>{error}</span>
+                  </p>
+                )}
               </div>
             </div>
           </React.Fragment>
