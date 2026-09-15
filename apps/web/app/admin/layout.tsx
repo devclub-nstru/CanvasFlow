@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Shield } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowLeft, Gauge, Inbox, Shield, Users } from "lucide-react";
 
 import { isAdminRole, useGetLoggedInUserInfo } from "~/hooks/api/auth";
 
@@ -54,13 +54,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 function AdminShell({ children, role }: { children: React.ReactNode; role?: string }) {
+  const pathname = usePathname();
+
+  /* Only a superadmin can grant or revoke admin, so only a superadmin is shown
+   * the way there. The procedures behind it refuse everyone else regardless. */
+  const isSuperAdmin = role === "superadmin";
+
+  const tabs = [
+    { href: "/admin", label: "Overview", icon: Gauge },
+    { href: "/admin/reports", label: "Reports", icon: Inbox },
+    ...(isSuperAdmin ? [{ href: "/admin/admins", label: "Admins", icon: Users }] : []),
+  ];
+
   return (
     <div className="relative flex min-h-screen flex-col font-sans">
       <nav
         className="sticky top-0 z-40 border-b"
         style={{ borderBottomColor: "var(--cf-line-strong)", background: "#fafafa" }}
       >
-        <div className="mx-auto flex max-w-350 items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
+        <div className="mx-auto flex max-w-350 flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-8">
           <div className="flex items-center gap-2.5">
             <Shield className="size-4" style={{ color: "var(--cf-orange)" }} />
             <span className="cf-display text-[18px] leading-none">Admin</span>
@@ -71,13 +83,35 @@ function AdminShell({ children, role }: { children: React.ReactNode; role?: stri
             )}
           </div>
 
-          <Link
-            href="/dashboard"
-            className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
-          >
-            <ArrowLeft className="size-3.5" />
-            Dashboard
-          </Link>
+          <div className="flex items-center gap-2">
+            {role &&
+              tabs.map((t) => {
+                const Icon = t.icon;
+                const active = pathname === t.href;
+                return (
+                  <Link
+                    key={t.href}
+                    href={t.href}
+                    aria-current={active ? "page" : undefined}
+                    className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
+                    style={
+                      active ? { background: "var(--cf-ink)", color: "var(--cf-cream)" } : undefined
+                    }
+                  >
+                    <Icon className="size-3.5" />
+                    {t.label}
+                  </Link>
+                );
+              })}
+
+            <Link
+              href="/dashboard"
+              className="cf-btn-outline h-8 gap-1.5 px-3 text-[10px] font-bold tracking-[0.16em] uppercase"
+            >
+              <ArrowLeft className="size-3.5" />
+              Dashboard
+            </Link>
+          </div>
         </div>
       </nav>
 

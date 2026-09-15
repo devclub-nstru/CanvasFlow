@@ -15,12 +15,10 @@ export const useSubmitFeedback = () => {
 /* ── Admin triage ───────────────────────────────────────────────────────── */
 
 export type FeedbackStatus = "open" | "triaged" | "in_progress" | "resolved" | "closed";
-export type FeedbackPriority = "low" | "medium" | "high";
 
 export interface FeedbackFilters {
   status?: FeedbackStatus;
   type?: FeedbackType;
-  priority?: FeedbackPriority;
   assignedToMe?: boolean;
   unassigned?: boolean;
 }

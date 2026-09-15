@@ -107,9 +107,16 @@ export const feedbackRouter = router({
     })
     .input(updateFeedbackInput)
     .output(updateFeedbackOutput)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const { claim, ...rest } = input;
+
+      /* The assignee is the session's own user, or nobody. The request never
+       * gets to name one, so "assign this to someone else" is not a request
+       * that can be expressed — not merely one the UI declines to send. */
+      const assignedTo = claim === undefined ? undefined : claim ? ctx.user.id : null;
+
       try {
-        return await feedbackService.updateFeedback(input);
+        return await feedbackService.updateFeedback({ ...rest, assignedTo });
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",

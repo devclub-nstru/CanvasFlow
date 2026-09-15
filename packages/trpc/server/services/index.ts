@@ -6,6 +6,7 @@ import FormDraftService from "@repo/services/form-draft";
 import FormSubmissionService from "@repo/services/form-submission";
 import FormUploadService from "@repo/services/form-upload";
 import FeedbackService from "@repo/services/feedback";
+import AdminService from "@repo/services/admin";
 
 export const formService = new FormService();
 export const formFieldService = new FormFieldService();
@@ -15,3 +16,4 @@ export const formDraftService = new FormDraftService();
 export const formSubmissionService = new FormSubmissionService();
 export const formUploadService = new FormUploadService();
 export const feedbackService = new FeedbackService();
+export const adminService = new AdminService();

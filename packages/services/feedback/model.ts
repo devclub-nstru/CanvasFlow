@@ -33,13 +33,9 @@ export const feedbackStatusSchema = z.enum([
 ]);
 export type FeedbackStatusType = z.infer<typeof feedbackStatusSchema>;
 
-export const feedbackPrioritySchema = z.enum(["low", "medium", "high"]);
-export type FeedbackPriorityType = z.infer<typeof feedbackPrioritySchema>;
-
 export const listFeedbackInput = z.object({
   status: feedbackStatusSchema.optional().describe("Only reports in this status"),
   type: feedbackTypeSchema.optional().describe("Only reports of this kind"),
-  priority: feedbackPrioritySchema.optional().describe("Only reports at this priority"),
   assignedToMe: z.boolean().optional().describe("Only reports assigned to the caller"),
   unassigned: z.boolean().optional().describe("Only reports nobody owns yet"),
   limit: z.number().int().min(1).max(100).default(50),
@@ -53,7 +49,6 @@ const feedbackRowOutput = z.object({
   subject: z.string(),
   message: z.string(),
   status: feedbackStatusSchema,
-  priority: feedbackPrioritySchema,
 
   reporterId: z.string().nullable(),
   reporterName: z.string().nullable(),
@@ -84,11 +79,22 @@ export type GetFeedbackInputType = z.infer<typeof getFeedbackInput>;
 export const getFeedbackOutput = feedbackRowOutput;
 export type GetFeedbackOutputType = z.infer<typeof getFeedbackOutput>;
 
+/* `claim` rather than `assignedTo`: a report can only be taken by the person
+ * taking it, or handed back to the pool. There is deliberately no way to name
+ * an assignee — the caller's own id is filled in server-side — so nobody can
+ * put work on someone else's plate, and a forged request cannot either.
+ *
+ *   claim: true   → assign to whoever is calling
+ *   claim: false  → hand back, unassigned
+ *
+ * Deliberately no `.refine()` guarding against an empty patch: the OpenAPI
+ * generator calls `.omit()` on every input schema and zod refuses that on a
+ * schema carrying refinements, which takes the whole API down at boot. The
+ * empty-patch check lives in the service instead. */
 export const updateFeedbackInput = z.object({
   id: z.string().uuid(),
   status: feedbackStatusSchema.optional(),
-  priority: feedbackPrioritySchema.optional(),
-  assignedTo: z.string().nullable().optional(),
+  claim: z.boolean().optional(),
 });
 export type UpdateFeedbackInputType = z.infer<typeof updateFeedbackInput>;
 

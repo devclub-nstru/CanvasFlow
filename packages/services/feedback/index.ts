@@ -27,7 +27,6 @@ const feedbackSelection = {
   subject: feedbackTable.subject,
   message: feedbackTable.message,
   status: feedbackTable.status,
-  priority: feedbackTable.priority,
 
   reporterId: feedbackTable.userId,
   reporterName: reporterUsers.name,
@@ -106,7 +105,6 @@ class FeedbackService {
     const filters = [
       input.status ? eq(feedbackTable.status, input.status) : undefined,
       input.type ? eq(feedbackTable.type, input.type) : undefined,
-      input.priority ? eq(feedbackTable.priority, input.priority) : undefined,
       input.assignedToMe ? eq(feedbackTable.assignedTo, viewerId) : undefined,
       input.unassigned ? isNull(feedbackTable.assignedTo) : undefined,
     ].filter(Boolean);
@@ -144,17 +142,23 @@ class FeedbackService {
     return row;
   }
 
+  /* `assignedTo` is resolved by the route from `claim` plus the session — it is
+   * never read off the request body, so there is no shape of request that
+   * assigns a report to somebody else. See updateFeedbackInput. */
   public async updateFeedback(
-    payload: UpdateFeedbackInputType,
+    payload: Omit<UpdateFeedbackInputType, "claim"> & { assignedTo?: string | null },
   ): Promise<UpdateFeedbackOutputType> {
     const input = await updateFeedbackInput.parseAsync(payload);
 
+    /* Only the fields actually supplied are written. Spreading the whole input
+     * would blank a status every time someone merely claimed a report. */
     const patch: Record<string, unknown> = {};
     if (input.status !== undefined) patch.status = input.status;
-    if (input.priority !== undefined) patch.priority = input.priority;
-    if (input.assignedTo !== undefined) patch.assignedTo = input.assignedTo;
+    if (payload.assignedTo !== undefined) patch.assignedTo = payload.assignedTo;
 
-
+    /* Guarded here rather than as a schema refinement — see the note on
+     * updateFeedbackInput. An empty patch would otherwise reach Drizzle as
+     * `set({})`, which is a syntax error, not a no-op. */
     if (Object.keys(patch).length === 0) throw new Error("Nothing to update");
 
     const [updated] = await db
