@@ -11,11 +11,16 @@ export const feedbackTypeEnum = pgEnum("feedback_type", [
 export const feedbackStatusEnum = pgEnum("feedback_status", [
   "open",
   "triaged",
+  "in_progress",
   "resolved",
   "closed",
 ]);
 
 export const feedbackPriorityEnum = pgEnum("feedback_priority", ["low", "medium", "high"]);
+
+export type FeedbackStatus = (typeof feedbackStatusEnum.enumValues)[number];
+export type FeedbackType = (typeof feedbackTypeEnum.enumValues)[number];
+export type FeedbackPriority = (typeof feedbackPriorityEnum.enumValues)[number];
 
 export const feedbackTable = pgTable(
   "feedback",
@@ -30,6 +35,7 @@ export const feedbackTable = pgTable(
     priority: feedbackPriorityEnum("priority").notNull().default("medium"),
 
     userId: text("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+    assignedTo: text("assigned_to").references(() => usersTable.id, { onDelete: "set null" }),
     email: varchar("email", { length: 255 }),
     pageUrl: varchar("page_url", { length: 2048 }),
     userAgent: varchar("user_agent", { length: 512 }),
@@ -44,6 +50,10 @@ export const feedbackTable = pgTable(
     statusCreatedIdx: index("feedback_status_created_idx").on(table.status, table.createdAt),
     userCreatedIdx: index("feedback_user_created_idx").on(table.userId, table.createdAt),
     emailCreatedIdx: index("feedback_email_created_idx").on(table.email, table.createdAt),
+    assignedCreatedIdx: index("feedback_assigned_created_idx").on(
+      table.assignedTo,
+      table.createdAt,
+    ),
   }),
 );
 

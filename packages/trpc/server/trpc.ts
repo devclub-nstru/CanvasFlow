@@ -47,3 +47,35 @@ export const authenticatedProcedure = tRPCContext.procedure.use(async (options) 
 
   return result;
 });
+
+const ADMIN_ROLES = ["admin", "superadmin"] as const;
+
+export const adminProcedure = tRPCContext.procedure.use(async (options) => {
+  const { ctx } = options;
+
+  const session = await auth.api.getSession({
+    headers: new Headers(ctx.req.headers as Record<string, string>),
+  });
+
+  if (!session) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "User is not logged in" });
+  }
+
+  const role = (session.user as { role?: string }).role;
+
+  if (!ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number])) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+
+  return options.next({
+    ctx: {
+      ...ctx,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        role: role as (typeof ADMIN_ROLES)[number],
+      },
+    },
+  });
+});
